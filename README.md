@@ -7,6 +7,7 @@ its very buggy since im still trying to learn distube v5 and how to use it... bu
 
 # Installation
 download this repository as a zip and unpack
+
 Recommended using nodejs 20 (LTS)
 Recommended using PNPM 
 
