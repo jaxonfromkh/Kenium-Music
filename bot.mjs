@@ -7,6 +7,7 @@ import { YouTubePlugin } from '@distube/youtube';
 import { DirectLinkPlugin } from '@distube/direct-link';
 import { CommandHandler } from './src/handlers/Command.mjs'; 
 import { EventHandler } from './src/handlers/Events.mjs';
+import { ButtonHandler } from './src/handlers/Button.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 export const rootPath = __dirname;
@@ -30,6 +31,7 @@ const client = new Client({
 })
 client.slashCommands = new Collection()
 client.events = new Collection()
+client.buttonCommands = new Collection();
 client.distube = new DisTube(client, {
     nsfw: true,
     emitAddSongWhenCreatingQueue: false,
@@ -53,4 +55,5 @@ client.distube.on("initQueue", queue => {
     )
 await CommandHandler(client, rootPath)
 await EventHandler(client, rootPath)
+await ButtonHandler(client, rootPath)
 await client.login(token)
