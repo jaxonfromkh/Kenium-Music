@@ -14,3 +14,9 @@ Recommended using PNPM
 for installing @discordjs/opus do pnpm add @discordjs/opus -ignore-script
 
 now go on config.mjs and put the bot token and id, done
+
+# Known Issues
+
+DiscordAPIError[10062]: Unknown interaction error
+
+some others i forgot
