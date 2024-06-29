@@ -4,7 +4,7 @@
 // mushroom0162 was here xd, took 2 hours to make this
 // ======================================================
 
-import {  ActionRowBuilder, StringSelectMenuBuilder} from "discord.js";
+import {  ActionRowBuilder, StringSelectMenuBuilder, ComponentType} from "discord.js";
 import { SearchResultType } from "@distube/youtube";
 export const Command = {
   name: "search",
@@ -42,17 +42,30 @@ export const Command = {
           .setMaxValues(1)
           .addOptions(options)
         )
-        const followUp = await interaction.reply({
-          content: "Choose songs to play",
-          components: [row]
+        const response = await interaction.reply({
+          content: "Select a song",
+          components: [row],
         })
-        const response = await followUp.awaitMessageComponent({
-          time: 30000
+
+        const collector = response.createMessageComponentCollector({
+          componentType: ComponentType.StringSelect,
+          time: 30_000,
         })
-        const value = response.values[0]
-        await client.distube.play(vc, value, {
-          member: interaction.member,
-          textChannel: interaction.channel,
+
+        collector.on("collect", async (i) => {
+          if (i.user.id !== interaction.user.id) return;
+          await i.deferUpdate();
+          await client.distube.play(vc, i.values[0], {
+            member: interaction.member,
+            textChannel: interaction.channel,
+          });
+        });
+
+        collector.on('end', async collected => {
+          await interaction.editReply({
+            components: [],
+            content: 'Timed Out'
+          })
         })
     } catch (error) {
       console.log(error);
