@@ -53,12 +53,18 @@ export const Command = {
         })
 
         collector.on("collect", async (i) => {
-          if (i.user.id !== interaction.user.id) return;
-          await i.deferUpdate();
-          await client.distube.play(vc, i.values[0], {
-            member: interaction.member,
-            textChannel: interaction.channel,
-          });
+         if (i.user.id === interaction.user.id) {
+            await i.deferUpdate();
+            await client.distube.play(vc, i.values[0], {
+              member: interaction.member,
+              textChannel: interaction.channel,
+            });
+          } else {
+            await i.reply({
+              content: 'these are not for u',
+              ephemeral: true
+            })
+          }
         });
 
         collector.on('end', async collected => {
