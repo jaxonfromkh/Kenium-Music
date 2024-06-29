@@ -6,6 +6,7 @@
 
 import {  ActionRowBuilder, StringSelectMenuBuilder, ComponentType} from "discord.js";
 import { SearchResultType } from "@distube/youtube";
+import { isURL } from "distube";
 export const Command = {
   name: "search",
   description: "Search for a song",
@@ -23,6 +24,9 @@ export const Command = {
     if (!vc) return;
 
     try {
+     if (isURL(query)) {
+        return interaction.reply({content: "URL is not suppored bro", ephemeral: true})
+      }
       const results = await client.youtubeStuff.search(query, {
         type: SearchResultType.VIDEO,
         limit: 3,
