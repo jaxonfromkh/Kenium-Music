@@ -8,11 +8,12 @@ import { DirectLinkPlugin } from '@distube/direct-link';
 import { CommandHandler } from './src/handlers/Command.mjs'; 
 import { EventHandler } from './src/handlers/Events.mjs';
 import { ButtonHandler } from './src/handlers/Button.mjs';
+// ===============================================
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 export const rootPath = __dirname;
 
-
+// ===============================================
 const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
@@ -29,9 +30,11 @@ const client = new Client({
     ],
     partials: [Partials.Channel]
 })
+// ===============================================
 client.slashCommands = new Collection()
 client.events = new Collection()
 client.buttonCommands = new Collection();
+
 client.distube = new DisTube(client, {
     nsfw: true,
     emitAddSongWhenCreatingQueue: false,
@@ -39,20 +42,26 @@ client.distube = new DisTube(client, {
     savePreviousSongs: false,
     plugins: [new YouTubePlugin(), new DirectLinkPlugin()],
   });
+client.youtubeStuff = new YouTubePlugin()
+// ===============================================
   const Response = new EmbedBuilder()
   .setColor('Blue')
   .setTitle("🎵  Music 🎵")
   .setTimestamp(Date.now())
+// ===============================================  
 client.distube.on("initQueue", queue => {
   queue.autoplay = false;
   queue.volume = 100
-}).on('playSong', (queue, song) =>
+})
+// ===============================================
+.on('playSong', (queue, song) =>
     queue.textChannel.send({embeds: [Response.setDescription(`▶️ | Playing \`${song.name}\` - \`${song.formattedDuration}\`\nrequest by: ${
         song.user
       }
         `).setThumbnail(song.thumbnail)]      
       }),
     )
+// ===============================================
 await CommandHandler(client, rootPath)
 await EventHandler(client, rootPath)
 await ButtonHandler(client, rootPath)
