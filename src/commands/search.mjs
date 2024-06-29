@@ -95,7 +95,7 @@ export const Command = {
       });
 
 
-collector.on("end", async () => {
+    collector.on("end", async () => {
         await interaction.editReply({
           components: [],
           content: "Timed Out",
@@ -103,10 +103,6 @@ collector.on("end", async () => {
       });
     } catch (error) {
       console.log(error);
-      await interaction.reply({
-        content: "Something went wrong",
-        ephemeral: true,
-      });
     }
   },
 };
