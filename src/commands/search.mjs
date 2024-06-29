@@ -77,21 +77,19 @@ export const Command = {
       });
 
       collector.on("collect", async (interaction) => {
+        if (interaction.values[0] === "cancel") {
+          await interaction.deferUpdate();
+          await interaction.editReply({
+            components: [],
+            content: "Cancelled search",
+          });
+          return;
+        }
            if (interaction.user === interaction.user) {
           await interaction.deferUpdate();
           await client.distube.play(voiceChannel, interaction.values[0], {
             member: interaction.member,
             textChannel: interaction.channel,
-          });
-        }
-
-        if (
-          interaction.values[0] === "cancel" &&
-          interaction.user === interaction.user
-        ) {
-          await interaction.editReply({
-            components: [],
-            content: "Cancelled",
           });
         }
       });
