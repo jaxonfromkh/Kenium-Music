@@ -20,3 +20,5 @@ now go on config.mjs and put the bot token and id, done
 DiscordAPIError[10062]: Unknown interaction error
 
 some others i forgot
+
+Links not working on hosting servers (example: daki)
