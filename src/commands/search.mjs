@@ -1,4 +1,4 @@
-import { ActionRowBuilder, ComponentType, StringSelectMenuBuilder } from "discord.js";
+import { ActionRowBuilder, ComponentType, StringSelectMenuBuilder, ChannelType, StringSelectMenuOptionBuilder } from "discord.js";
 import { SearchResultType } from "@distube/youtube";
 import { isURL } from "distube";
 
@@ -21,11 +21,23 @@ export const Command = {
       return await interaction.reply({ content: "Please join a voice channel first", ephemeral: true });
     }
 
+    const { guild, channel } = interaction;
+
+    const lol = guild.channels.cache
+      .filter((chnl) => chnl.type == ChannelType.GuildVoice)
+      .find((channel) => channel.members.has(client.user.id));
+    if (lol && voiceChannel.id !== lol.id)
+      return interaction.reply({
+        content: `im already on <#${lol.id}>`,
+        ephemeral: true,
+      });
+    
     try {
       if (isURL(query)) {
         return await interaction.reply({ content: "URL is not supported", ephemeral: true });
       }
 
+      
       const searchResults = await client.youtubeStuff.search(query, {
         type: SearchResultType.VIDEO,
         limit: 3,
@@ -45,6 +57,12 @@ export const Command = {
           .setMinValues(1)
           .setMaxValues(1)
           .addOptions(selectMenuOptions)
+          .addOptions(
+            new StringSelectMenuOptionBuilder()
+              .setLabel("Cancel")
+              .setValue("cancel")
+              .setDescription("Cancels the search")
+          )
       );
 
       const response = await interaction.reply({
@@ -54,34 +72,46 @@ export const Command = {
 
       const collector = response.createMessageComponentCollector({
         componentType: ComponentType.StringSelect,
+        filter: (i) => i.user.id === interaction.user.id,
         time: 30_000,
       });
 
       collector.on("collect", async (interaction) => {
-        if (interaction.user.id === interaction.user.id) {
+           if (interaction.user === interaction.user) {
           await interaction.deferUpdate();
           await client.distube.play(voiceChannel, interaction.values[0], {
             member: interaction.member,
             textChannel: interaction.channel,
           });
-        } else {
-          await interaction.reply({
-            content: "These are not for you",
-            ephemeral: true,
+        }
+
+        if (
+          interaction.values[0] === "cancel" &&
+          interaction.user === interaction.user
+        ) {
+          await interaction.editReply({
+            components: [],
+            content: "Cancelled",
           });
         }
       });
 
-      collector.on("end", async () => {
+
+collector.on("end", async () => {
         await interaction.editReply({
           components: [],
           content: "Timed Out",
         });
       });
     } catch (error) {
-      console.error(error);
+      console.log(error);
+      await interaction.reply({
+        content: "Something went wrong",
+        ephemeral: true,
+      });
     }
   },
 };
+
 
 // Note: Unstable code yet
