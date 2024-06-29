@@ -2,7 +2,7 @@ import { Client, GatewayIntentBits, Partials, Collection, EmbedBuilder  } from '
 import { token } from './config.mjs'
 import { dirname } from "node:path";
 import { fileURLToPath } from "node:url";
-import { DisTube } from 'distube';
+import { DisTube, isVoiceChannelEmpty } from 'distube';
 import { YouTubePlugin } from '@distube/youtube';
 import { DirectLinkPlugin } from '@distube/direct-link';
 import { CommandHandler } from './src/handlers/Command.mjs'; 
@@ -49,19 +49,42 @@ client.youtubeStuff = new YouTubePlugin()
   .setTitle("🎵  Music 🎵")
   .setTimestamp(Date.now())
 // ===============================================  
-client.distube.on("initQueue", queue => {
-  queue.autoplay = false;
-  queue.volume = 100
+client.distube
+  .on("initQueue", (queue) => {
+    queue.autoplay = false;
+    queue.volume = 100;
+  })
+  // ===============================================
+  .on("playSong", (queue, song) =>
+    queue.textChannel.send({
+      embeds: [
+        Response.setDescription(
+          `▶️ | Playing \`${song.name}\` - \`${song.formattedDuration}\`\nrequest by: ${song.user}
+        `
+        ).setThumbnail(song.thumbnail),
+      ],
+    })
+  );
+// ===============================================
+client.distube.on("finishSong", (queue, song) => {
+  queue.textChannel.send({
+    embeds: [Response.setDescription("- **Finished playing:** " + song.name)],
+  });
+  client.distube.voices.leave(queue.voiceChannel);
+});
+client.distube.on('empty', (queue) => {
+  if(isVoiceChannelEmpty(queue.voiceChannel) === true) {
+    client.distube.voices.leave(queue.voiceChannel);
+  }
+  queue.textChannel.send({
+    embeds: [
+      Response.setDescription(
+        "⏹ | Empty Channel!, now leaving the voice channel."
+      ),
+    ],
+  });
 })
-// ===============================================
-.on('playSong', (queue, song) =>
-    queue.textChannel.send({embeds: [Response.setDescription(`▶️ | Playing \`${song.name}\` - \`${song.formattedDuration}\`\nrequest by: ${
-        song.user
-      }
-        `).setThumbnail(song.thumbnail)]      
-      }),
-    )
-// ===============================================
+// ======================================
 await CommandHandler(client, rootPath)
 await EventHandler(client, rootPath)
 await ButtonHandler(client, rootPath)
