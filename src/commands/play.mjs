@@ -38,7 +38,7 @@ export const Command = {
           content: `im already on <#${lol.id}>`,
           ephemeral: true,
         });
-
+      await interaction.reply({ content: "- 🎵 Loading...", ephemeral: true });
       await client.distube.voices.create(vc);
 
       await client.distube.play(vc, song, {
