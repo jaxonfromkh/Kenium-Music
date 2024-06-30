@@ -77,6 +77,7 @@ client.distube.on('finishSong', (queue, song) => {
         ).setThumbnail(song.thumbnail),
       ],
     });
+    client.distube.voices.leave(queue.voiceChannel);
   }
 });
 client.distube.on('empty', (queue) => {
