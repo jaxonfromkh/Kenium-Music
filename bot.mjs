@@ -44,10 +44,10 @@ client.distube = new DisTube(client, {
   });
 client.youtubeStuff = new YouTubePlugin()
 // ===============================================
-  const Response = new EmbedBuilder()
-  .setColor('Blue')
-  .setTitle("🎵  Music 🎵")
-  .setTimestamp(Date.now())
+const Response = new EmbedBuilder()
+  .setFooter({ text: "Toddys Music Bot" })
+  .setColor("Blue")
+  .setTimestamp(Date.now());
 // ===============================================  
 client.distube
   .on("initQueue", (queue) => {
@@ -55,22 +55,28 @@ client.distube
     queue.volume = 100;
   })
   // ===============================================
-  .on("playSong", (queue, song) =>
+.on("playSong", (queue, song) =>
     queue.textChannel.send({
       embeds: [
         Response.setDescription(
-          `▶️ | Playing \`${song.name}\` - \`${song.formattedDuration}\`\nrequest by: ${song.user}
+          `▶️ | Playing \`${song.name}\`\n ⏰ | Duration:\`${song.formattedDuration}\` \n 👤 | Uploader: \`${song.uploader.name}\`
         `
-        ).setThumbnail(song.thumbnail),
+        ).setAuthor({ name: `${song.user.username} • 🎵 | Music`, iconURL: song.user.displayAvatarURL() }).setThumbnail(song.thumbnail),
       ],
     })
   );
 // ===============================================
-client.distube.on("finishSong", (queue, song) => {
-  queue.textChannel.send({
-    embeds: [Response.setDescription("- **Finished playing:** " + song.name)],
-  });
-  client.distube.voices.leave(queue.voiceChannel);
+client.distube.on('finishSong', (queue, song) => {
+  if (queue) {
+    queue.textChannel.send({
+      embeds: [
+        Response.setDescription(
+          `⏭ | Finished \`${song.name}\` - \`${song.formattedDuration}\`
+          `
+        ).setThumbnail(song.thumbnail),
+      ],
+    });
+  }
 });
 client.distube.on('empty', (queue) => {
   if(isVoiceChannelEmpty(queue.voiceChannel) === true) {
