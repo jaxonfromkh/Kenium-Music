@@ -7,7 +7,9 @@ export const Command = {
         try {
             const vc = interaction.member?.voice?.channel;
             if (!vc) return;
+    const song = client.distube.getQueue(vc);
 
+    if (!song) return;
       const { guild, channel } = interaction;
 
       const lol = guild.channels.cache
