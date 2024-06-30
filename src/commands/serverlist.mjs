@@ -4,8 +4,8 @@ export const Command = {
   name: "serverlist",
   description: "owner only cmd, just for me check servers",
   run: async (client, interaction) => {
-
-    const user = interaction.user;
+	try {
+	 const user = interaction.user;
     if (!user) return;
 
     if (user.id === ownerId || ownerId.includes(user.id)) { 
@@ -23,12 +23,12 @@ export const Command = {
             )
             .slice(0, 10)
             .join("\n\n");
-    
+
         let embed = new EmbedBuilder()
-    
+
           .setColor(0, 0, 0)
           .setDescription(description);
-    
+
         let msg = await interaction.reply({
           embeds: [embed],
         });
@@ -38,6 +38,6 @@ export const Command = {
          ephemeral: true
        })
     }
-   
-  },
-};
+		} catch(error) {console.log(error)}
+	}
+}
