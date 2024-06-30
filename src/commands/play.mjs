@@ -47,15 +47,6 @@ export const Command = {
       });
     } catch (error) {
       console.error(error);
-      const embed = new EmbedBuilder()
-        .setColor("Red")
-        .setTitle("Something went wrong...")
-        .setTimestamp()
-        .setFooter({ text: "made by mushroom0162, Sorry for the error :(" });
-      return interaction.reply({
-        embeds: [embed.setDescription(`* ❌ Error: ${error.message}`)],
-        ephemeral: true,
-      });
     }
   },
 };
