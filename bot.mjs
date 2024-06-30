@@ -35,14 +35,15 @@ client.slashCommands = new Collection()
 client.events = new Collection()
 client.buttonCommands = new Collection();
 
-client.distube = new DisTube(client, {
-    nsfw: true,
-    emitAddSongWhenCreatingQueue: false,
-    emitAddListWhenCreatingQueue: false,
-    savePreviousSongs: false,
-    plugins: [new YouTubePlugin(), new DirectLinkPlugin()],
-  });
-client.youtubeStuff = new YouTubePlugin()
+const distube = new DisTube(client, {
+  nsfw: true,
+  emitAddSongWhenCreatingQueue: false,
+  emitAddListWhenCreatingQueue: false,
+  savePreviousSongs: false,
+  plugins: [new YouTubePlugin(), new DirectLinkPlugin()],
+});
+client.youtubeStuff = new YouTubePlugin({});
+client.distube = distube;
 // ===============================================
 const Response = new EmbedBuilder()
   .setFooter({ text: "Toddys Music Bot" })
