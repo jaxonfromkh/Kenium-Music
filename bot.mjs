@@ -8,6 +8,7 @@ import { DirectLinkPlugin } from '@distube/direct-link';
 import { CommandHandler } from './src/handlers/Command.mjs'; 
 import { EventHandler } from './src/handlers/Events.mjs';
 import { ButtonHandler } from './src/handlers/Button.mjs';
+// import fs from 'node:fs'
 // ===============================================
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -40,9 +41,13 @@ const distube = new DisTube(client, {
   emitAddSongWhenCreatingQueue: false,
   emitAddListWhenCreatingQueue: false,
   savePreviousSongs: false,
-  plugins: [new YouTubePlugin(), new DirectLinkPlugin()],
+  plugins: [new YouTubePlugin({
+    //  cookies: JSON.parse(fs.readFileSync('./cookies.json')),
+}), new DirectLinkPlugin()],
 });
-client.youtubeStuff = new YouTubePlugin({});
+client.youtubeStuff = new YouTubePlugin({
+//   cookies: JSON.parse(fs.readFileSync('./cookies.json')),
+});
 client.distube = distube;
 // ===============================================
 const Response = new EmbedBuilder()
