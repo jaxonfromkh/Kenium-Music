@@ -1,4 +1,4 @@
-import { ActionRowBuilder, ComponentType, StringSelectMenuBuilder, ChannelType, StringSelectMenuOptionBuilder } from "discord.js";
+import { ActionRowBuilder, ComponentType, StringSelectMenuBuilder, ChannelType, StringSelectMenuOptionBuilder, EmbedBuilder } from "discord.js";
 import { SearchResultType } from "@distube/youtube";
 import { isURL } from "distube";
 
@@ -65,9 +65,15 @@ export const Command = {
           )
       );
 
+     const embed = new EmbedBuilder()
+      .setColor('White')
+      .setAuthor({ name: 'Search Results', iconURL: interaction.user.displayAvatarURL({ dynamic: true }) })
+      .setTimestamp()
+      .setFooter({ text: 'Toddys Music Bot •  Requested by ' + interaction.user.username.toString() })
+      .setDescription("Select a song to play below xd")
       const response = await interaction.reply({
-        content: "Select a song",
         components: [selectMenuRow],
+        embeds: [embed]
       });
 
       const collector = response.createMessageComponentCollector({
@@ -77,11 +83,12 @@ export const Command = {
       });
 
       collector.on("collect", async (interaction) => {
-        if (interaction.values[0] === "cancel") {
+         if (interaction.values[0] === "cancel") {
           await interaction.deferUpdate();
           await interaction.editReply({
             components: [],
             content: "Cancelled search",
+            embeds: [],
           });
           return;
         }
@@ -99,9 +106,10 @@ export const Command = {
         await interaction.editReply({
           components: [],
           content: "Timed Out",
+          embeds: [],
         });
       });
-    } catch (error) {
+    }catch (error) {
       console.log(error);
     }
   },
