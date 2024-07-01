@@ -87,7 +87,7 @@ client.distube
   );
 // ===============================================
 client.distube.on("finishSong", (queue, song) => {
-  if (queue.songs.length > 1 ||  queue.setRepeatMode(RepeatMode.SONG) || queue.setRepeatMode(RepeatMode.QUEUE)) {
+  if (queue.songs.length > 1 || RepeatMode.SONG || RepeatMode.QUEUE) {
     return;
   } else {
     queue.textChannel.send({
