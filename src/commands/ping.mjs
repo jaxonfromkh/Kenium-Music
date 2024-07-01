@@ -5,6 +5,7 @@ export const Command = {
     description: "Pong!",
     run: async(client, interaction) => {
         try {
+            await interaction.deferReply()
         const apiPing = client.ws.ping;
         const ping = Date.now() - interaction.createdTimestamp;
         const embed = new EmbedBuilder()
@@ -21,7 +22,7 @@ export const Command = {
             }
         ])
         .setColor("Blue")
-        await interaction.reply({ embeds: [embed] });
+        await interaction.editReply({ embeds: [embed] });
         } catch(error) {
             console.log(error)
         }
