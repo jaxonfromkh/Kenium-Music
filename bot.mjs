@@ -72,8 +72,10 @@ client.distube
     })
   );
 // ===============================================
-client.distube.on('finishSong', (queue, song) => {
-  if (queue) {
+client.distube.on("finishSong", (queue, song) => {
+  if (queue.songs.length > 1) {
+    return;
+  } else {
     queue.textChannel.send({
       embeds: [
         Response.setDescription(
@@ -85,6 +87,7 @@ client.distube.on('finishSong', (queue, song) => {
     client.distube.voices.leave(queue.voiceChannel);
   }
 });
+
 client.distube.on('empty', (queue) => {
   if(isVoiceChannelEmpty(queue.voiceChannel) === true) {
     client.distube.voices.leave(queue.voiceChannel);
