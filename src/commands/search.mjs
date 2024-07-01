@@ -14,33 +14,38 @@ export const Command = {
     },
   ],
   run: async (client, interaction) => {
-    const query = interaction.options.getString("query");
+       const query = interaction.options.getString("query");
     const voiceChannel = interaction.member?.voice?.channel;
+    await interaction.deferReply()
 
     if (!voiceChannel) {
-      return await interaction.reply({ content: "Please join a voice channel first", ephemeral: true });
+      return await interaction.editReply({
+        content: "Please join a voice channel first",
+        ephemeral: true,
+      });
     }
-
     const { guild, channel } = interaction;
 
     const lol = guild.channels.cache
       .filter((chnl) => chnl.type == ChannelType.GuildVoice)
       .find((channel) => channel.members.has(client.user.id));
     if (lol && voiceChannel.id !== lol.id)
-      return interaction.reply({
+      return interaction.editReply({
         content: `im already on <#${lol.id}>`,
         ephemeral: true,
       });
-    
+
     try {
       if (isURL(query)) {
-        return await interaction.reply({ content: "URL is not supported", ephemeral: true });
+        return await interaction.editReply({
+          content: "URL is not supported",
+          ephemeral: true,
+        });
       }
 
-      
       const searchResults = await client.youtubeStuff.search(query, {
         type: SearchResultType.VIDEO,
-        limit: 3,
+        limit: 4,
         safeSearch: false,
       });
 
@@ -64,14 +69,13 @@ export const Command = {
               .setDescription("Cancels the search")
           )
       );
-
-     const embed = new EmbedBuilder()
+      const embed = new EmbedBuilder()
       .setColor('White')
       .setAuthor({ name: 'Search Results', iconURL: interaction.user.displayAvatarURL({ dynamic: true }) })
       .setTimestamp()
       .setFooter({ text: 'Toddys Music Bot •  Requested by ' + interaction.user.username.toString() })
       .setDescription("Select a song to play below xd")
-      const response = await interaction.reply({
+      const response = await interaction.editReply({
         components: [selectMenuRow],
         embeds: [embed]
       });
@@ -82,8 +86,10 @@ export const Command = {
         time: 30_000,
       });
 
-      collector.on("collect", async (interaction) => {
-         if (interaction.values[0] === "cancel") {
+      collector.on("collect", async (interaction, i) => {
+
+
+        if (interaction.values[0] === "cancel") {
           await interaction.deferUpdate();
           await interaction.editReply({
             components: [],
@@ -92,24 +98,28 @@ export const Command = {
           });
           return;
         }
-           if (interaction.user === interaction.user) {
-          await interaction.deferUpdate();
+
+        if (interaction.user === interaction.user) {
+            await interaction.deferUpdate();
+          await interaction.followUp({
+            content: "🎵  |  Added to queue",
+            ephemeral: true,
+          })
           await client.distube.play(voiceChannel, interaction.values[0], {
             member: interaction.member,
             textChannel: interaction.channel,
           });
         }
-      });
+       });
 
-
-    collector.on("end", async () => {
+      collector.on("end", async () => {
         await interaction.editReply({
           components: [],
           content: "Timed Out",
           embeds: [],
         });
       });
-    }catch (error) {
+    } catch (error) {
       console.log(error);
     }
   },
