@@ -1,4 +1,4 @@
-import { EmbedBuilder, ChannelType } from "discord.js";
+import { ChannelType } from "discord.js";
 
 export const Command = {
   name: "play",
@@ -16,29 +16,31 @@ export const Command = {
     const vc = interaction.member?.voice?.channel;
 
     const song = interaction.options.getString("song");
-
+    await interaction.deferReply({ ephemeral: true });
     try {
       if (!vc)
-        return interaction.reply({
+        return interaction.editReply({
           content: "Please join a vc first",
           ephemeral: true,
         });
 
       if (!song)
-        return interaction.reply({
+        return interaction.editReply({
           content: "Please provide a song",
           ephemeral: true,
         });
       const { guild, channel } = interaction;
+
       const lol = guild.channels.cache
         .filter((chnl) => chnl.type == ChannelType.GuildVoice)
         .find((channel) => channel.members.has(client.user.id));
       if (lol && vc.id !== lol.id)
-        return interaction.reply({
+        return interaction.editReply({
           content: `im already on <#${lol.id}>`,
           ephemeral: true,
         });
-      await interaction.reply({ content: "- 🎵 Loading...", ephemeral: true });
+
+      await interaction.editReply({ content: "- 🎵 Loading...", ephemeral: true });
       await client.distube.voices.create(vc);
 
       await client.distube.play(vc, song, {
