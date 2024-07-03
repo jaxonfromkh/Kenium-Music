@@ -1,4 +1,11 @@
-import { ActionRowBuilder, ComponentType, StringSelectMenuBuilder, ChannelType, StringSelectMenuOptionBuilder, EmbedBuilder } from "discord.js";
+import {
+  ActionRowBuilder,
+  ComponentType,
+  StringSelectMenuBuilder,
+  ChannelType,
+  StringSelectMenuOptionBuilder,
+  EmbedBuilder,
+} from "discord.js";
 import { SearchResultType } from "@distube/youtube";
 import { isURL } from "distube";
 
@@ -14,30 +21,33 @@ export const Command = {
     },
   ],
   run: async (client, interaction) => {
-       const query = interaction.options.getString("query");
+    const query = interaction.options.getString("query");
     const voiceChannel = interaction.member?.voice?.channel;
-    await interaction.deferReply()
+
 
     if (!voiceChannel) {
+      await interaction.deferReply({ fetchReply: true });
       return await interaction.editReply({
         content: "Please join a voice channel first",
         ephemeral: true,
       });
     }
     const { guild, channel } = interaction;
-
     const lol = guild.channels.cache
       .filter((chnl) => chnl.type == ChannelType.GuildVoice)
       .find((channel) => channel.members.has(client.user.id));
     if (lol && voiceChannel.id !== lol.id)
-      return interaction.editReply({
+      
+      return await interaction.deferReply({
         content: `im already on <#${lol.id}>`,
         ephemeral: true,
-      });
+      })
+
 
     try {
       if (isURL(query)) {
-        return await interaction.editReply({
+        await interaction.deferReply({ fetchReply: true });
+        await interaction.editReply({
           content: "URL is not supported",
           ephemeral: true,
         });
@@ -75,7 +85,7 @@ export const Command = {
       .setTimestamp()
       .setFooter({ text: 'Toddys Music Bot •  Requested by ' + interaction.user.username.toString() })
       .setDescription("Select a song to play below xd")
-      const response = await interaction.editReply({
+      const response = await interaction.reply({
         components: [selectMenuRow],
         embeds: [embed]
       });
@@ -100,7 +110,7 @@ export const Command = {
         }
 
         if (interaction.user === interaction.user) {
-            await interaction.deferUpdate();
+          await interaction.deferReply({ ephemeral: true });
           await interaction.followUp({
             content: "🎵  |  Added to queue",
             ephemeral: true,
@@ -115,15 +125,14 @@ export const Command = {
       collector.on("end", async () => {
         await interaction.editReply({
           components: [],
-          content: "Timed Out",
+          content: "Search timed out",
           embeds: [],
-        });
+        })
       });
     } catch (error) {
       console.log(error);
     }
   },
 };
-
 
 // Note: Unstable code yet
