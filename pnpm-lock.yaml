@@ -17,9 +17,15 @@ importers:
       '@distube/direct-link':
         specifier: ^1.0.1
         version: 1.0.1(distube@5.0.2(@discordjs/voice@0.17.0(@discordjs/opus@0.9.0)(opusscript@0.0.8))(discord.js@14.15.3))
+      '@distube/soundcloud':
+        specifier: 2.0.1
+        version: 2.0.1(distube@5.0.2(@discordjs/voice@0.17.0(@discordjs/opus@0.9.0)(opusscript@0.0.8))(discord.js@14.15.3))
       '@distube/youtube':
         specifier: ^1.0.2
         version: 1.0.2(distube@5.0.2(@discordjs/voice@0.17.0(@discordjs/opus@0.9.0)(opusscript@0.0.8))(discord.js@14.15.3))
+      '@distube/yt-dlp':
+        specifier: ^2.0.1
+        version: 2.0.1(distube@5.0.2(@discordjs/voice@0.17.0(@discordjs/opus@0.9.0)(opusscript@0.0.8))(discord.js@14.15.3))
       discord.js:
         specifier: ^14.15.3
         version: 14.15.3
@@ -77,8 +83,19 @@ packages:
     peerDependencies:
       distube: '5'
 
+  '@distube/soundcloud@2.0.1':
+    resolution: {integrity: sha512-sAjdyQ0N4LGyYem2Y2P3HSgX6CMHZUnIxVR11Q4JqfA1JNuHLyIp/yvoGG55wOiCkY48b2UpOo1fSxnzuc7FRw==}
+    deprecated: This version is deprecated, please upgrade to the latest version.
+    peerDependencies:
+      distube: '5'
+
   '@distube/youtube@1.0.2':
     resolution: {integrity: sha512-vNOE7kGhg3pC87iqT3Q4eu+yTae8Nr3J1XDR67YMH9HAg1RsPjwM7TvfabZoGxIUiPl4ua/PG6s8Nfxf2U9cxQ==}
+    peerDependencies:
+      distube: '5'
+
+  '@distube/yt-dlp@2.0.1':
+    resolution: {integrity: sha512-9c16lRU6jbyal38UUr5E36+2lp36s0DaJySOtFjuAPgaJkp2xvKvyd+s4rFZSqVQGJO5GOhBiH+HD115SKfKAw==}
     peerDependencies:
       distube: '5'
 
@@ -162,6 +179,10 @@ packages:
 
   console-control-strings@1.1.0:
     resolution: {integrity: sha512-ty/fTekppD2fIwRvnZAVdeOiGd1c7YXEixbgJTNzqcxJWKQnjJ/V1bNEEE6hygpM3WjwHFUVK6HTjWSzV4a8sQ==}
+
+  dargs@7.0.0:
+    resolution: {integrity: sha512-2iy1EkLdlBzQGvbweYRFxmFath8+K7+AKB0TlhHWkNuH+TmovaMH/Wp7V7R4u7f4SnX3OgLsU9t1NI9ioDnUpg==}
+    engines: {node: '>=8'}
 
   debug@4.3.5:
     resolution: {integrity: sha512-pt0bNEmneDIvdL1Xsd9oDQ/wrQRkXDT4AUWlNZNPKvW5x/jyO9VFXkJUP07vQ2upmw5PlaITaPKc31jK13V+jg==}
@@ -389,6 +410,9 @@ packages:
   sodium-native@4.1.1:
     resolution: {integrity: sha512-LXkAfRd4FHtkQS4X6g+nRcVaN7mWVNepV06phIsC6+IZFvGh1voW5TNQiQp2twVaMf05gZqQjuS+uWLM6gHhNQ==}
 
+  soundcloud.ts@0.5.3:
+    resolution: {integrity: sha512-ZMH6gG5e7WqJrIYXTv14MNArPhx3WzfrL1Ij/2qBDW8mVbNJc8lxOQOc4kLvrfvDl5TkCdZa7zXOiwD6ESXq+g==}
+
   string-width@4.2.3:
     resolution: {integrity: sha512-wKyQRQpjJ0sIp62ErSZdGsjMJWsap5oRNihHhu6G7JVO/9jIB6UyevL+tXuOqrng8j/cxKTWyWUwvSTriiZz/g==}
     engines: {node: '>=8'}
@@ -564,6 +588,11 @@ snapshots:
       distube: 5.0.2(@discordjs/voice@0.17.0(@discordjs/opus@0.9.0)(opusscript@0.0.8))(discord.js@14.15.3)
       undici: 6.19.2
 
+  '@distube/soundcloud@2.0.1(distube@5.0.2(@discordjs/voice@0.17.0(@discordjs/opus@0.9.0)(opusscript@0.0.8))(discord.js@14.15.3))':
+    dependencies:
+      distube: 5.0.2(@discordjs/voice@0.17.0(@discordjs/opus@0.9.0)(opusscript@0.0.8))(discord.js@14.15.3)
+      soundcloud.ts: 0.5.3
+
   '@distube/youtube@1.0.2(distube@5.0.2(@discordjs/voice@0.17.0(@discordjs/opus@0.9.0)(opusscript@0.0.8))(discord.js@14.15.3))':
     dependencies:
       '@distube/ytdl-core': 4.13.4
@@ -572,6 +601,12 @@ snapshots:
       distube: 5.0.2(@discordjs/voice@0.17.0(@discordjs/opus@0.9.0)(opusscript@0.0.8))(discord.js@14.15.3)
     transitivePeerDependencies:
       - supports-color
+
+  '@distube/yt-dlp@2.0.1(distube@5.0.2(@discordjs/voice@0.17.0(@discordjs/opus@0.9.0)(opusscript@0.0.8))(discord.js@14.15.3))':
+    dependencies:
+      dargs: 7.0.0
+      distube: 5.0.2(@discordjs/voice@0.17.0(@discordjs/opus@0.9.0)(opusscript@0.0.8))(discord.js@14.15.3)
+      undici: 6.19.2
 
   '@distube/ytdl-core@4.13.4':
     dependencies:
@@ -650,6 +685,8 @@ snapshots:
   concat-map@0.0.1: {}
 
   console-control-strings@1.1.0: {}
+
+  dargs@7.0.0: {}
 
   debug@4.3.5:
     dependencies:
@@ -848,6 +885,10 @@ snapshots:
   sodium-native@4.1.1:
     dependencies:
       node-gyp-build: 4.8.1
+
+  soundcloud.ts@0.5.3:
+    dependencies:
+      undici: 6.19.2
 
   string-width@4.2.3:
     dependencies:
