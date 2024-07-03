@@ -11,6 +11,7 @@ import { fileURLToPath } from "node:url";
 import { DisTube, isVoiceChannelEmpty, RepeatMode } from "distube";
 import { YouTubePlugin } from "@distube/youtube";
 import { DirectLinkPlugin } from "@distube/direct-link";
+import { SoundCloudPlugin } from '@distube/soundcloud'
 import { CommandHandler } from "./src/handlers/Command.mjs";
 import { EventHandler } from "./src/handlers/Events.mjs";
 import { ButtonHandler } from "./src/handlers/Button.mjs";
@@ -53,8 +54,10 @@ const distube = new DisTube(client, {
      // cookies: JSON.parse(fs.readFileSync("./cookies.json")),
     }),
     new DirectLinkPlugin(),
+    new SoundCloudPlugin(),
   ],
 });
+client.SoundCloudPlugin = new SoundCloudPlugin();
 client.youtubeStuff = new YouTubePlugin({
   // cookies: JSON.parse(fs.readFileSync("./cookies.json")),
 });
