@@ -17,7 +17,7 @@ now go on config.mjs and put the bot token and id, done
 
 # Known Issues
 
-DiscordAPIError[10062]: Unknown interaction error
+DiscordAPIError[10062]: Unknown interaction error ( UNFIXABLE - ITS NOT A PROBLEM WITH DISCORD OR THE BOT, ITS AN PROBLEM WITH THE HOST SYSYEM! )
 
 some others i forgot
 
