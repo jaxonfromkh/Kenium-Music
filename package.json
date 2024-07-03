@@ -3,13 +3,14 @@
 		"@discordjs/opus": "^0.9.0",
 		"@discordjs/voice": "^0.17.0",
 		"@distube/direct-link": "^1.0.1",
+		"@distube/soundcloud": "2.0.1",
 		"@distube/youtube": "^1.0.2",
+		"@distube/yt-dlp": "^2.0.1",
 		"discord.js": "^14.15.3",
 		"distube": "^5.0.2",
 		"sodium-native": "^4.1.1"
 	},
 	"main": "bot.mjs",
 	"name": "toddys-music",
-	"version": "1.0.0",
 	"type": "module"
 }
