@@ -10,6 +10,12 @@ export const Event = {
                 const button = client.buttonCommands.get(interaction.customId);
                 if (button) button.run(client, interaction);
                 break;
+            case interaction.isStringSelectMenu():
+                const selectMenuCommand = client.selectMenus.get(interaction.values[0]) ?? client.selectMenus.get(interaction.customId);
+                if (!selectMenuCommand) return;
+                
+                selectMenuCommand.run(interaction, client);
+                break;
         }
     }
 }
