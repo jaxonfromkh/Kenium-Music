@@ -74,12 +74,13 @@ client.distube
     queue.volume = 100;
   })
   // ===============================================
-  .on("playSong", (queue, song) =>
+  .on("playSong", (queue, song) => {
+    const platform = song.source === "youtube" ? "Youtube" : "SoundCloud";
+
     queue.textChannel.send({
       embeds: [
         Response.setDescription(
-          `▶️ | Playing \`${song.name}\`\n ⏰ | Duration:\`${song.formattedDuration}\` \n 👤 | Uploader: \`${song.uploader.name}\`
-        `
+          `- ▶️ | Playing \`${song.name}\`\n - ⏰ | Duration:\`${song.formattedDuration}\` \n - 👤 | Uploader: \`${song.uploader.name}\` \n - 📊 | Views: \`${song.views}\`\n-  🖥️ | Plataform: \`${platform}\``
         )
           .setAuthor({
             name: `${song.user.username}  • 🎵 | Music`,
@@ -87,8 +88,8 @@ client.distube
           })
           .setThumbnail(song.thumbnail),
       ],
-    })
-  );
+    });
+  });
 // ===============================================
 client.distube.on("finishSong", (queue, song) => {
   if (queue.songs.length > 1 || RepeatMode.SONG || RepeatMode.QUEUE) {
@@ -106,7 +107,7 @@ client.distube.on("finishSong", (queue, song) => {
   }
 });
 
-client.on("voiceStateUpdate", oldState => {
+client.on("voiceStateUpdate", (oldState) => {
   if (!oldState?.channel) return;
   const voice = client.distube.voices.get(oldState);
   if (voice && isVoiceChannelEmpty(oldState)) {
