@@ -1,3 +1,4 @@
+import { SearchResultType } from "@distube/youtube";
 import { ChannelType } from "discord.js";
 
 export const Command = {
@@ -5,50 +6,73 @@ export const Command = {
   description: "Play some song!",
   options: [
     {
-      name: "song",
-      description:
-        "the song you want to play / or a link / or a direct discord link",
-      type: 3,
-      required: true,
+      name: 'youtube',
+      description: 'Play song from youtube',
+      type: 1,
+      options: [
+        {
+          name: 'query',
+          description: 'The song you want to search for',
+          type: 3,
+          required: true,
+        },
+      ],
     },
+    {
+      name: 'soundcloud',
+      description: 'Play song from soundcloud',
+      type: 1,
+      options: [
+        {
+          name: 'query',
+          description: 'The song you want to search for',
+          type: 3,
+          required: true,
+        },
+      ],
+    }
   ],
+
   run: async (client, interaction) => {
-    const vc = interaction.member?.voice?.channel;
-
-    const song = interaction.options.getString("song");
-    await interaction.deferReply({ ephemeral: true });
     try {
-      if (!vc)
-        return interaction.editReply({
-          content: "Please join a vc first",
-          ephemeral: true,
-        });
+      await interaction.deferReply({ ephemeral: true });
+      const vc = interaction.member?.voice?.channel;
+      if (!vc) return;
 
-      if (!song)
-        return interaction.editReply({
-          content: "Please provide a song",
-          ephemeral: true,
-        });
       const { guild, channel } = interaction;
 
       const lol = guild.channels.cache
         .filter((chnl) => chnl.type == ChannelType.GuildVoice)
         .find((channel) => channel.members.has(client.user.id));
       if (lol && vc.id !== lol.id)
-        return interaction.editReply({
+        return interaction.reply({
           content: `im already on <#${lol.id}>`,
           ephemeral: true,
         });
+        
+      switch (interaction.options.getSubcommand()) {
 
-      await interaction.editReply({ content: "- 🎵 Loading...", ephemeral: true });
-      await client.distube.voices.create(vc);
+        case "youtube":
+          await client.distube.play(vc, interaction.options.getString("query"), {
+            member: interaction.member,
+            textChannel: interaction.channel,
+          });
+          break;
 
-      await client.distube.play(vc, song, {
-        member: interaction.member,
-        textChannel: interaction.channel,
-      });
+        case "soundcloud":
+        const results = client.SoundCloudPlugin.search(interaction.options.getString("query"), "track", 1)
+       
+        results.then((results) => {
+          client.distube.play(vc, results[0].url, {
+            member: interaction.member,
+            textChannel: interaction.channel,
+          });
+        });
+        break;
+      }
+
     } catch (error) {
-      console.error(error);
+      console.log(error);
     }
   },
 };
