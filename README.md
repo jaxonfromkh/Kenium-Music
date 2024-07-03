@@ -21,7 +21,7 @@ DiscordAPIError[10062]: Unknown interaction error ( UNFIXABLE - ITS NOT A PROBLE
 
 some others i forgot
 
-Links not working on hosting servers (example: daki)
+Links not working on hosting servers (example: daki) - HOST ISSUE
 
 # Add the bot
 
