@@ -21,32 +21,30 @@ export const Command = {
     },
   ],
   run: async (client, interaction) => {
-    const query = interaction.options.getString("query");
-    const voiceChannel = interaction.member?.voice?.channel;
-
-
-    if (!voiceChannel) {
-      await interaction.deferReply({ fetchReply: true });
-      return await interaction.editReply({
-        content: "Please join a voice channel first",
-        ephemeral: true,
-      });
-    }
-    const { guild, channel } = interaction;
-    const lol = guild.channels.cache
-      .filter((chnl) => chnl.type == ChannelType.GuildVoice)
-      .find((channel) => channel.members.has(client.user.id));
-    if (lol && voiceChannel.id !== lol.id)
-      
-      return await interaction.deferReply({
-        content: `im already on <#${lol.id}>`,
-        ephemeral: true,
-      })
-
-
     try {
+      const query = interaction.options.getString("query");
+      const voiceChannel = interaction.member?.voice?.channel;
+
+      await interaction.deferReply({ 
+        fetchReply: true,
+       });
+      if (!voiceChannel) {
+        return await interaction.editReply({
+          content: "Please join a voice channel first",
+          ephemeral: true,
+        });
+      }
+      const { guild, channel } = interaction;
+      const lol = guild.channels.cache
+        .filter((chnl) => chnl.type == ChannelType.GuildVoice)
+        .find((channel) => channel.members.has(client.user.id));
+      if (lol && voiceChannel.id !== lol.id)
+        return await interaction.editReply({
+          content: `im already on <#${lol.id}>`,
+          ephemeral: true,
+        });
+
       if (isURL(query)) {
-        await interaction.deferReply({ fetchReply: true });
         await interaction.editReply({
           content: "URL is not supported",
           ephemeral: true,
@@ -80,14 +78,20 @@ export const Command = {
           )
       );
       const embed = new EmbedBuilder()
-      .setColor('White')
-      .setAuthor({ name: 'Search Results', iconURL: interaction.user.displayAvatarURL({ dynamic: true }) })
-      .setTimestamp()
-      .setFooter({ text: 'Toddys Music Bot •  Requested by ' + interaction.user.username.toString() })
-      .setDescription("Select a song to play below xd")
-      const response = await interaction.reply({
+        .setColor("White")
+        .setAuthor({
+          name: "Search Results",
+          iconURL: interaction.user.displayAvatarURL({ dynamic: true }),
+        })
+        .setTimestamp()
+        .setFooter({
+          text: "Toddys Music Bot •  Requested by " + interaction.user.username.toString(),
+        })
+        .setDescription("Select a song to play below xd");
+
+      const response = await interaction.editReply({
         components: [selectMenuRow],
-        embeds: [embed]
+        embeds: [embed],
       });
 
       const collector = response.createMessageComponentCollector({
@@ -96,12 +100,11 @@ export const Command = {
         time: 30_000,
       });
 
-      collector.on("collect", async (interaction, i) => {
-
+      collector.on("collect", async (interaction) => {
+        await interaction.deferUpdate();
 
         if (interaction.values[0] === "cancel") {
-          await interaction.deferUpdate();
-          await interaction.editReply({
+          await interaction.followUp({
             components: [],
             content: "Cancelled search",
             embeds: [],
@@ -110,29 +113,33 @@ export const Command = {
         }
 
         if (interaction.user === interaction.user) {
-          await interaction.deferReply({ ephemeral: true });
           await interaction.followUp({
             content: "🎵  |  Added to queue",
             ephemeral: true,
-          })
+          });
           await client.distube.play(voiceChannel, interaction.values[0], {
             member: interaction.member,
             textChannel: interaction.channel,
           });
         }
-       });
+      });
 
       collector.on("end", async () => {
         await interaction.editReply({
           components: [],
           content: "Search timed out",
           embeds: [],
-        })
+        });
       });
     } catch (error) {
-      console.log(error);
+      if (error.code === "UnknownInteraction") {
+        console.log("Unknown interaction encountered. Ignoring...");
+      } else {
+        console.log(error);
+      }
     }
   },
 };
 
 // Note: Unstable code yet
+
