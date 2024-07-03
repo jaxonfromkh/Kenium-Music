@@ -41,6 +41,7 @@ const client = new Client({
 client.slashCommands = new Collection();
 client.events = new Collection();
 client.buttonCommands = new Collection();
+client.selectMenus = new Collection();
 
 const distube = new DisTube(client, {
   nsfw: true,
