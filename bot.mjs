@@ -12,6 +12,7 @@ import { DisTube, isVoiceChannelEmpty, RepeatMode } from "distube";
 import { YouTubePlugin } from "@distube/youtube";
 import { DirectLinkPlugin } from "@distube/direct-link";
 import { SoundCloudPlugin } from '@distube/soundcloud'
+import { FilePlugin } from "@distube/file";
 import { CommandHandler } from "./src/handlers/Command.mjs";
 import { EventHandler } from "./src/handlers/Events.mjs";
 import { ButtonHandler } from "./src/handlers/Button.mjs";
@@ -55,8 +56,10 @@ const distube = new DisTube(client, {
     }),
     new DirectLinkPlugin(),
     new SoundCloudPlugin(),
+    new FilePlugin(),
   ],
 });
+client.FilePlugin = new FilePlugin();
 client.SoundCloudPlugin = new SoundCloudPlugin();
 client.youtubeStuff = new YouTubePlugin({
   // cookies: JSON.parse(fs.readFileSync("./cookies.json")),
@@ -75,7 +78,7 @@ client.distube
   })
   // ===============================================
   .on("playSong", (queue, song) => {
-    const platform = song.source === "youtube" ? "Youtube" : "SoundCloud";
+    const platform = song.source === "youtube" ? "Youtube" : "SoundCloud" ? "File" : "Other";
 
     queue.textChannel.send({
       embeds: [
