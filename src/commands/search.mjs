@@ -25,9 +25,9 @@ export const Command = {
       const query = interaction.options.getString("query");
       const voiceChannel = interaction.member?.voice?.channel;
 
-      await interaction.deferReply({ 
+      await interaction.deferReply({
         fetchReply: true,
-       });
+      });
       if (!voiceChannel) {
         return await interaction.editReply({
           content: "Please join a voice channel first",
@@ -85,61 +85,59 @@ export const Command = {
         })
         .setTimestamp()
         .setFooter({
-          text: "Toddys Music Bot •  Requested by " + interaction.user.username.toString(),
+          text:
+            "Toddys Music Bot •  Requested by " +
+            interaction.user.username.toString(),
         })
         .setDescription("Select a song to play below xd");
+        const response = await interaction.editReply({
+          components: [selectMenuRow],
+          embeds: [embed],
+        });
 
-      const response = await interaction.editReply({
-        components: [selectMenuRow],
-        embeds: [embed],
-      });
+        const collector = response.createMessageComponentCollector({
+          componentType: ComponentType.StringSelect,
+          filter: (i) => i.user.id === interaction.user.id,
+          time: 30_000,
+        });
 
-      const collector = response.createMessageComponentCollector({
-        componentType: ComponentType.StringSelect,
-        filter: (i) => i.user.id === interaction.user.id,
-        time: 30_000,
-      });
+        
+        collector.on("collect", async (interaction) => {
 
-      collector.on("collect", async (interaction) => {
-        await interaction.deferUpdate();
+          await interaction.deferUpdate();
 
-        if (interaction.values[0] === "cancel") {
-          await interaction.followUp({
+          if (interaction.values[0] === "cancel") {
+            await interaction.editReply({
+              components: [],
+              content: "Cancelled search",
+              embeds: [],
+            });
+            return;
+          }
+
+          if (interaction.user === interaction.user) {
+            await interaction.followUp({
+              content: "🎵  |  Added to queue",
+              ephemeral: true,
+            });
+            await client.distube.play(voiceChannel, interaction.values[0], {
+              member: interaction.member,
+              textChannel: interaction.channel,
+            });
+          }
+        });
+
+        collector.on("end", async () => {
+          await interaction.editReply({
             components: [],
-            content: "Cancelled search",
+            content: "Search timed out",
             embeds: [],
           });
-          return;
-        }
-
-        if (interaction.user === interaction.user) {
-          await interaction.followUp({
-            content: "🎵  |  Added to queue",
-            ephemeral: true,
-          });
-          await client.distube.play(voiceChannel, interaction.values[0], {
-            member: interaction.member,
-            textChannel: interaction.channel,
-          });
-        }
-      });
-
-      collector.on("end", async () => {
-        await interaction.editReply({
-          components: [],
-          content: "Search timed out",
-          embeds: [],
         });
-      });
     } catch (error) {
-      if (error.code === "UnknownInteraction") {
-        console.log("Unknown interaction encountered. Ignoring...");
-      } else {
-        console.log(error);
-      }
+      console.log(error);
     }
   },
 };
 
 // Note: Unstable code yet
-
