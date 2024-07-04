@@ -7,6 +7,9 @@ import { YouTubePlugin } from "@distube/youtube";
 import { DirectLinkPlugin } from "@distube/direct-link";
 import { SoundCloudPlugin } from "@distube/soundcloud";
 import { FilePlugin } from "@distube/file";
+
+// import { ClusterManager,ClusterClient, getInfo } from "discord-hybrid-sharding";
+
 // import fs from "node:fs";
 
 // ===============================================
@@ -31,13 +34,21 @@ const client = new Client({
   ],
   partials: ["CHANNEL"],
 });
+
+// const manager = new ClusterManager("bot.mjs", {
+// totalShards: "auto",
+// mode: "process",
+// shardsPerClusters: 1,
+// token: token,
+// });
+
 // ===============================================
 
   client.slashCommands= new Collection(),
   client.events = new Collection(),
   client.buttonCommands = new Collection(),
   client.selectMenus = new Collection()
-
+// client.cluster = new ClusterClient(client)
 
 // ===============================================
 const distube = new DisTube(client, {
@@ -125,5 +136,9 @@ await Promise.all([
   import("./src/handlers/Events.mjs").then(({ EventHandler }) => EventHandler(client, rootPath)),
   import("./src/handlers/Button.mjs").then(({ ButtonHandler }) => ButtonHandler(client, rootPath)),
 ]);
+
+// manager.on('shardCreate', shard => console.log(`Launched Shard ${shard.id}`));
+// manager.on('clusterCreate', cluster => console.log(`Launched Cluster ${cluster.id}`));
+// manager.spawn({ timeout: -1 });
 
 await client.login(token);
