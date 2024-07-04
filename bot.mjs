@@ -7,7 +7,7 @@ import { YouTubePlugin } from "@distube/youtube";
 import { DirectLinkPlugin } from "@distube/direct-link";
 import { SoundCloudPlugin } from "@distube/soundcloud";
 import { FilePlugin } from "@distube/file";
-import fs from "node:fs";
+// import fs from "node:fs";
 
 // ===============================================
 
@@ -47,7 +47,7 @@ const distube = new DisTube(client, {
   savePreviousSongs: false,
   plugins: [
     new YouTubePlugin({
-      cookies: JSON.parse(fs.readFileSync("./cookies.json")),
+      // cookies: JSON.parse(fs.readFileSync("./cookies.json")),
     }),
     new DirectLinkPlugin(),
     new SoundCloudPlugin(),
@@ -57,7 +57,7 @@ const distube = new DisTube(client, {
 client.FilePlugin = new FilePlugin();
 client.SoundCloudPlugin = new SoundCloudPlugin();
 client.youtubeStuff = new YouTubePlugin({
-  cookies: JSON.parse(fs.readFileSync("./cookies.json")),
+ //  cookies: JSON.parse(fs.readFileSync("./cookies.json")),
 });
 client.distube = distube;
 
