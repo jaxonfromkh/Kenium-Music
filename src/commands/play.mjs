@@ -30,6 +30,19 @@ export const Command = {
           required: true,
         },
       ],
+    },
+      {
+      name: 'file',
+      description: 'Play song from file',
+      type: 1,
+      options: [
+        {
+          name: 'query',
+          description: 'The song you want to search for',
+          type: ApplicationCommandOptionType.Attachment,
+          required: true,
+        },
+      ],
     }
   ],
 
@@ -69,6 +82,25 @@ export const Command = {
           });
         });
         break;
+            case "file":
+          await interaction.editReply({
+            content: '🎵 | Loading...'
+          })
+          const attachment = interaction.options.getAttachment("query");
+
+          if (!attachment) {
+            return interaction.editReply({
+              content: "No attachment found",
+              ephemeral: true,
+            });
+          }
+
+          await client.distube.play(vc, attachment.url, {
+            member: interaction.member,
+            textChannel: interaction.channel,
+          }).catch(() => interaction.editReply("Error playing file || URL is not supported"));
+          break;
+
       }
 
     } catch (error) {
