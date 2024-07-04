@@ -1,22 +1,14 @@
-import {
-  Client,
-  GatewayIntentBits,
-  Partials,
-  Collection,
-  EmbedBuilder,
-} from "discord.js";
+import { Client, GatewayIntentBits, Collection, EmbedBuilder } from "discord.js";
 import { token } from "./config.mjs";
 import { dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { DisTube, isVoiceChannelEmpty, RepeatMode } from "distube";
 import { YouTubePlugin } from "@distube/youtube";
 import { DirectLinkPlugin } from "@distube/direct-link";
-import { SoundCloudPlugin } from '@distube/soundcloud'
+import { SoundCloudPlugin } from "@distube/soundcloud";
 import { FilePlugin } from "@distube/file";
-import { CommandHandler } from "./src/handlers/Command.mjs";
-import { EventHandler } from "./src/handlers/Events.mjs";
-import { ButtonHandler } from "./src/handlers/Button.mjs";
-// import fs from "node:fs";
+import fs from "node:fs";
+
 // ===============================================
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -37,14 +29,17 @@ const client = new Client({
     GatewayIntentBits.GuildVoiceStates,
     GatewayIntentBits.GuildInvites,
   ],
-  partials: [Partials.Channel],
+  partials: ["CHANNEL"],
 });
 // ===============================================
-client.slashCommands = new Collection();
-client.events = new Collection();
-client.buttonCommands = new Collection();
-client.selectMenus = new Collection();
 
+  client.slashCommands= new Collection(),
+  client.events = new Collection(),
+  client.buttonCommands = new Collection(),
+  client.selectMenus = new Collection()
+
+
+// ===============================================
 const distube = new DisTube(client, {
   nsfw: true,
   emitAddSongWhenCreatingQueue: false,
@@ -52,7 +47,7 @@ const distube = new DisTube(client, {
   savePreviousSongs: false,
   plugins: [
     new YouTubePlugin({
-     // cookies: JSON.parse(fs.readFileSync("./cookies.json")),
+      cookies: JSON.parse(fs.readFileSync("./cookies.json")),
     }),
     new DirectLinkPlugin(),
     new SoundCloudPlugin(),
@@ -62,14 +57,10 @@ const distube = new DisTube(client, {
 client.FilePlugin = new FilePlugin();
 client.SoundCloudPlugin = new SoundCloudPlugin();
 client.youtubeStuff = new YouTubePlugin({
-  // cookies: JSON.parse(fs.readFileSync("./cookies.json")),
+  cookies: JSON.parse(fs.readFileSync("./cookies.json")),
 });
 client.distube = distube;
-// ===============================================
-const Response = new EmbedBuilder()
-  .setFooter({ text: "Toddys Music Bot" })
-  .setColor("Blue")
-  .setTimestamp(Date.now());
+
 // ===============================================
 client.distube
   .on("initQueue", (queue) => {
@@ -77,40 +68,50 @@ client.distube
     queue.volume = 100;
   })
   // ===============================================
-  .on("playSong", (queue, song) => {
-    const platform = song.source === "youtube" ? "Youtube" : "SoundCloud" ? "File" : "Other";
+  .on("playSong", async (queue, song) => {
+    const platform = song.source === "youtube"
+      ? "Youtube"
+      : song.source === "soundcloud"
+      ? "SoundCloud"
+      : "File";
 
-    queue.textChannel.send({
-      embeds: [
-        Response.setDescription(
-          `- ▶️ | Playing \`${song.name}\`\n - ⏰ | Duration:\`${song.formattedDuration}\` \n - 👤 | Uploader: \`${song.uploader.name}\` \n - 📊 | Views: \`${song.views}\`\n-  🖥️ | Plataform: \`${platform}\``
-        )
-          .setAuthor({
-            name: `${song.user.username}  • 🎵 | Music`,
-            iconURL: song.user.displayAvatarURL(),
-          })
-          .setThumbnail(song.thumbnail),
-      ],
-    });
+    const embed = new EmbedBuilder()
+      .setFooter({ text: "Toddys Music Bot" })
+      .setColor("Blue")
+      .setTimestamp(Date.now())
+      .setDescription(
+        `- ▶️ | Playing \`${song.name}\`\n - ⏰ | Duration:\`${song.formattedDuration}\` \n - 👤 | Uploader: \`${song.uploader.name}\` \n - 📊 | Views: \`${song.views}\`\n-  🖥️ | Plataform: \`${platform}\``
+      )
+      .setAuthor({
+        name: `${song.user.username}  • 🎵 | Music`,
+        iconURL: song.user.displayAvatarURL(),
+      })
+      .setThumbnail(song.thumbnail);
+
+    await queue.textChannel.send({ embeds: [embed] });
   });
-// ===============================================
-client.distube.on("finishSong", (queue, song) => {
-  if (queue.songs.length > 1 || RepeatMode.SONG || RepeatMode.QUEUE) {
+
+client.distube.on("finishSong", async (queue, song) => {
+  if (
+    queue.songs.length > 1 ||
+    queue.repeatMode === RepeatMode.SONG ||
+    queue.repeatMode === RepeatMode.QUEUE
+  ) {
     return;
   } else {
-    queue.textChannel.send({
-      embeds: [
-        Response.setDescription(
-          `⏭ | Finished \`${song.name}\` - \`${song.formattedDuration}\`
-          `
-        ).setThumbnail(song.thumbnail),
-      ],
-    });
+    const embed = new EmbedBuilder()
+      .setFooter({ text: "Toddys Music Bot" })
+      .setColor("Blue")
+      .setTimestamp(Date.now())
+      .setDescription(`⏭ | Finished \`${song.name}\` - \`${song.formattedDuration}\``)
+      .setThumbnail(song.thumbnail);
+
+    await queue.textChannel.send({ embeds: [embed] });
     client.distube.voices.leave(queue.voiceChannel);
   }
 });
 
-client.on("voiceStateUpdate", (oldState) => {
+client.on("voiceStateUpdate", async (oldState) => {
   if (!oldState?.channel) return;
   const voice = client.distube.voices.get(oldState);
   if (voice && isVoiceChannelEmpty(oldState)) {
@@ -118,21 +119,11 @@ client.on("voiceStateUpdate", (oldState) => {
   }
 });
 
-client.distube.on("empty", (queue) => {
-  if (isVoiceChannelEmpty(queue.voiceChannel) === true) {
-    client.distube.voices.leave(queue.voiceChannel);
-  }
-  queue.textChannel.send({
-    embeds: [
-      Response.setDescription(
-        "⏹ | Empty Channel!, now leaving the voice channel."
-      ),
-    ],
-  });
-});
 // ===============================================
-// ===============================================
-await CommandHandler(client, rootPath);
-await EventHandler(client, rootPath);
-await ButtonHandler(client, rootPath);
+await Promise.all([
+  import("./src/handlers/Command.mjs").then(({ CommandHandler }) => CommandHandler(client, rootPath)),
+  import("./src/handlers/Events.mjs").then(({ EventHandler }) => EventHandler(client, rootPath)),
+  import("./src/handlers/Button.mjs").then(({ ButtonHandler }) => ButtonHandler(client, rootPath)),
+]);
+
 await client.login(token);
