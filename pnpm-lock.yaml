@@ -17,6 +17,9 @@ importers:
       '@distube/direct-link':
         specifier: ^1.0.1
         version: 1.0.1(distube@5.0.2(@discordjs/voice@0.17.0(@discordjs/opus@0.9.0)(opusscript@0.0.8))(discord.js@14.15.3))
+      '@distube/file':
+        specifier: ^1.0.1
+        version: 1.0.1(distube@5.0.2(@discordjs/voice@0.17.0(@discordjs/opus@0.9.0)(opusscript@0.0.8))(discord.js@14.15.3))
       '@distube/soundcloud':
         specifier: 2.0.1
         version: 2.0.1(distube@5.0.2(@discordjs/voice@0.17.0(@discordjs/opus@0.9.0)(opusscript@0.0.8))(discord.js@14.15.3))
@@ -80,6 +83,11 @@ packages:
 
   '@distube/direct-link@1.0.1':
     resolution: {integrity: sha512-NbUzRj1mVOkpmcUrjQ1KjfYDQEeS8uRWGPcgunNmRGdI+BQ5BG+pcHK1r6wMVwzaIdQrpg3X6Sh/T7uG3bdImg==}
+    peerDependencies:
+      distube: '5'
+
+  '@distube/file@1.0.1':
+    resolution: {integrity: sha512-XdWxh4zNI1hdNBf7tAnCL07Mytl63xxVhtF3M3jrh/aklqY9MXlI+bqogmuCa2j8bqTE3XJ/TBwgIhNoyy//JA==}
     peerDependencies:
       distube: '5'
 
@@ -587,6 +595,10 @@ snapshots:
     dependencies:
       distube: 5.0.2(@discordjs/voice@0.17.0(@discordjs/opus@0.9.0)(opusscript@0.0.8))(discord.js@14.15.3)
       undici: 6.19.2
+
+  '@distube/file@1.0.1(distube@5.0.2(@discordjs/voice@0.17.0(@discordjs/opus@0.9.0)(opusscript@0.0.8))(discord.js@14.15.3))':
+    dependencies:
+      distube: 5.0.2(@discordjs/voice@0.17.0(@discordjs/opus@0.9.0)(opusscript@0.0.8))(discord.js@14.15.3)
 
   '@distube/soundcloud@2.0.1(distube@5.0.2(@discordjs/voice@0.17.0(@discordjs/opus@0.9.0)(opusscript@0.0.8))(discord.js@14.15.3))':
     dependencies:
