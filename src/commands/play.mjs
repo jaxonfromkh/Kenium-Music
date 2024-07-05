@@ -94,7 +94,8 @@ export const Command = {
 
         case "file":
           await interaction.reply({
-            content: '🎵 | Loading...'
+            content: '🎵 | Loading...',
+            ephemeral: true
           })
           const attachment = interaction.options.getAttachment("query");
 
