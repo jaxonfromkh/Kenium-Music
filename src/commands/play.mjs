@@ -1,6 +1,6 @@
-import { SearchResultType } from "@distube/youtube";
+import { isURL } from "distube";
 import { ChannelType } from "discord.js";
-
+import { ApplicationCommandOptionType } from "discord.js";
 export const Command = {
   name: "play",
   description: "Play some song!",
@@ -31,7 +31,7 @@ export const Command = {
         },
       ],
     },
-      {
+    {
       name: 'file',
       description: 'Play song from file',
       type: 1,
@@ -48,7 +48,7 @@ export const Command = {
 
   run: async (client, interaction) => {
     try {
-      await interaction.deferReply({ ephemeral: true });
+
       const vc = interaction.member?.voice?.channel;
       if (!vc) return;
 
@@ -62,10 +62,14 @@ export const Command = {
           content: `im already on <#${lol.id}>`,
           ephemeral: true,
         });
-        
+
       switch (interaction.options.getSubcommand()) {
 
         case "youtube":
+          await interaction.reply({
+            content: '🎵 | Loading...',
+            ephemeral: true
+          })
           await client.distube.play(vc, interaction.options.getString("query"), {
             member: interaction.member,
             textChannel: interaction.channel,
@@ -73,8 +77,13 @@ export const Command = {
           break;
 
         case "soundcloud":
+
+        if(isURL(interaction.options.getString("query"))) {
+          return interaction.reply({ content: "URL is not supported", ephemeral: true });
+        }
+
         const results = client.SoundCloudPlugin.search(interaction.options.getString("query"), "track", 1)
-       
+       await interaction.reply({ content: '🎵 | Loading...', ephemeral: true });
         results.then((results) => {
           client.distube.play(vc, results[0].url, {
             member: interaction.member,
@@ -82,14 +91,15 @@ export const Command = {
           });
         });
         break;
-            case "file":
-          await interaction.editReply({
+
+        case "file":
+          await interaction.reply({
             content: '🎵 | Loading...'
           })
           const attachment = interaction.options.getAttachment("query");
 
           if (!attachment) {
-            return interaction.editReply({
+            return interaction.reply({
               content: "No attachment found",
               ephemeral: true,
             });
@@ -98,9 +108,10 @@ export const Command = {
           await client.distube.play(vc, attachment.url, {
             member: interaction.member,
             textChannel: interaction.channel,
-          }).catch(() => interaction.editReply("Error playing file || URL is not supported"));
+          }).catch(async () => await interaction.reply({
+            content: "Error playing file || URL is not supported", ephemeral: true
+          }));
           break;
-
       }
 
     } catch (error) {
