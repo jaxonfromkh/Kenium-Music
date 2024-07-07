@@ -110,21 +110,23 @@ client.distube.on("finishSong", async (queue, song) => {
   ) {
     return;
   } else {
+    const vc = queue.voiceChannel;
+    if (!vc) {
+      return;
+    }
+ 
     const embed = new EmbedBuilder()
       .setFooter({ text: "Toddys Music Bot" })
       .setColor("Blue")
       .setTimestamp(Date.now())
-      .setDescription(`⏭ | Finished \`${song.name}\` - \`${song.formattedDuration}\``)
+      .setDescription(
+        `⏭ | Finished \`${song.name}\` - \`${song.formattedDuration}\``
+      )
       .setThumbnail(song.thumbnail);
-    
     await queue.textChannel.send({ embeds: [embed] });
-    const vc = queue.voiceChannel;
-     if (!vc) {
-       return;
-     }  
-    client.distube.voices.leave(queue.voiceChannel);
-  }
-});
+
+   await client.distube.voices.leave(queue.voiceChannel);
+}});
 
 client.on("voiceStateUpdate", async (oldState) => {
   if (!oldState?.channel) return;
