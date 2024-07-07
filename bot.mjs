@@ -116,8 +116,12 @@ client.distube.on("finishSong", async (queue, song) => {
       .setTimestamp(Date.now())
       .setDescription(`⏭ | Finished \`${song.name}\` - \`${song.formattedDuration}\``)
       .setThumbnail(song.thumbnail);
-
+    
     await queue.textChannel.send({ embeds: [embed] });
+    const vc = queue.voiceChannel;
+     if (!vc) {
+       return;
+     }  
     client.distube.voices.leave(queue.voiceChannel);
   }
 });
