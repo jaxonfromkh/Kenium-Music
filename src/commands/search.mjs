@@ -41,6 +41,8 @@ export const Command = {
           ephemeral: true,
         });
 
+      if(voiceChannel.full) return interaction.reply({ content: "I can't join this vc because it's full", ephemeral: true });
+      
       if (isURL(query)) {
         await interaction.reply({
           content: "URL is not supported",
