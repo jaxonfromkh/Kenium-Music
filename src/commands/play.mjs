@@ -63,6 +63,8 @@ export const Command = {
           ephemeral: true,
         });
 
+      if(vc.full) return interaction.reply({ content: "I can't join this vc because it's full", ephemeral: true });
+      
       switch (interaction.options.getSubcommand()) {
 
         case "youtube":
