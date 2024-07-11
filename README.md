@@ -27,5 +27,8 @@ Links not working on hosting servers (example: daki) - HOST ISSUE
 
 this is the bot that i host 24/7, has the same code as here on github! [Click Here to invite xd](https://discord.com/oauth2/authorize?client_id=1202232935311495209&permissions=826817969216&integration_type=0&scope=applications.commands+bot)
 
+
+-- Made for fun by mushroom0162
+
 Top.gg: [Click here for top.gg](https://top.gg/bot/1202232935311495209)
 
