@@ -101,7 +101,7 @@ export const Command = {
         filter: (i) => i.user.id === interaction.user.id,
         time: 30_000,
       });
-
+      await client.distube.voices.join(voiceChannel)
       collector.on("collect", async (interaction) => {
         await interaction.deferUpdate();
 
