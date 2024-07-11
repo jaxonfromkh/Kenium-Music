@@ -64,7 +64,7 @@ export const Command = {
         });
 
       if(vc.full) return interaction.reply({ content: "I can't join this vc because it's full", ephemeral: true });
-      
+      await client.distube.voices.join(vc)
       switch (interaction.options.getSubcommand()) {
 
         case "youtube":
