@@ -1,36 +1,39 @@
-import { Client, GatewayIntentBits, Collection, EmbedBuilder } from "discord.js";
+import {
+  Client,
+  GatewayIntentBits,
+  Collection,
+  GatewayDispatchEvents
+} from "discord.js";
 import { token } from "./config.mjs";
-import { dirname } from "node:path";
+import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { DisTube, isVoiceChannelEmpty, RepeatMode } from "distube";
-import { YouTubePlugin } from "@distube/youtube";
-import { DirectLinkPlugin } from "@distube/direct-link";
-import { SoundCloudPlugin } from "@distube/soundcloud";
-import { FilePlugin } from "@distube/file";
-
+import { Riffy } from "riffy";
+import { readdirSync } from "fs";
 // import { ClusterManager,ClusterClient, getInfo } from "discord-hybrid-sharding";
-
-// import fs from "node:fs";
-
 // ===============================================
-
+const nodes = [
+  {
+    host: "", // your node here   
+    port: 433, // your port here
+    password: "", //' your password here
+    secure: false // your secure here
+}
+]
 const __dirname = dirname(fileURLToPath(import.meta.url));
 export const rootPath = __dirname;
+
+// ===============================================
 
 // ===============================================
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
     GatewayIntentBits.GuildMessages,
-    GatewayIntentBits.GuildPresences,
     GatewayIntentBits.DirectMessages,
-    GatewayIntentBits.MessageContent, // Only for bots with message content intent access.
-    GatewayIntentBits.DirectMessageReactions,
+    GatewayIntentBits.MessageContent,
     GatewayIntentBits.GuildMembers,
     GatewayIntentBits.GuildMessageReactions,
-    GatewayIntentBits.GuildWebhooks,
     GatewayIntentBits.GuildVoiceStates,
-    GatewayIntentBits.GuildInvites,
   ],
   partials: ["CHANNEL"],
 });
@@ -41,106 +44,78 @@ const client = new Client({
 // shardsPerClusters: 1,
 // token: token,
 // });
-
 // ===============================================
 
-  client.slashCommands= new Collection(),
-  client.events = new Collection(),
-  client.buttonCommands = new Collection(),
-  client.selectMenus = new Collection()
+(client.slashCommands = new Collection()),
+  (client.events = new Collection()),
+  (client.buttonCommands = new Collection()),
+  (client.selectMenus = new Collection());
 // client.cluster = new ClusterClient(client)
 
 // ===============================================
-const distube = new DisTube(client, {
-  nsfw: true,
-  emitAddSongWhenCreatingQueue: false,
-  emitAddListWhenCreatingQueue: false,
-  savePreviousSongs: false,
-  plugins: [
-    new YouTubePlugin({
-      // cookies: JSON.parse(fs.readFileSync("./cookies.json")),
-    }),
-    new DirectLinkPlugin(),
-    new SoundCloudPlugin(),
-    new FilePlugin(),
-  ],
+client.riffy = new Riffy(client, nodes, {
+  send: (payload) => {
+      const guild = client.guilds.cache.get(payload.d.guild_id);
+      if (guild) guild.shard.send(payload);
+  },
+  defaultSearchPlatform: "ytmsearch",
+  restVersion: "v4",
 });
-client.FilePlugin = new FilePlugin();
-client.SoundCloudPlugin = new SoundCloudPlugin();
-client.youtubeStuff = new YouTubePlugin({
- //  cookies: JSON.parse(fs.readFileSync("./cookies.json")),
+(async () => {
+  await load_riffy()
+})()
+
+export { client }
+client.on("raw", (d) => {
+    if (![GatewayDispatchEvents.VoiceStateUpdate, GatewayDispatchEvents.VoiceServerUpdate,].includes(d.t)) return;
+    client.riffy.updateVoiceState(d);
 });
-client.distube = distube;
 
-// ===============================================
-client.distube
-  .on("initQueue", (queue) => {
-    queue.autoplay = false;
-    queue.volume = 100;
-  })
-  // ===============================================
-  .on("playSong", async (queue, song) => {
-    const platform = song.source === "youtube"
-      ? "Youtube"
-      : song.source === "soundcloud"
-      ? "SoundCloud"
-      : "File";
+async function load_riffy() {
+  console.log("\n---------------------");
+  console.log("INITIATING RIFFY", "debug");
 
-    const embed = new EmbedBuilder()
-      .setFooter({ text: "Toddys Music Bot" })
-      .setColor("Blue")
-      .setTimestamp(Date.now())
-      .setDescription(
-        `- ▶️ | Playing \`${song.name}\`\n - ⏰ | Duration:\`${song.formattedDuration}\` \n - 👤 | Uploader: \`${song.uploader.name}\` \n - 📊 | Views: \`${song.views}\`\n-  🖥️ | Plataform: \`${platform}\``
-      )
-      .setAuthor({
-        name: `${song.user.username}  • 🎵 | Music`,
-        iconURL: song.user.displayAvatarURL(),
-      })
-      .setThumbnail(song.thumbnail);
+  const directories = readdirSync('./src/riffy/');
 
-    await queue.textChannel.send({ embeds: [embed] });
-  });
+  for (const dir of directories) {
+    const lavalinkFiles = readdirSync(join('./src/riffy/', dir)).filter(file => file.endsWith('.mjs'));
 
-client.distube.on("finishSong", async (queue, song) => {
-  if (
-    queue.songs.length > 1 ||
-    queue.repeatMode === RepeatMode.SONG ||
-    queue.repeatMode === RepeatMode.QUEUE
-  ) {
-    return;
-  } else {
-    const vc = queue.voiceChannel;
-    if (!vc) {
-      return;
+    for (const file of lavalinkFiles) {
+      const modulePath = join('./src/riffy/', dir, file); // Construct the path
+      console.log(`Attempting to load module: ${modulePath}`); // Log the path to debug
+      
+      try {
+        const pull = await import(`./${modulePath}`); // Import the module
+        
+        if (pull.name && typeof pull.name !== 'string') {
+          console.error(`Couldn't load the riffy event ${file}, error: Property 'name' should be a string.`);
+          continue;
+        }
+
+        const event = { ...pull }; // Make a copy of the imported module
+        event.name = event.name || file.replace('.mjs', '');
+        console.log(`[RIFFY] ${event.name}`, "info");
+      } catch (err) {
+        console.error(`Couldn't load the riffy event ${file}, error: ${err}`);
+        console.error(err);
+        continue;
+      }
     }
- 
-    const embed = new EmbedBuilder()
-      .setFooter({ text: "Toddys Music Bot" })
-      .setColor("Blue")
-      .setTimestamp(Date.now())
-      .setDescription(
-        `⏭ | Finished \`${song.name}\` - \`${song.formattedDuration}\``
-      )
-      .setThumbnail(song.thumbnail);
-    await queue.textChannel.send({ embeds: [embed] });
-
-   await client.distube.voices.leave(queue.voiceChannel);
-}});
-
-client.on("voiceStateUpdate", async (oldState) => {
-  if (!oldState?.channel) return;
-  const voice = client.distube.voices.get(oldState);
-  if (voice && isVoiceChannelEmpty(oldState)) {
-    voice.leave();
   }
-});
+}
+// ==============================================
 
-// ===============================================
+
 await Promise.all([
-  import("./src/handlers/Command.mjs").then(({ CommandHandler }) => CommandHandler(client, rootPath)),
-  import("./src/handlers/Events.mjs").then(({ EventHandler }) => EventHandler(client, rootPath)),
-  import("./src/handlers/Button.mjs").then(({ ButtonHandler }) => ButtonHandler(client, rootPath)),
+  import("./src/handlers/Command.mjs").then(({ CommandHandler }) =>
+    CommandHandler(client, rootPath)
+  ),
+  import("./src/handlers/Events.mjs").then(({ EventHandler }) =>
+    EventHandler(client, rootPath)
+  ),
+  import("./src/handlers/Button.mjs").then(({ ButtonHandler }) =>
+    ButtonHandler(client, rootPath)
+  ),
 ]);
 
 // manager.on('shardCreate', shard => console.log(`Launched Shard ${shard.id}`));

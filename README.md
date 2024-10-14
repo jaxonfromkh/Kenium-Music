@@ -1,19 +1,32 @@
 # Toddys-Distube-Bot
-An distube based music bot, currently beign made in Distube V5
+An Full rewrite of my bot
 
-For now there is just 3 commands, play, ping and stop
+Before 2.0.0:
+Distube system
+Kinda slow
+Buggy
 
-its very buggy since im still trying to learn distube v5 and how to use it... but eventually i will be better... ig
+Now (2.0.0)
+
+Lavalink system
+Faster version
+Should be more optimized and efficient
+More stable
 
 # Installation
 download this repository as a zip and unpack
+(or git clone https://github.com/ToddyTheNoobDud/Toddys-Distube-Bot)
 
 Recommended using nodejs 20 (LTS)
 Recommended using PNPM 
 
-for installing @discordjs/opus do pnpm add @discordjs/opus -ignore-script
+do npm install or pnpm install
 
 now go on config.mjs and put the bot token and id, done
+then go on bot.mjs and put your lavalink system
+
+(my personal use: https://github.com/riffy-team/riffy)
+start running it!
 
 # Known Issues
 
