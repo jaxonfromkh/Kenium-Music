@@ -1,4 +1,5 @@
 import { ChannelType } from "discord.js";
+
 export const Command = {
   name: "play",
   description: "Play some song!",
@@ -30,39 +31,25 @@ export const Command = {
 
       if(vc.full) return interaction.reply({ content: "I can't join this vc because it's full", ephemeral: true });
 
-
+      
           const query = interaction.options.getString('query');
 
-          const player = client.riffy.createConnection({
-              guildId: interaction.guild.id,
-              voiceChannel: interaction.member.voice.channel.id,
-              textChannel: interaction.channel.id,
-              deaf: true,
-          })
-  
-          const resolve = await client.riffy.resolve({ query: query, requester: interaction.member });
-          const { loadType, tracks, playlistInfo } = resolve;
-  
-          if (loadType === 'playlist') {
-              for (const track of resolve.tracks) {
-                  track.info.requester = interaction.member;
-                  player.queue.add(track);
-              }
-  
-              await interaction.reply(`Added ${tracks.length} songs from ${playlistInfo.name} playlist.`);
-  
-              if (!player.playing && !player.paused) return player.play();
-  
-          } else if (loadType === 'search' || loadType === 'track') {
-              const track = tracks.shift();
-              track.info.requester = interaction.member;
-  
-              player.queue.add(track);
-  
-              await interaction.reply(`Added **${track.info.title}** to the queue.`);
-              if (!player.playing && !player.paused) return player.play();
-        }
-      
+          let player = await client.kazagumo.createPlayer({
+            guildId: interaction.guildId,
+            textId: channel.id,
+            voiceId: vc.id,
+            volume: 100
+        })
+       
+        let result = await  client.kazagumo.search(query, {requester: interaction.author});
+        if (!result.tracks.length) return msg.reply("No results found!");
+
+        if (result.type === "PLAYLIST") player.queue.add(result.tracks); // do this instead of using for loop if you want queueUpdate not spammy
+        else player.queue.add(result.tracks[0]);
+
+        if (!player.playing && !player.paused) player.play();
+        return interaction.reply({content: result.type === "PLAYLIST" ? `Queued ${result.tracks.length} from ${result.playlistName}` : `Queued ${result.tracks[0].title}`});
+
     } catch (error) {
       console.log(error);
     }

@@ -3,15 +3,17 @@
 		"@discordjs/voice": "^0.17.0",
 		"cheerio": "^1.0.0",
 		"discord.js": "^14.15.3",
+		"kazagumo": "^3.2.1",
 		"libsodium-wrappers": "^0.7.15",
 		"musicard": "^2.0.5",
 		"npm": "^10.9.0",
 		"opusscript": "0.0.8",
-		"riffy": "1.0.7-rc.2",
-		"toddys-youtube": "^1.0.7"
+		"shoukaku": "github:shipgirlproject/Shoukaku#master",
+		"toddys-youtube": "^1.0.7",
+		"tsumi": "github:Fyphen1223/TsumiLink"
 	},
 	"main": "bot.mjs",
 	"name": "toddys-music",
-	"version": "2.0.0",
+	"version": "2.1.0",
 	"type": "module"
 }
