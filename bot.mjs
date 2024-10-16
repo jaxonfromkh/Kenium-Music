@@ -93,7 +93,7 @@ manager.on('trackStart', async (player, track) => {
     .then((x) => (player.nowPlayingMessage = x));
   })
 .on('trackEnd', async (player) => {
-  if (player.nowPlayingMessage && !player.queue.current) {
+  if (player.nowPlayingMessage) {
     await player.nowPlayingMessage.delete();
   }
   player.disconnect();
