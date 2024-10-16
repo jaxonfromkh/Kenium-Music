@@ -2,22 +2,28 @@ import {
   Client,
   GatewayIntentBits,
   Collection,
-GatewayDispatchEvents
+  EmbedBuilder,
 } from "discord.js";
 import { token } from "./config.mjs";
-import { dirname, join } from "node:path";
+import { dirname } from "node:path";
 import { fileURLToPath } from "node:url";
-import { Connectors } from "shoukaku";
-import { Kazagumo } from "kazagumo";
+import { Manager } from "magmastream";
 // import { ClusterManager,ClusterClient, getInfo } from "discord-hybrid-sharding";
+
 // ===============================================
 const nodes = [
   {
-    url: "",        
-    auth: "",
-    name: '',
-    secure: false
-}
+    host: "",
+    port: 433,    // The port your bot is listening on.
+    password: "",
+    identifier: '',
+    secure: false,
+    retryAmount: 1000,
+    retrydelay: 10000,
+    resumeStatus: false, // default: false,
+    resumeTimeout: 1000,
+    secure: false, // default: false
+  }
 ]
 const __dirname = dirname(fileURLToPath(import.meta.url));
 export const rootPath = __dirname;
@@ -37,40 +43,7 @@ const client = new Client({
   ],
   partials: ["CHANNEL"],
 });
-const kazagumo = new Kazagumo({
-  defaultSearchEngine: "youtube",
-  // MAKE SURE YOU HAVE THIS
-  send: (guildId, payload) => {
-      const guild = client.guilds.cache.get(guildId);
-      if (guild) guild.shard.send(payload);
-  }
-}, new Connectors.DiscordJS(client), nodes);
-kazagumo.shoukaku.on('ready', (name) => console.log(`Lavalink ${name}: Ready!`));
-kazagumo.shoukaku.on('error', (name, error) => console.error(`Lavalink ${name}: Error Caught,`, error));
-kazagumo.shoukaku.on('close', (name, code, reason) => console.warn(`Lavalink ${name}: Closed, Code ${code}, Reason ${reason || 'No reason'}`));
-kazagumo.shoukaku.on('debug', (name, info) => console.debug(`Lavalink ${name}: Debug,`, info));
-kazagumo.shoukaku.on('disconnect', (name, count) => {
-    const players = [...kazagumo.shoukaku.players.values()].filter(p => p.node.name === name);
-    players.map(player => {
-        kazagumo.destroyPlayer(player.guildId);
-        player.destroy();
-    });
-    console.warn(`Lavalink ${name}: Disconnected`);
-});
-kazagumo.on("playerEnd", (player) => {
-  player.data.get("message")?.edit({content: `Finished playing`});
-});
 
-kazagumo.on("playerEmpty", player => {
-  client.channels.cache.get(player.textId)?.send({content: `Destroyed player due to inactivity || Lavalink Overloaded (Possible: Memory exceded? Lavalink Error?)`})
-      .then(x => player.data.set("message", x));
-  player.destroy();
-});
-kazagumo.on('playerClosed', player => {
-  player.destroy();
-  player.data.get("message")?.edit({content: `Lavalink Overloaded (Possible: Memory exceded? Lavalink Error?)`});
-})
-client.kazagumo = kazagumo;
 // const manager = new ClusterManager("bot.mjs", {
 // totalShards: "auto",
 // mode: "process",
@@ -78,6 +51,84 @@ client.kazagumo = kazagumo;
 // token: token,
 // });
 // ===============================================
+const manager = new Manager({
+  // The nodes to connect to.
+  nodes,
+  // Method to send voice data to Discord
+  send: (id, payload) => {
+    const guild = client.guilds.cache.get(id);
+    if (guild) return guild.shard.send(payload);
+  },
+  clientName: "ToddysClient",
+
+});
+
+manager.on('trackStart', async (player, track) => {
+  const channel = client.channels.cache.get(player.textChannel);
+
+  const formatTime = (time) => {
+    const minutes = Math.floor(time / 60);
+    const seconds = Math.floor(time % 60);
+    return `${minutes}:${seconds < 10 ? "0" : ""}${seconds}`;
+  }
+  const embed = new EmbedBuilder()
+    .setColor(0x000000)
+    .setTitle("🎵  | Now Playing")
+    .setDescription(`
+    **Title:** [${track.title}](${track.uri})
+    **Duration:** \`${formatTime(Math.round(track.duration / 1000))}\`
+    **Author:** ${track.author}
+    `)
+    .setThumbnail(track.thumbnail)
+    .addFields(
+      { name: "Requested by", value: `<@${track.requester.id}>`, inline: true },
+      { name: "Volume", value: `${player.volume}%`, inline: true }
+    )
+    .setFooter({ text: "Toddys Music v2.2.0 | by mushroom0162", iconURL: track.requester.displayAvatarURL() })
+    .setTimestamp();
+  await channel
+    .send({
+      embeds: [embed],
+    })
+    .then((x) => (player.nowPlayingMessage = x));
+  })
+.on('trackEnd', async (player) => {
+  if (player.nowPlayingMessage && !player.queue.current) {
+    await player.nowPlayingMessage.delete();
+  }
+  player.disconnect();
+})
+  .on('trackError', async (player, track, payload) => {
+    console.log(`Error ${payload.exception.cause} / ${payload.exception.message}`);
+    if (player.nowPlayingMessage) {
+      const channel = client.channels.cache.get(player.textChannel);
+      const embed = new EmbedBuilder()
+        .setColor(0xff0000)
+        .setTitle("Error playing track")
+        .setDescription(`Error playing track: \`${track.title}\`, Payload sent to the owner,\nMessage: \`${payload.exception.message}\``)
+        .setFooter({ text: "Toddys Music v2.2.0 | by mushroom0162" })
+        .setTimestamp();
+      const message = await channel
+        .send({ embeds: [embed] })
+
+      setTimeout(() => {
+        message.delete();
+      }, 5000);
+    }
+  })
+client.manager = manager;
+// Emitted whenever a node connects
+client.manager.on('nodeConnect', (node) => {
+  console.log(`Node "${node.options.identifier}" connected.`);
+});
+
+// Emitted whenever a node encountered an error
+client.manager.on('nodeError', (node, error) => {
+  console.log(`Node "${node.options.identifier}" encountered an error: ${error.message}.`);
+});
+
+// THIS IS REQUIRED. Send raw events to Magmastream
+client.on('raw', (d) => client.manager.updateVoiceState(d));
 
 (client.slashCommands = new Collection()),
   (client.events = new Collection()),

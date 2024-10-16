@@ -1,29 +1,18 @@
-import { ChannelType } from "discord.js";
-
 export const Command = {
-    name: "skip",
-    description: "Skip the current playing song",
+    name: 'resume',
+    description: 'resume the music',
     options: [],
 
     run: async (client, interaction) => {
         const vc = interaction.member?.voice?.channel;
         if (!vc) return;
-
         const player = client.manager.players.get(interaction.guildId)
-
-
-        if (!player) {
-
-            return interaction.reply({ content: "Nothing is playing", ephemeral: true })
-
-        }
-
-        if (player.queue.size == 0) return interaction.reply({ content: "No song to skip", ephemeral: true })
-
+        if (!player) return;
+        if (!player.paused) return;
         const { guild, channel } = interaction;
 
         const lol = guild.channels.cache
-            .filter((chnl) => chnl.type == ChannelType.GuildVoice)
+            .filter((chnl) => chnl.type == 2)
             .find((channel) => channel.members.has(client.user.id));
         if (lol && vc.id !== lol.id)
             return interaction.reply({
@@ -31,9 +20,10 @@ export const Command = {
                 ephemeral: true,
             });
 
-        player.stop()
-
-        return interaction.reply(`Skipped the current track`)
-
-    },
+        player.pause();
+        return interaction.reply({
+            content: 'paused the music',
+            ephemeral: true
+        })
+    }
 }
