@@ -1,14 +1,14 @@
-import { ChannelType, ApplicationCommandOptionType } from "discord.js";
+import { ChannelType, EmbedBuilder } from "discord.js";
 
 export const Command = {
-    name: "loop",
-    description: "Want some loop bro?",
+    name: "volume",
+    description: "Want some volume bro?",
     options: [
         {
           name: "volume",
           description: "Enter the volume amount to set",
-          type: ApplicationCommandOptionType.Integer,
-          required: false,
+          type: 4,
+          required: true,
         },
       ],
 
@@ -31,7 +31,7 @@ export const Command = {
           });
           let volume = interaction.options.getInteger("volume");
           if (isNaN(volume) || volume < 0 || volume > 150) {
-            return interaction.editReply({
+            return interaction.reply({
               embeds: [
                 new EmbedBuilder()
                   .setColor("Red")
@@ -41,7 +41,7 @@ export const Command = {
           }
           player.setVolume(volume);
 
-          return interaction.editReply({
+          return interaction.reply({
             embeds: [
               new EmbedBuilder()
                 .setColor(0x000000)

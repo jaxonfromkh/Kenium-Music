@@ -1,4 +1,4 @@
-import { ChannelType } from "discord.js";
+import { ChannelType, EmbedBuilder } from "discord.js";
 
 export const Command = {
     name: "loop",
