@@ -3,7 +3,6 @@ import { ChannelType } from "discord.js";
 export const Command = {
     name: "pause",
     description: "Pause the current playing song",
-    options: [],
 
     run: async (client, interaction) => {
         const vc = interaction.member?.voice?.channel;
@@ -26,7 +25,7 @@ export const Command = {
             ephemeral: true,
           });
           
-        player.pause();
+        player.pause(true);
 
         return interaction.reply({
             content: 'Paused the song',

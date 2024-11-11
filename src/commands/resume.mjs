@@ -1,14 +1,13 @@
 export const Command = {
     name: 'resume',
     description: 'resume the music',
-    options: [],
 
     run: async (client, interaction) => {
         const vc = interaction.member?.voice?.channel;
         if (!vc) return;
         const player = client.manager.players.get(interaction.guildId)
         if (!player) return;
-        if (!player.paused) return;
+        if (player.paused) return;
         const { guild, channel } = interaction;
 
         const lol = guild.channels.cache
@@ -20,9 +19,9 @@ export const Command = {
                 ephemeral: true,
             });
 
-        player.pause();
+        player.pause(false);
         return interaction.reply({
-            content: 'paused the music',
+            content: 'Resumed the music',
             ephemeral: true
         })
     }

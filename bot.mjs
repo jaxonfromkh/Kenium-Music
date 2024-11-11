@@ -63,6 +63,9 @@ const manager = new Manager({
 
 });
 
+
+
+
 manager.on('trackStart', async (player, track) => {
   const channel = client.channels.cache.get(player.textChannel);
 
@@ -71,6 +74,7 @@ manager.on('trackStart', async (player, track) => {
     const seconds = Math.floor(time % 60);
     return `${minutes}:${seconds < 10 ? "0" : ""}${seconds}`;
   }
+
   const embed = new EmbedBuilder()
     .setColor(0x000000)
     .setTitle("🎵  | Now Playing")
@@ -84,19 +88,45 @@ manager.on('trackStart', async (player, track) => {
       { name: "Requested by", value: `<@${track.requester.id}>`, inline: true },
       { name: "Volume", value: `${player.volume}%`, inline: true }
     )
-    .setFooter({ text: "Toddys Music v2.2.0 | by mushroom0162", iconURL: track.requester.displayAvatarURL() })
+    .setFooter({ text: "Toddys Music v2.3.0 | by mushroom0162", iconURL: track.requester.displayAvatarURL() })
     .setTimestamp();
-  await channel
-    .send({
-      embeds: [embed],
-    })
-    .then((x) => (player.nowPlayingMessage = x));
-  })
-.on('trackEnd', async (player) => {
+  
+  player.nowPlayingMessage = await channel.send({ embeds: [embed] });
+});
+
+manager.on('trackChange', async (player, newTrack) => {
   if (player.nowPlayingMessage) {
-    await player.nowPlayingMessage.delete();
+    const embed = new EmbedBuilder()
+      .setColor(0x000000)
+      .setTitle("🎵  | Now Playing")
+      .setDescription(`
+      **Title:** [${newTrack.title}](${newTrack.uri})
+      **Duration:** \`${formatTime(Math.round(newTrack.duration / 1000))}\`
+      **Author:** ${newTrack.author}
+      `)
+      .setThumbnail(newTrack.thumbnail)
+      .addFields(
+        { name: "Requested by", value: `<@${newTrack.requester.id}>`, inline: true },
+        { name: "Volume", value: `${player.volume}%`, inline: true }
+      )
+      .setFooter({ text: "Toddys Music v2.3.0 | by mushroom0162", iconURL: newTrack.requester.displayAvatarURL() })
+      .setTimestamp();
+    
+    await player.nowPlayingMessage.edit({ embeds: [embed] });
   }
-  player.disconnect();
+});
+
+manager.on('trackEnd', async (player) => {
+  if (player.nowPlayingMessage) {
+    try {
+      await player.nowPlayingMessage.delete();
+      player.nowPlayingMessage = null;
+    } catch (error) {
+      if (error.code !== 10008) {
+        console.error('Error deleting now playing message:', error);
+      }
+    }
+  }
 })
   .on('trackError', async (player, track, payload) => {
     console.log(`Error ${payload.exception.cause} / ${payload.exception.message}`);
@@ -157,3 +187,5 @@ await Promise.all([
 // manager.spawn({ timeout: -1 });
 
 client.login(token);
+
+
