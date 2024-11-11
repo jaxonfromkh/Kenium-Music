@@ -136,7 +136,7 @@ manager.on('trackEnd', async (player) => {
         .setColor(0xff0000)
         .setTitle("Error playing track")
         .setDescription(`Error playing track: \`${track.title}\`, Payload sent to the owner,\nMessage: \`${payload.exception.message}\``)
-        .setFooter({ text: "Toddys Music v2.2.0 | by mushroom0162" })
+        .setFooter({ text: "Toddys Music v2.3.0 | by mushroom0162" })
         .setTimestamp();
       const message = await channel
         .send({ embeds: [embed] })
