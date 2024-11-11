@@ -16,13 +16,11 @@ export const Command = {
             }
 
             const queue = player.queue.map((track, i) => {
-                const minutes = Math.floor(track.duration / 60000);
-                const seconds = Math.floor((track.duration % 60000) / 1000).toString().padStart(2, '0');
-                return `${i + 1} - ${track.title} | ${track.uri} - ${minutes}:${seconds}`;
+                return `${track.uri}`;
             }).join('\n');
 
             const attachment = new AttachmentBuilder(Buffer.from(queue), { name: `ToddysMusicV2.3.0.txt` });
-            await interaction.reply({ files: [attachment], content: 'This will be Deleted after 1 minute!' });
+            await interaction.reply({ files: [attachment], content: 'This will be Deleted after 1 minute!\n Pro tip: You can use </import:1305541038496153660> to import the queue' });
             
             setTimeout(() => {
                 interaction.deleteReply();
