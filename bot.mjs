@@ -11,10 +11,10 @@ import { Manager } from "magmastream";
 
 const nodes = [
   {
-    host: "wintr.pylex.xyz",
-    port: 9867,
-    password: "youshallnotpass",
-    identifier: 'toddyn',
+    host: "wz",
+    port: 433,
+    password: "",
+    identifier: '',
     secure: false,
     retryAmount: 1000,
     retrydelay: 10000,
