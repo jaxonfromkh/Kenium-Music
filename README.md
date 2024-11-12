@@ -1,4 +1,4 @@
-# Toddys-Distube-Bot
+# Thorium
 An Full rewrite of my bot
 
 Before 2.0.0:
