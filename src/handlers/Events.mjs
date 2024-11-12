@@ -9,16 +9,25 @@ export const EventHandler = async (client, rootPath) => {
     for (const eventFile of eventFiles) {
         if (eventFile.isFile() && (extname(eventFile.name) === ".js" || extname(eventFile.name) === ".mjs")) {
             const eventPath = join(eventsDir, eventFile.name);
-            const { Event: clientEvent } = await import(new URL(`file://${eventPath}`, import.meta.url));
-            if (clientEvent) {
-                client.events?.set(clientEvent.name, clientEvent);
-                if (!clientEvent.ignore) {
-                    const eventFunction = clientEvent.customEvent ? clientEvent.run.bind(null, client) : clientEvent.run.bind(null, client);
-                    if (clientEvent.runOnce) client.once(clientEvent.name, eventFunction);
-                    else client.on(clientEvent.name, eventFunction);
+            try {
+                const { Event } = await import(new URL(`file://${eventPath}`, import.meta.url));
+
+
+                if (Event && !Event.ignore) {
+                    const eventFunction = Event.customEvent ? Event.run.bind(null, client) : Event.run.bind(null, client);
+                    
+
+                    const handler = (...args) => eventFunction(...args);
+
+                    if (Event.runOnce) {
+                        client.once(Event.name, handler);
+                    } else {
+                        client.on(Event.name, handler);
+                    }
                 }
+            } catch (error) {
+                console.error(`Failed to load event from file: ${eventPath}`, error);
             }
         }
     }
-}
-
+};

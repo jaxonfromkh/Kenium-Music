@@ -1,15 +1,25 @@
 export const Event = {
     name: "interactionCreate",
     run: async (client, interaction) => {
+        let command;
         try {
-            const command = interaction.isChatInputCommand() ? client.slashCommands.get(interaction.commandName) :
-            interaction.isButton() ? client.buttonCommands.get(interaction.customId) :
-            interaction.isStringSelectMenu() ? client.selectMenus.get(interaction.values[0] ?? interaction.customId) : null;
+            if (interaction.isChatInputCommand()) {
+                command = client.slashCommands?.get(interaction.commandName);
+            } else if (interaction.isButton()) {
+                command = client.buttonCommands.get(interaction.customId);
+            } else if (interaction.isStringSelectMenu()) {
+                command = client.selectMenus.get(interaction.values[0] ?? interaction.customId);
+            }
 
-            if (command) command.run(client, interaction);
+            if (command) {
+                await command.run(client, interaction);
+            }
         } catch (error) {
-            console.log(error);
+            console.error("Error handling interaction:", error);
+        } finally {
+            if (global.gc) {
+                global.gc();
+            }
         }
     }
-}
-
+};
