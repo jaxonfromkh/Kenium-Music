@@ -11,10 +11,10 @@ import { Manager } from "magmastream";
 
 const nodes = [
   {
-    host: "wz",
-    port: 433,
+    host: "",
+    port: 9867,
     password: "",
-    identifier: '',
+    identifier: 'Thorium',
     secure: false,
     retryAmount: 1000,
     retrydelay: 10000,
@@ -56,18 +56,19 @@ const formatTime = (time) => {
 const createTrackEmbed = (track, player) => {
   return new EmbedBuilder()
     .setColor(0x000000)
-    .setTitle("🎵  | Now Playing")
+    .setTitle("🎶 Now Playing")
     .setDescription(`
-        **Title:** [${track.title}](${track.uri})
+        **Title:** [\`${track.title}\`](${track.uri})
         **Duration:** \`${formatTime(Math.round(track.duration / 1000))}\`
-        **Author:** ${track.author}
+        **Author:** \`${track.author}\`
       `)
     .setThumbnail(track.thumbnail)
     .addFields(
       { name: "Requested by", value: `<@${track.requester.id}>`, inline: true },
-      { name: "Volume", value: `${player.volume}%`, inline: true }
+      { name: "Volume", value: `${player.volume}%`, inline: true },
+      { name: "Album", value: `${track.album || 'N/A'}`, inline: true } // Example of additional info
     )
-    .setFooter({ text: "Toddys Music v2.3.0 | by mushroom0162", iconURL: track.requester.displayAvatarURL() })
+    .setFooter({ text: "🎵 Toddys Music v2.3.0 | by mushroom0162", iconURL: track.requester.displayAvatarURL() })
     .setTimestamp();
 };
 
@@ -81,7 +82,6 @@ manager.on('trackChange', async (player, newTrack) => {
     await player.nowPlayingMessage.edit({ embeds: [createTrackEmbed(newTrack, player)] });
   }
 });
-
 manager.on('trackEnd', async (player) => {
   if (player.nowPlayingMessage) {
     try {

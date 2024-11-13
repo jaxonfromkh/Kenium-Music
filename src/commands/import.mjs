@@ -18,7 +18,7 @@ export const Command = {
       await interaction.reply({ content: msg, ephemeral: true });
     };
 
-    let player;
+    let player; // Change to let for reassignment
     let queue;
 
     try {
@@ -28,7 +28,6 @@ export const Command = {
         return;
       }
 
-      // Fetch the file content
       const response = await fetch(file.url);
       if (!response.ok) {
         throw new Error("Failed to fetch file");
@@ -38,7 +37,7 @@ export const Command = {
       const lines = text.split("\n");
 
       queue = lines
-        .filter((line) => line.startsWith("https://"))
+        .filter((line) => line.startsWith("https://youtube.com/"))
         .map((line) => ({ url: line.trim() }));
 
       if (queue.length < 2) {
@@ -92,8 +91,8 @@ export const Command = {
       console.error("Failed to import queue:", error);
       await replyError("Failed to import queue. Please try again later.");
     } finally {
-      player = null;
-      queue = null;
+      player = null; // Allow garbage collection
+      queue = null;  // Allow garbage collection
     }
   },
 };
