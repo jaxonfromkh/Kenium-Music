@@ -6,7 +6,8 @@ export const Command = {
     options: [],
 
     run: async(client, interaction) => {
-        const player = client.manager.players.get(interaction.guildId);
+        const player = client.aqua.players.get(interaction.guildId);
+        
         if (!player) return interaction.reply({ content: "Nothing is playing", ephemeral: true });
 
         const formatTime = (time) => {
@@ -17,7 +18,7 @@ export const Command = {
 
         if (player.queue.length === 0) return interaction.reply({ content: "Queue is empty", ephemeral: true });
 
-        const queue = player.queue.map((track, i) => `**${i + 1}** - [\`${track.title}\`](${track.uri}) - \`${formatTime(Math.round(track.duration / 1000))}\``).slice(0, 5).join('\n');
+        const queue = player.queue.map((track, i) => `**${i + 1}** - [\`${track.info.title}\`](${track.info.uri}) - \`${formatTime(Math.round(track.info.length / 1000))}\``).slice(0, 5).join('\n');
         const embed = new EmbedBuilder()
             .setTitle('🎵  | Queue')
             .setDescription(queue)

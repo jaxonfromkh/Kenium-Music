@@ -1,5 +1,6 @@
 import { EmbedBuilder } from "discord.js";
-import  os  from 'node:os';
+import os from 'node:os';
+
 export const Command = {
     name: 'status',
     description: 'Bot and Lavalink status',
@@ -9,54 +10,80 @@ export const Command = {
             const hours = Math.floor((duration % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
             const minutes = Math.floor((duration % (1000 * 60 * 60)) / (1000 * 60));
             const seconds = Math.floor((duration % (1000 * 60)) / 1000);
+            return `${days}d ${hours}h ${minutes}m ${seconds}s`;
+        }
 
-            return days + "d " + hours + "h " + minutes + "m " + seconds + "s";
-        }        
+        const nodes = Array.from(client.aqua.nodeMap.values());
+        const connected = nodes.some((node) => node.connected);
+        const botUptime = msToTime(process.uptime() * 1000);
+        const botMemoryAllocated = (os.totalmem() / 1024 / 1024).toFixed(2);
+        const botMemoryUsed = (process.memoryUsage().heapTotal / 1024 / 1024).toFixed(2);
+        const botMemoryFree = (os.freemem() / 1024 / 1024).toFixed(2);
+        const botMemoryReserved = (process.memoryUsage().rss / 1024 / 1024).toFixed(2);
+        const cpuCores = os.cpus().length;
+        const cpuModel = os.cpus()[0].model;
+        const cpuSpeed = (os.cpus()[0].speed / 1000).toFixed(2);
+        const systemLoad = os.loadavg()[0].toFixed(2);
+        const cpuLoad = os.loadavg()[1].toFixed(2);
+        const discordPing = client.ws.ping;
+
         const embed = new EmbedBuilder()
             .setColor(0x000000)
             .setTitle('Lavalink Status')
-            .setDescription(`\`Lavalink ${client.manager.nodes.some((node) => node.connected) ? 'Connected' : 'Disconnected'}\``)
+            .setDescription(`\`Lavalink ${connected ? 'Connected' : 'Disconnected'}\``)
             .addFields([
                 {
                     name: 'Nodes',
-                    value: client.manager.nodes.map((node) => `
-                        \`\`\`ini
-    [Powered by: mushroom0162]
-    ============================
+                    value: nodes.map((node) => {
+                        const memoryAllocated = (node.stats.memory.allocated / 1024 / 1024).toFixed(2);
+                        const memoryUsed = (node.stats.memory.used / 1024 / 1024).toFixed(2);
+                        const memoryFree = (node.stats.memory.free / 1024 / 1024).toFixed(2);
+                        const memoryReserved = (node.stats.memory.reservable / 1024 / 1024).toFixed(2);
+                        const cpuCoresNode = node.stats.cpu.cores;
+                        const cpuSystemLoad = node.stats.cpu.systemLoad.toFixed(2);
+                        const cpuLavalinkLoad = node.stats.cpu.lavalinkLoad.toFixed(2);
+                        const uptime = msToTime(node.stats.uptime);
+
+                        return `
+\`\`\`ini
+[Powered by: mushroom0162]
+============================
 [Players]: ${node.stats.players}
 [Active Players]: ${node.stats.playingPlayers}
-[Lavalink Uptime]: ${msToTime(node.stats.uptime)}
-[Ping (Discord)] : ${client.ws.ping} ms
-[Ping (Lavalink + bot)] : ${Date.now() - interaction.createdTimestamp} ms
+[Lavalink Uptime]: ${uptime}
+[Ping (Discord)]: ${discordPing} ms
+[Ping (Lavalink + bot)]: ${Date.now() - interaction.createdTimestamp} ms
 [Memory]:
-    Allocated: ${(node.stats.memory.allocated / 1024 / 1024).toFixed(2)}MB
-    Used: ${(node.stats.memory.used / 1024 / 1024).toFixed(2)}MB
-    Free: ${(node.stats.memory.free / 1024 / 1024).toFixed(2)}MB
-    Reserved: ${(node.stats.memory.reservable / 1024 / 1024).toFixed(2)}MB
+    Allocated: ${memoryAllocated} MB
+    Used: ${memoryUsed} MB
+    Free: ${memoryFree} MB
+    Reserved: ${memoryReserved} MB
 [CPU]:
-    Cores: ${node.stats.cpu.cores}
-    System Load: ${node.stats.cpu.systemLoad.toFixed(2)}%
-    Lavalink Load: ${node.stats.cpu.lavalinkLoad.toFixed(2)}%
-    ============================
-        [BOT SECTION]:
-[Bot Uptime]: ${msToTime(process.uptime() * 1000)}
+    Cores: ${cpuCoresNode}
+    System Load: ${cpuSystemLoad}%
+    Lavalink Load: ${cpuLavalinkLoad}%
+============================
+[BOT SECTION]:
+[Bot Uptime]: ${botUptime}
 [Bot Memory]:
-    Allocated: ${(os.totalmem() / 1024 / 1024).toFixed(2)}MB
-    Used: ${(process.memoryUsage().heapTotal / 1024 / 1024).toFixed(2)}MB
-    Free: ${(os.freemem() / 1024 / 1024).toFixed(2)}MB
-    Reserved: ${(process.memoryUsage().rss / 1024 / 1024).toFixed(2)}MB
+    Allocated: ${botMemoryAllocated} MB
+    Used: ${botMemoryUsed} MB
+    Free: ${botMemoryFree} MB
+    Reserved: ${botMemoryReserved} MB
 [CPU]:
-    Cores: ${os.cpus().length}
-    System Load: ${os.loadavg()[0].toFixed(2)}%
-    CPU Load: ${os.loadavg()[1].toFixed(2)}%
-    Model: ${os.cpus()[0].model}
-    Speed: ${(os.cpus()[0].speed / 1000).toFixed(2)}GHz
-                        \`\`\`
-    ============================`).join('\n'),
+    Cores: ${cpuCores}
+    System Load: ${systemLoad}%
+    CPU Load: ${cpuLoad}%
+    Model: ${cpuModel}
+    Speed: ${cpuSpeed} GHz
+\`\`\`
+                        `;
+                    }).join('\n'),
                     inline: true
                 }
             ])
             .setTimestamp();
+
         await interaction.reply({
             embeds: [embed]
         });

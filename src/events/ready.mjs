@@ -4,7 +4,7 @@ export const Event = {
     runOnce: true,
     run: async (client) => {
 
-        client.manager.init(client.user.id);
+        client.aqua.init(client.user.id);
 
         const getActivities = () => [
             {

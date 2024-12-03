@@ -1,11 +1,21 @@
 {
 	"dependencies": {
+		"aqualink": "^1.1.0",
+		"asciichart": "^1.5.25",
 		"discord.js": "^14.16.3",
-		"magmastream": "2.6.0-beta.4",
-		"shoukaku": "github:shipgirlproject/Shoukaku#master"
+		"heapstats": "^0.5.7",
+		"magmastream": "2.6.0-beta.8",
+		"node-fetch": "^3.3.2",
+		"single-line-log": "^1.1.2",
+		"stream": "^0.0.3",
+		"strip-ansi": "^7.1.0",
+		"youtubei.js": "^11.0.1"
 	},
 	"main": "bot.mjs",
 	"name": "toddys-music",
-	"version": "2.2.0",
-	"type": "module"
+	"version": "1.0.0",
+	"type": "module",
+	"scripts": {
+		"start": "node bot.mjs"
+	}
 }

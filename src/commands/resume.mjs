@@ -5,9 +5,8 @@ export const Command = {
     run: async (client, interaction) => {
         const vc = interaction.member?.voice?.channel;
         if (!vc) return;
-        const player = client.manager.players.get(interaction.guildId)
+        const player = client.aqua.players.get(interaction.guildId)
         if (!player) return;
-        if (player.paused) return;
         const { guild, channel } = interaction;
 
         const lol = guild.channels.cache

@@ -20,7 +20,7 @@ export const Command = {
         ephemeral: true,
       });
 
-    const player = client.manager.players.get(interaction.guildId)
+    const player = client.aqua.players.get(interaction.guildId)
     if (!player) return;
     if (player.nowPlayingMessage) await player.nowPlayingMessage.delete();
     player.stop()

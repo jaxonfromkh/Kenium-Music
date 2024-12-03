@@ -10,7 +10,7 @@ export const Command = {
           type: 3,
           required: true,
           choices: [
-            { name: "song", value: "song" },
+            { name: "track", value: "track" },
             { name: "queue", value: "queue" },
             { name: "off", value: "off" }
           ],
@@ -20,7 +20,7 @@ export const Command = {
     run: async (client, interaction) => {
         const vc = interaction.member?.voice?.channel;
         if (!vc) return;
-        const player = client.manager.players.get(interaction.guildId)
+        const player = client.aqua.players.get(interaction.guildId)
         if (!player) {
             return interaction.reply({ content: "Nothing is playing", ephemeral: true });
         }
@@ -38,9 +38,9 @@ export const Command = {
           const mode = interaction.options.getString("mode");
 
           switch (mode) {
-            case "song": {
-              player.trackRepeat = !player.trackRepeat;
-              const status = player.trackRepeat ? "enabled" : "disabled";
+            case "track": {
+              player.setLoop('track')
+              const status = player.loop ? "enabled" : "disabled";
               return interaction.reply({
                 embeds: [
                   new EmbedBuilder()
@@ -50,7 +50,7 @@ export const Command = {
               });
             }
             case "queue": {
-              player.queueRepeat = !player.queueRepeat;
+              player.setLoop('queue')
               const status = player.queueRepeat ? "enabled" : "disabled";
               return interaction.reply({
                 embeds: [
@@ -61,8 +61,7 @@ export const Command = {
               });
             }
             case "off": {
-              player.trackRepeat = false;
-              player.queueRepeat = false;
+              player.setLoop('none')
               return interaction.reply({
                 embeds: [
                   new EmbedBuilder()

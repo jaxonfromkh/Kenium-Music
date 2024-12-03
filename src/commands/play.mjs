@@ -14,11 +14,6 @@ export const Command = {
 
   run: async (client, interaction) => {
     try {
-      if (!interaction.replied || interaction.deferred) {
-        await interaction.deferReply({
-          ephemeral: true,
-        });
-      }
       const vc = interaction.member.voice.channel;
       if (!vc) return;
 
@@ -38,77 +33,49 @@ export const Command = {
 
       const query = interaction.options.getString('query');
 
-      const player = client.manager.create({
-        guild: interaction.guildId,
+      const player = client.aqua.createConnection({
+        guildId: interaction.guildId,
         voiceChannel: vc.id,
         textChannel: interaction.channel.id,
-        volume: 100,
-        selfDeafen: true
+        deaf: true,
       });
 
-      if (player.state !== "CONNECTED") player.connect();
-
-      const result = await player.search(query, interaction.user);
+      const result = await client.aqua.resolve({ query, requester: interaction.member });
       const embed = new EmbedBuilder().setColor(0x000000)
-
+      const track = result.tracks.shift();
+      
       switch (result.loadType) {
-        case "empty":
-          if (!player.queue.current) player.destroy();
-
-          embed.setDescription(`Load failed when searching for \`${query}\``);
-
-          return await interaction.editReply({ embeds: [embed] });
-
-        case "error":
-          if (!player.queue.current) player.destroy();
-
-          embed.setDescription(`No matches when searching for \`${query}\``);
-
-          return await interaction.editReply({ embeds: [embed] });
-
         case "track":
-          player.queue.add(result.tracks[0]);
-
-          if (!player.playing && !player.paused && !player.queue.length) {
-            await player.play();
-          }
-
+          player.queue.add(track);
           embed.setDescription(
-            `Added [${result.tracks[0].title}](${result.tracks[0].uri}) to the queue.`
+            `Added [${track.info.title}](${track.info.uri}) to the queue.`
           );
+          await interaction.reply({ embeds: [embed], ephemeral: true });
 
-          return await interaction.editReply({ embeds: [embed] });
+          if (!player.playing && !player.paused && player.queue.size > 0) return player.play();
 
         case "playlist":
-          if (!result.playlist?.tracks) return;
-
-          player.queue.add(result.playlist.tracks);
-
-          if (
-            !player.playing &&
-            !player.paused &&
-            player.queue.size === result.playlist.tracks.length
-          ) {
-            await player.play();
+          for (const track of result.tracks) {
+            track.info.requester = interaction.member;
+            player.queue.add(track);
           }
 
+          const playlistInfo = result.data;
           embed.setDescription(
-            `Added [${result.playlist.name}](${query}) playlist to the queue.`
+            `Added [${playlistInfo.name}](${query}) playlist to the queue.`
           );
-
-          return await interaction.editReply({ embeds: [embed] });
+          await interaction.reply({ embeds: [embed], ephemeral: true });
+          if (!player.playing && !player.paused && player.queue.size > 0) return player.play();
+          break;
 
         case "search":
-          player.queue.add(result.tracks[0]);
-          if (!player.playing && !player.paused && !player.queue.length) {
-            await player.play();
-          }
-
+          player.queue.add(track);
           embed.setDescription(
-            `Added [${result.tracks[0].title}](${result.tracks[0].uri}) to the queue.`
+            `Added [${track.info.title}](${track.info.uri}) to the queue.`
           );
 
-          return await interaction.editReply({ embeds: [embed] });
+          await interaction.reply({ embeds: [embed], ephemeral: true });
+          if (!player.playing && !player.paused && player.queue.size > 0) return player.play();
       }
     } catch (error) {
       console.log(error);

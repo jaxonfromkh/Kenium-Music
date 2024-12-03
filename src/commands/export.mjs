@@ -6,7 +6,7 @@ export const Command = {
     options: [],
     run: async (client, interaction) => {
         try {
-            const player = client.manager.players.get(interaction.guildId);
+            const player = client.aqua.players.get(interaction.guildId);
             if (!player) {
                 return interaction.reply({ content: "Nothing is playing", ephemeral: true });
             }
@@ -16,7 +16,7 @@ export const Command = {
             }
 
             const queue = player.queue.map((track) => {
-                return `${track.uri}`;
+                return `${track.info.uri}`;
             }).join('\n');
 
             const attachment = new AttachmentBuilder(Buffer.from(queue), { name: `ToddysMusicV2.3.0.txt` });
@@ -30,10 +30,6 @@ export const Command = {
                 }
             }, 60000);
 
-            // Cleanup the timeout if interaction is deleted before timeout
-            interaction.guild.prependOnceListener('interactionDelete', () => {
-                clearTimeout(timeoutId);
-            });
         } catch (error) {
             if (error.code !== 10008) {
                 console.error("An error occurred while processing the command:", error);

@@ -9,7 +9,7 @@ export const Command = {
         const vc = interaction.member?.voice?.channel;
         if (!vc) return;
 
-        const player = client.manager.players.get(interaction.guildId)
+        const player = client.aqua.players.get(interaction.guildId)
 
 
         if (!player) {

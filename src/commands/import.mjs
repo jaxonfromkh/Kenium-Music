@@ -1,4 +1,3 @@
-import fetch from "node-fetch";
 
 export const Command = {
   name: "import",
@@ -20,7 +19,6 @@ export const Command = {
 
     let player; // Change to let for reassignment
     let queue;
-
     try {
       const file = interaction.options.getAttachment("file");
       if (!file) {
@@ -28,16 +26,15 @@ export const Command = {
         return;
       }
 
+      // Fetch the file content
       const response = await fetch(file.url);
       if (!response.ok) {
         throw new Error("Failed to fetch file");
       }
-
       const text = await response.text();
       const lines = text.split("\n");
-
       queue = lines
-        .filter((line) => line.startsWith("https://youtube.com/"))
+        .filter((line) => line.startsWith("https://www.youtube.com") || line.startsWith("https://youtube.com") || line.startsWith("https://youtu.be"))
         .map((line) => ({ url: line.trim() }));
 
       if (queue.length < 2) {
@@ -49,25 +46,24 @@ export const Command = {
         return await replyError("You need to be in a voice channel to import a queue.");
       }
 
-      player = client.manager.create({
-        guild: interaction.guildId,
+      // Create or get the player connection
+      player = client.aqua.createConnection({
+        guildId: interaction.guildId,
         voiceChannel: vc.id,
         textChannel: interaction.channel.id,
-        volume: 100,
-        selfDeafen: true,
+        deaf: true,
       });
 
-      if (player.state !== "CONNECTED") {
-        player.connect();
-      }
 
+
+      // Resolve tracks from the queue
       const tracks = await Promise.all(
         queue.map(async (track) => {
           try {
-            const searchResult = await client.manager.search(track.url, interaction.user);
-            return searchResult.tracks.length > 0 ? searchResult.tracks[0] : null;
+            const searchResult = await client.aqua.resolve({ query: track.url, requester: interaction.member }); // Use track.url
+            return searchResult.tracks[0] ? searchResult.tracks[0] : null; // Return the first track
           } catch (error) {
-            console.error(`Error searching track: ${track.url}`, error);
+            console.error(`Failed to resolve track: ${track.url}`, error);
             return null; 
           }
         })
@@ -78,21 +74,17 @@ export const Command = {
         player.queue.add(track);
       }
 
-      if (!player.playing && !player.paused && player.queue.size > 0) {
-        player.play();
-      }
-
-      return await interaction.reply({
+      if (!player.playing && !player.paused && player.queue.size > 0) { player.play() }
+       await interaction.reply({
         content: `Successfully imported ${validTracks.length} songs.`,
         ephemeral: true,
       });
-
     } catch (error) {
       console.error("Failed to import queue:", error);
       await replyError("Failed to import queue. Please try again later.");
     } finally {
-      player = null; // Allow garbage collection
-      queue = null;  // Allow garbage collection
+      player = null; 
+      queue = null;  
     }
   },
 };
