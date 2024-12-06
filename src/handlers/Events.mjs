@@ -4,30 +4,30 @@ import { fileURLToPath } from "url";
 
 export const EventHandler = async (client, rootPath) => {
     const eventsDir = join(rootPath, "src", "events");
-    const eventFiles = await readdir(eventsDir, { withFileTypes: true });
-
-    for (const eventFile of eventFiles) {
-        if (eventFile.isFile() && (extname(eventFile.name) === ".js" || extname(eventFile.name) === ".mjs")) {
-            const eventPath = join(eventsDir, eventFile.name);
-            try {
-                const { Event } = await import(new URL(`file://${eventPath}`, import.meta.url));
-
-
-                if (Event && !Event.ignore) {
-                    const eventFunction = Event.customEvent ? Event.run.bind(null, client) : Event.run.bind(null, client);
-                    
-
-                    const handler = (...args) => eventFunction(...args);
-
-                    if (Event.runOnce) {
-                        client.once(Event.name, handler);
-                    } else {
-                        client.on(Event.name, handler);
+    
+    try {
+        const eventFiles = await readdir(eventsDir, { withFileTypes: true });
+        
+        // Filter and map event files in one go
+        const eventPromises = eventFiles
+            .filter(eventFile => eventFile.isFile() && (extname(eventFile.name) === ".js" || extname(eventFile.name) === ".mjs"))
+            .map(async (eventFile) => {
+                const eventPath = join(eventsDir, eventFile.name);
+                try {
+                    const { Event } = await import(new URL(`file://${eventPath}`, import.meta.url));
+                    if (Event && !Event.ignore) {
+                        const eventFunction = Event.run.bind(null, client);
+                        return Event.runOnce ? client.once(Event.name, eventFunction) : client.on(Event.name, eventFunction);
                     }
+                } catch (error) {
+                    console.error(`Failed to load event from file: ${eventPath}`, error);
                 }
-            } catch (error) {
-                console.error(`Failed to load event from file: ${eventPath}`, error);
-            }
-        }
+                return null; // Return null for failed events
+            });
+
+        // Wait for all promises to resolve
+        await Promise.all(eventPromises);
+    } catch (error) {
+        console.error("Failed to read events directory:", error);
     }
 };
