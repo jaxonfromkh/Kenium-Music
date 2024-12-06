@@ -3,20 +3,11 @@ export const Command = {
     description: 'resume the music',
 
     run: async (client, interaction) => {
-        const vc = interaction.member?.voice?.channel;
-        if (!vc) return;
-        const player = client.aqua.players.get(interaction.guildId)
-        if (!player) return;
-        const { guild, channel } = interaction;
+        const { guild, member } = interaction;
+        const player = client.aqua.players.get(guild.id);
+        if (!player || !member.voice.channel) return;
 
-        const lol = guild.channels.cache
-            .filter((chnl) => chnl.type == 2)
-            .find((channel) => channel.members.has(client.user.id));
-        if (lol && vc.id !== lol.id)
-            return interaction.reply({
-                content: `im already on <#${lol.id}>`,
-                ephemeral: true,
-            });
+        if (interaction.guild.members.me.voice.channelId !== interaction.member.voice.channelId) return;
 
         player.pause(false);
         return interaction.reply({
