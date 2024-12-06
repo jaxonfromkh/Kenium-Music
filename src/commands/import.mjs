@@ -1,4 +1,3 @@
-
 export const Command = {
   name: "import",
   description: "Import a queue from a file (txt, pdf)",
@@ -17,13 +16,10 @@ export const Command = {
       await interaction.reply({ content: msg, ephemeral: true });
     };
 
-    let player; // Change to let for reassignment
-    let queue;
     try {
       const file = interaction.options.getAttachment("file");
       if (!file) {
-        await replyError("Please provide a file");
-        return;
+        return await replyError("Please provide a file");
       }
 
       // Fetch the file content
@@ -32,10 +28,12 @@ export const Command = {
         throw new Error("Failed to fetch file");
       }
       const text = await response.text();
-      const lines = text.split("\n");
-      queue = lines
-        .filter((line) => line.startsWith("https://www.youtube.com") || line.startsWith("https://youtube.com") || line.startsWith("https://youtu.be"))
-        .map((line) => ({ url: line.trim() }));
+
+      // Extract valid YouTube URLs
+      const queue = text
+        .split("\n")
+        .map((line) => line.trim())
+        .filter((line) => /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.?be)\/.+$/.test(line));
 
       if (queue.length < 2) {
         return await replyError("No valid URLs found in the file. Please ensure there are at least 2 URLs.");
@@ -47,44 +45,41 @@ export const Command = {
       }
 
       // Create or get the player connection
-      player = client.aqua.createConnection({
+      const player = client.aqua.createConnection({
         guildId: interaction.guildId,
         voiceChannel: vc.id,
         textChannel: interaction.channel.id,
         deaf: true,
       });
 
-
-
       // Resolve tracks from the queue
-      const tracks = await Promise.all(
-        queue.map(async (track) => {
-          try {
-            const searchResult = await client.aqua.resolve({ query: track.url, requester: interaction.member }); // Use track.url
-            return searchResult.tracks[0] ? searchResult.tracks[0] : null; // Return the first track
-          } catch (error) {
-            console.error(`Failed to resolve track: ${track.url}`, error);
-            return null; 
-          }
-        })
-      );
+      const trackPromises = queue.map(async (url) => {
+        try {
+          const searchResult = await client.aqua.resolve({ query: url, requester: interaction.member });
+          return searchResult.tracks[0] || null; // Return the first track or null
+        } catch (error) {
+          console.error(`Failed to resolve track: ${url}`, error);
+          return null; 
+        }
+      });
 
+      const tracks = await Promise.all(trackPromises);
       const validTracks = tracks.filter(Boolean);
-      for (const track of validTracks) {
-        player.queue.add(track);
+
+      // Add valid tracks to the player queue
+      validTracks.forEach(track => player.queue.add(track));
+      
+      if (!player.playing && !player.paused && player.queue.size > 0) {
+        player.play();
       }
 
-      if (!player.playing && !player.paused && player.queue.size > 0) { player.play() }
-       await interaction.reply({
+      await interaction.reply({
         content: `Successfully imported ${validTracks.length} songs.`,
         ephemeral: true,
       });
     } catch (error) {
       console.error("Failed to import queue:", error);
       await replyError("Failed to import queue. Please try again later.");
-    } finally {
-      player = null; 
-      queue = null;  
     }
   },
 };
