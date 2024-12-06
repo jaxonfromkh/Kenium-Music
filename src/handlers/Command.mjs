@@ -7,7 +7,8 @@ export const CommandHandler = async (client, rootPath) => {
     const allFiles = await Filereader(`${rootPath}/src/commands`);
     const rest = new REST({ version: "10" }).setToken(token);
 
-    const commands = await Promise.allSettled(allFiles.map(async (commandFile) => {
+    // Use a map to store command promises for better performance
+    const commandPromises = allFiles.map(async (commandFile) => {
         try {
             const { Command } = await import(pathToFileURL(commandFile));
             if (Command && !Command.ignore && Command.name && Command.description) {
@@ -22,12 +23,12 @@ export const CommandHandler = async (client, rootPath) => {
         } catch (error) {
             console.error(`Failed to load command from file: ${commandFile}`, error);
         }
-        return null;
-    }));
+        return null; // Ensure we return null for failed commands
+    });
 
-    const commandsArray = commands
-        .filter(result => result.status === 'fulfilled' && result.value)
-        .map(result => result.value);
+    // Resolve all command promises and filter out null results
+    const commandsArray = (await Promise.all(commandPromises))
+        .filter(command => command !== null);
 
     try {
         console.log("Started refreshing application (/) commands.");
