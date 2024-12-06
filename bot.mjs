@@ -12,15 +12,13 @@ import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
 const { Aqua } = require('aqualink');
 
-const nodes = [
-  {
-      host: "127.0.0.1",
-      password: "",
-      port: 344  ,
-      secure: false,
-      name: "Thorium"
-  }
-];
+const nodes = [{
+  host: "127.0.0.1",
+  password: "anpasswordthatiforgotforever",
+  port: 9350,
+  secure: false,
+  name: "toddys"
+}];
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 export const rootPath = __dirname;
@@ -46,36 +44,39 @@ const aqua = new Aqua(client, nodes, {
   shouldDeleteMessage: true
 });
 
+// Format time into MM:SS format
 const formatTime = (time) => {
   const minutes = Math.floor(time / 60);
   const seconds = Math.floor(time % 60);
   return `${minutes}:${seconds < 10 ? "0" : ""}${seconds}`;
 };
 
+// Create a track embed with enhanced UI
 const createTrackEmbed = (player, track) => {
   return new EmbedBuilder()
-    .setColor(0x000000)
+    .setColor(0x000000) // Changed color for better visibility
     .setTitle("🎶 Now Playing")
     .setDescription(`
-        **Title:** [\`${track.info.title}\`](${track.info.uri})
-        **Duration:** \`${formatTime(Math.round(track.info.length / 1000))}\`
-        **Author:** \`${track.info.author}\`
+        **Title:** [\`${track.info.title}\`](${track.info.uri})  
+        **Duration:** \`${formatTime(Math.round(track.info.length / 1000))}\`  
+        **Author:** \`${track.info.author}\`  
+        **Album:** \`${track.info.album || 'N/A'}\`
       `)
     .setThumbnail(track.info.artworkUrl)
     .addFields(
       { name: "Volume", value: `${player.volume}%`, inline: true },
-      { name: "Album", value: `${track.info.album || 'N/A'}`, inline: true }
+      { name: "Loop", value: `${player.loop}`, inline: true }
     )
-    .setFooter({ text: "🎵 Toddys Music v2.3.0 | by mushroom0162" })
+    .setFooter({ text: "🎵 Toddys Music v2.4.0 | by mushroom0162" })
     .setTimestamp();
 };
 
 // Event listeners
 aqua.on('trackStart', async (player, track) => {
-    const channel = client.channels.cache.get(player.textChannel);
-    if (channel) {
-      player.nowPlayingMessage = await channel.send({ embeds: [createTrackEmbed(player, track)] });
-    }
+  const channel = client.channels.cache.get(player.textChannel);
+  if (channel) {
+    player.nowPlayingMessage = await channel.send({ embeds: [createTrackEmbed(player, track)] });
+  }
 });
 
 aqua.on('trackChange', async (player, newTrack) => {
@@ -92,49 +93,52 @@ aqua.on('trackEnd', async (player) => {
       if (error.code !== 10008) {
         console.error('Error deleting now playing message:', error);
       }
-    } finally {
-      player.nowPlayingMessage = null; // Clear reference to allow garbage collection
     }
+    player.nowPlayingMessage = null;
+    aqua.cleanupIdle(); // Cleanup idle nodes
+    player.clearData(); // Clear player data
   }
 });
 
 aqua.on('trackError', async (player, track, payload) => {
-  console.log(`Error ${payload.exception.cause} / ${payload.exception.message}`);
-  if (player.nowPlayingMessage) {
-    const channel = client.channels.cache.get(player.textChannel);
-    if (channel) {
-      const embed = new EmbedBuilder()
-        .setColor(0xff0000)
-        .setTitle("Error playing track")
-        .setDescription(`Error playing track: \`${track.title}\`, Message: \`${payload.exception.message}\``)
-        .setFooter({ text: "Toddys Music v2.3.0 | by mushroom0162" })
-        .setTimestamp();
-      const message = await channel.send({ embeds: [embed] });
-      setTimeout(() => message.delete().catch(console.error), 5000);
-    }
+  console.error(`Error ${payload.exception.cause} / ${payload.exception.message}`);
+  const channel = client.channels.cache.get(player.textChannel);
+  if (channel && player.nowPlayingMessage) {
+    const embed = new EmbedBuilder()
+      .setColor(0xff0000)
+      .setTitle("❌ Error Playing Track")
+      .setDescription(`Error playing track: \`${track.info.title}\`\nMessage: \`${payload.exception.message}\``)
+      .setFooter({ text: "Toddys Music v2.4.0 | by mushroom0162" })
+      .setTimestamp();
+    
+    const message = await channel.send({ embeds: [embed] });
+    setTimeout(() => message.delete().catch(console.error), 5000);
   }
 });
 
 client.aqua = aqua;
-
+// Update the voice state
 client.on("raw", (d) => {
   if (![GatewayDispatchEvents.VoiceStateUpdate, GatewayDispatchEvents.VoiceServerUpdate].includes(d.t)) return;
   client.aqua.updateVoiceState(d);
 });
 
+// Node connection events
 client.aqua.on('nodeConnect', (node) => {
   console.log(`Node "${node.name}" connected.`);
 });
 
 client.aqua.on('nodeError', (node, error) => {
-  console.log(`Node "${node.name}" encountered an error: ${error.message}.`);
+  console.error(`Node "${node.name}" encountered an error: ${error.message}.`);
 });
 
+// Collections for commands and events
 client.slashCommands = new Collection();
 client.events = new Collection();
 client.buttonCommands = new Collection();
 client.selectMenus = new Collection();
 
+// Load handlers
 await Promise.all([
   import("./src/handlers/Command.mjs").then(({ CommandHandler }) => CommandHandler(client, rootPath)),
   import("./src/handlers/Events.mjs").then(({ EventHandler }) => EventHandler(client, rootPath)),
