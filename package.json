@@ -1,6 +1,6 @@
 {
 	"dependencies": {
-		"aqualink": "^1.1.0",
+		"aqualink": "^1.2.0",
 		"asciichart": "^1.5.25",
 		"discord.js": "^14.16.3",
 		"heapstats": "^0.5.7",
@@ -13,7 +13,7 @@
 	},
 	"main": "bot.mjs",
 	"name": "toddys-music",
-	"version": "1.0.0",
+	"version": "2.4.0",
 	"type": "module",
 	"scripts": {
 		"start": "node bot.mjs"
