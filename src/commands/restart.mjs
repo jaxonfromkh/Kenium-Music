@@ -9,10 +9,11 @@ export const Command = {
             if (!vc) return;
 
             const player = client.aqua.players.get(interaction.guildId)
+            if (interaction.guild.members.me.voice.channelId !== interaction.member.voice.channelId) return;
 
             if (!player) return;
 
-            player.seek(0);
+            player.replay();
 
             return interaction.reply({ content: "Restarted the music", ephemeral: true });
 
