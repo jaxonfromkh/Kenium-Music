@@ -12,24 +12,11 @@ export const Command = {
         const player = client.aqua.players.get(interaction.guildId)
 
 
-        if (!player) {
-
-            return interaction.reply({ content: "Nothing is playing", ephemeral: true })
-
+        if (!player || player.queue.size == 0) {
+            return interaction.reply({ content: player ? "No song to skip" : "Nothing is playing", ephemeral: true });
         }
 
-        if (player.queue.size == 0) return interaction.reply({ content: "No song to skip", ephemeral: true })
-
-        const { guild, channel } = interaction;
-
-        const lol = guild.channels.cache
-            .filter((chnl) => chnl.type == ChannelType.GuildVoice)
-            .find((channel) => channel.members.has(client.user.id));
-        if (lol && vc.id !== lol.id)
-            return interaction.reply({
-                content: `im already on <#${lol.id}>`,
-                ephemeral: true,
-            });
+        if (interaction.guild.members.me.voice.channelId !== interaction.member.voice.channelId) return;
 
         player.stop()
 
