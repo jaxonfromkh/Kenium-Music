@@ -1,23 +1,24 @@
-import { readdirSync } from 'fs';
+import { readdir } from 'fs/promises';
 import { join, extname } from 'path';
 
-export const Filereader = (dir) => {
+export const Filereader = async (dir) => {
+  const files = [];
+  
   try {
-    const files = [];
-    const directoryData = readdirSync(dir);
+    const directoryData = await readdir(dir, { withFileTypes: true });
 
-    for (const file of directoryData) {
-      const filePath = join(dir, file);
-
-      if (extname(filePath) === '.js' || extname(filePath) === '.mjs') {
+    for (const entry of directoryData) {
+      const filePath = join(dir, entry.name);
+      if (entry.isDirectory()) {
+        const subFiles = await Filereader(filePath);
+        files.push(...subFiles);
+      } else if (extname(entry.name) === '.mjs') {
         files.push(filePath);
-      } else {
-        files.push(...Filereader(filePath));
       }
     }
-
-    return files;
   } catch (error) {
-    return [];
+    console.error(`Failed to read directory: ${dir}`, error);
   }
+
+  return files;
 };
