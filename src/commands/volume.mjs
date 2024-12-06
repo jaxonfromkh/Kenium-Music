@@ -13,24 +13,14 @@ export const Command = {
       ],
 
     run: async (client, interaction) => {
-        const vc = interaction.member?.voice?.channel;
-        if (!vc) return;
-        const player = client.aqua.players.get(interaction.guildId)
-        if (!player) {
-            return interaction.reply({ content: "Nothing is playing", ephemeral: true });
-        }
-        const { guild, channel } = interaction;
-  
-        const lol = guild.channels.cache
-          .filter((chnl) => chnl.type == ChannelType.GuildVoice)
-          .find((channel) => channel.members.has(client.user.id));
-        if (lol && vc.id !== lol.id)
-          return interaction.reply({
-            content: `im already on <#${lol.id}>`,
-            ephemeral: true,
-          });
-          let volume = interaction.options.getInteger("volume");
-          if (isNaN(volume) || volume < 0 || volume > 150) {
+        const player = client.aqua.players.get(interaction.guildId);
+        if (!player || !interaction.member?.voice?.channel) return interaction.reply({ content: "Nothing is playing", ephemeral: true });
+        const { guild } = interaction;
+        const vc = guild.channels.cache.get(player.voiceChannel);
+        if (vc?.id !== interaction.member.voice.channelId)
+          return interaction.reply({ content: `im already on <#${vc.id}>`, ephemeral: true });
+        const volume = interaction.options.getInteger("volume", true);
+        if (volume < 0 || volume > 150) {
             return interaction.reply({
               embeds: [
                 new EmbedBuilder()
