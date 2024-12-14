@@ -5,87 +5,95 @@ export const Command = {
     name: 'status',
     description: 'Bot and Lavalink status',
     run: async (client, interaction) => {
-        function msToTime(duration) {
+        // Function to convert milliseconds to a time string
+        const msToTime = (duration) => {
             const days = Math.floor(duration / (1000 * 60 * 60 * 24));
             const hours = Math.floor((duration % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
             const minutes = Math.floor((duration % (1000 * 60 * 60)) / (1000 * 60));
             const seconds = Math.floor((duration % (1000 * 60)) / 1000);
             return `${days}d ${hours}h ${minutes}m ${seconds}s`;
-        }
+        };
 
         const nodes = Array.from(client.aqua.nodeMap.values());
-        const connected = nodes.some((node) => node.connected);
+        const connected = nodes.some(node => node.connected);
+        
+        // Bot stats
         const botUptime = msToTime(process.uptime() * 1000);
-        const botMemoryAllocated = (os.totalmem() / 1024 / 1024).toFixed(2);
-        const botMemoryUsed = (process.memoryUsage().heapTotal / 1024 / 1024).toFixed(2);
-        const botMemoryFree = (os.freemem() / 1024 / 1024).toFixed(2);
-        const botMemoryReserved = (process.memoryUsage().rss / 1024 / 1024).toFixed(2);
-        const cpuCores = os.cpus().length;
-        const cpuModel = os.cpus()[0].model;
-        const cpuSpeed = (os.cpus()[0].speed / 1000).toFixed(2);
-        const systemLoad = os.loadavg()[0].toFixed(2);
-        const cpuLoad = os.loadavg()[1].toFixed(2);
-        const discordPing = client.ws.ping;
+        const totalMemoryMB = (os.totalmem() / 1024 / 1024).toFixed(2);
+        const usedMemoryMB = (process.memoryUsage().heapTotal / 1024 / 1024).toFixed(2);
+        const freeMemoryMB = (os.freemem() / 1024 / 1024).toFixed(2);
+        const cpuStats = os.cpus();
+        const cpuCores = cpuStats.length;
+        const cpuModel = cpuStats[0].model;
+        const cpuSpeedGHz = (cpuStats[0].speed / 1000).toFixed(2); // Speed in GHz
+        const cpuLoad = os.loadavg()[1].toFixed(2); // Load average over the last 5 minutes
 
+        const discordPing = client.ws.ping; // Discord API ping
+        
         const embed = new EmbedBuilder()
             .setColor(0x000000)
             .setTitle('Lavalink Status')
             .setDescription(`\`Lavalink ${connected ? 'Connected' : 'Disconnected'}\``)
-            .addFields([
-                {
-                    name: 'Nodes',
-                    value: nodes.map((node) => {
-                        const memoryAllocated = (node.stats.memory.allocated / 1024 / 1024).toFixed(2);
-                        const memoryUsed = (node.stats.memory.used / 1024 / 1024).toFixed(2);
-                        const memoryFree = (node.stats.memory.free / 1024 / 1024).toFixed(2);
-                        const memoryReserved = (node.stats.memory.reservable / 1024 / 1024).toFixed(2);
-                        const cpuCoresNode = node.stats.cpu.cores;
-                        const cpuSystemLoad = node.stats.cpu.systemLoad.toFixed(2);
-                        const cpuLavalinkLoad = node.stats.cpu.lavalinkLoad.toFixed(2);
-                        const uptime = msToTime(node.stats.uptime);
+            .setTimestamp();
 
-                        return `
+        const nodeFields = nodes.map(node => {
+            const { memory, cpu, players, playingPlayers, uptime } = node.stats;
+            const memoryAllocatedMB = (memory.allocated / 1024 / 1024).toFixed(2);
+            const memoryUsedMB = (memory.used / 1024 / 1024).toFixed(2);
+            const memoryFreeMB = (memory.free / 1024 / 1024).toFixed(2);
+            const memoryReservedMB = (memory.reservable / 1024 / 1024).toFixed(2);
+            const uptimeFormatted = msToTime(uptime);
+            const freePercentage = ((memory.free / memory.allocated) * 100).toFixed(2);
+            const usedPercentage = ((memory.used / memory.allocated) * 100).toFixed(2);
+            const cpuCoresNode = cpu.cores;
+            const cpuSystemLoad = cpu.systemLoad.toFixed(2);
+            const cpuLavalinkLoad = cpu.lavalinkLoad.toFixed(2);
+            const cpuLavalinkLoadPercentage = (cpu.lavalinkLoadPercentage * 100).toFixed(2);
+
+            return `
 \`\`\`ini
 [Powered by: mushroom0162]
 ============================
-[Players]: ${node.stats.players}
-[Active Players]: ${node.stats.playingPlayers}
-[Lavalink Uptime]: ${uptime}
+[Players]: ${players}
+[Active Players]: ${playingPlayers}
+[Lavalink Uptime]: ${uptimeFormatted}
 [Ping (Discord)]: ${discordPing} ms
-[Ping (Lavalink + bot)]: ${Date.now() - interaction.createdTimestamp} ms
+[Ping (Bot)]: ${Date.now() - interaction.createdTimestamp} ms
+[Aqualink Version]: ${node.aqua.version}
 [Memory]:
-    Allocated: ${memoryAllocated} MB
-    Used: ${memoryUsed} MB
-    Free: ${memoryFree} MB
-    Reserved: ${memoryReserved} MB
+    Allocated: ${memoryAllocatedMB} MB
+    Used: ${memoryUsedMB} MB
+    Free: ${memoryFreeMB} MB
+    Reserved: ${memoryReservedMB} MB
+    Free Percentage: ${freePercentage}%
+    Used Percentage: ${usedPercentage}%
 [CPU]:
     Cores: ${cpuCoresNode}
     System Load: ${cpuSystemLoad}%
     Lavalink Load: ${cpuLavalinkLoad}%
+    Lavalink Load Percentage: ${cpuLavalinkLoadPercentage}%
 ============================
 [BOT SECTION]:
 [Bot Uptime]: ${botUptime}
 [Bot Memory]:
-    Allocated: ${botMemoryAllocated} MB
-    Used: ${botMemoryUsed} MB
-    Free: ${botMemoryFree} MB
-    Reserved: ${botMemoryReserved} MB
+    Allocated: ${totalMemoryMB} MB
+    Used: ${usedMemoryMB} MB
+    Free: ${freeMemoryMB} MB
 [CPU]:
     Cores: ${cpuCores}
-    System Load: ${systemLoad}%
     CPU Load: ${cpuLoad}%
     Model: ${cpuModel}
-    Speed: ${cpuSpeed} GHz
+    Speed: ${cpuSpeedGHz} GHz
 \`\`\`
-                        `;
-                    }).join('\n'),
-                    inline: true
-                }
-            ])
-            .setTimestamp();
+            `;
+        }).join('\n');
 
-        await interaction.reply({
-            embeds: [embed]
+        embed.addFields({
+            name: 'Nodes',
+            value: nodeFields,
+            inline: true
         });
+
+        await interaction.reply({ embeds: [embed] });
     }
-}
+};
