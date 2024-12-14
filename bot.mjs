@@ -13,11 +13,11 @@ const require = createRequire(import.meta.url);
 const { Aqua } = require('aqualink');
 
 const nodes = [{
-  host: "127.0.0.1",
-  password: "anpasswordthatiforgotforever",
-  port: 9350,
+  host: "",
+  password: "",
+  port: 433,
   secure: false,
-  name: "toddys"
+  name: "idk"
 }];
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -44,6 +44,7 @@ const aqua = new Aqua(client, nodes, {
   shouldDeleteMessage: true
 });
 
+
 // Format time into MM:SS format
 const formatTime = (time) => {
   const minutes = Math.floor(time / 60);
@@ -67,10 +68,9 @@ const createTrackEmbed = (player, track) => {
       { name: "Volume", value: `${player.volume}%`, inline: true },
       { name: "Loop", value: `${player.loop}`, inline: true }
     )
-    .setFooter({ text: "🎵 Toddys Music v2.4.0 | by mushroom0162" })
+    .setFooter({ text: "🎵 Kenium v2.4.0 | by mushroom0162" })
     .setTimestamp();
 };
-
 // Event listeners
 aqua.on('trackStart', async (player, track) => {
   const channel = client.channels.cache.get(player.textChannel);
@@ -95,20 +95,18 @@ aqua.on('trackEnd', async (player) => {
       }
     }
     player.nowPlayingMessage = null;
-    aqua.cleanupIdle(); // Cleanup idle nodes
-    player.clearData(); // Clear player data
   }
 });
 
 aqua.on('trackError', async (player, track, payload) => {
-  console.error(`Error ${payload.exception.cause} / ${payload.exception.message}`);
+  console.error(`Error ${payload} / ${payload}`);
   const channel = client.channels.cache.get(player.textChannel);
   if (channel && player.nowPlayingMessage) {
     const embed = new EmbedBuilder()
       .setColor(0xff0000)
       .setTitle("❌ Error Playing Track")
       .setDescription(`Error playing track: \`${track.info.title}\`\nMessage: \`${payload.exception.message}\``)
-      .setFooter({ text: "Toddys Music v2.4.0 | by mushroom0162" })
+      .setFooter({ text: "Kenium v2.4.0 | by mushroom0162" })
       .setTimestamp();
     
     const message = await channel.send({ embeds: [embed] });
