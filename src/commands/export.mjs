@@ -10,7 +10,7 @@ export const Command = {
             return interaction.reply({ content: player ? "Queue is empty" : "Nothing is playing", ephemeral: true });
         }
         if (interaction.guild.members.me.voice.channelId !== interaction.member.voice.channelId) return;
-        const attachment = new AttachmentBuilder(Buffer.from(player.queue.map(track => track.info.uri).join('\n')), { name: `ToddysMusicV2.4.0.txt` });
+        const attachment = new AttachmentBuilder(Buffer.from(player.queue.map(track => track.info.uri).join('\n')), { name: `Kenium_2.4.0.txt` });
         const reply = await interaction.reply({ files: [attachment], content: 'This will be Deleted after 1 minute!\n Pro tip: You can use </import:1305541038496153660> to import the queue' });
         
         setTimeout(async () => {
