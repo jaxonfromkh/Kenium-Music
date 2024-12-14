@@ -25,7 +25,7 @@ export const Command = {
             .setDescription(queue)
             .setColor(0x000000)
             .setThumbnail(client.user.displayAvatarURL())
-            .setFooter({ text: 'Toddys Music v2.4.0 | by mushroom0162', iconURL: interaction.user.displayAvatarURL() });
+            .setFooter({ text: 'Kenium v2.4.0 | by mushroom0162', iconURL: interaction.user.displayAvatarURL() });
 
         try {
             await interaction.reply({ embeds: [embed] });
