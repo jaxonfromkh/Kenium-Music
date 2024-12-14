@@ -3,47 +3,33 @@ export const Event = {
     name: "ready",
     runOnce: true,
     run: async (client) => {
-
         client.aqua.init(client.user.id);
-
-        const getActivities = () => [
+        const activities = [
             {
-                name: `Made by mushroom0162 🙀🙀`,
+                name: `👨‍💻 Made by mushroom0162`,
                 type: ActivityType.Custom,
-                state: `Made by mushroom0162 🙀🙀`
+                state: `✨ Made by mushroom0162`
             },
             {
-                name: `Lavalink V4.0.8 `,
+                name: `🎶 Lavalink V4.0.8 `,
                 type: ActivityType.Custom,
-                state: `Running with Node.js v20.1.0 and Java 21`
+                state: `🚀 Running with Node.js v21.7.3 and Java 21`
             },
             {
-                name: `Running on around ${client.guilds.cache.size} servers`,
+                name: `🌐 Running on ${client.guilds.cache.size} servers`,
                 type: ActivityType.Custom,
-                state: `Optimizing processes...`
+                state: `⚙️ Optimizing processes... or not`
             },
             {
-                name: `With ${client.guilds.cache.reduce((a, b) => a + b.memberCount, 0)} users, prob none of them use this!!!`,
+                name: `👥 With ${client.guilds.cache.reduce((a, b) => a + b.memberCount, 0)} users, prob none of them use this!!!`,
                 type: ActivityType.Custom,
-                state: `Idk what to put here... Lavalink + magmastream`
+                state: `🤷‍♂️ Idk what to put here... Lavalink + aqualink`
             }
         ];
 
-        let stuffdex = 0;
-        let activities = getActivities();
+        let currentIndex = 0;
         const updateActivity = () => {
-            // Refresh activities to get current data
-            activities = getActivities();
-
-            const activity = activities[stuffdex];
-
-            client.user.setActivity({
-                name: activity.name,
-                type: activity.type,
-                state: activity.state
-            });
-
-            currentIndex = (stuffdex + 1) % activities.length;
+            client.user.setActivity(activities[currentIndex++ % activities.length]);
         };
 
         updateActivity();
