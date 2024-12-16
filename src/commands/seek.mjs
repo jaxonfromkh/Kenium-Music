@@ -10,12 +10,16 @@ export const Command = {
         },
     ],
     run: async (client, interaction) => {
-        const vc = interaction.member?.voice?.channel;
-        const position = interaction.options.getInteger("position");
-        if (!vc) return;
-        const player = client.aqua.players.get(interaction.guildId)
+        const { guild, member } = interaction;
+        const vc = member?.voice?.channel;
+        if (!vc || guild.members.me.voice.channelId !== vc.id) return;
+
+        const player = client.aqua.players.get(guild.id);
         if (!player) return;
+
+        const position = interaction.options.getInteger("position");
         player.seek(position * 1000);
+
         return interaction.reply({ content: `Seeked to ${position} seconds`, ephemeral: true });
     }
 }
