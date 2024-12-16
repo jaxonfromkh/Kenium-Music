@@ -9,15 +9,16 @@ import { token } from "./config.mjs";
 import { dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createRequire } from 'module';
+
 const require = createRequire(import.meta.url);
 const { Aqua } = require('aqualink');
 
 const nodes = [{
   host: "",
-  password: "",
+  password: "a",
   port: 433,
   secure: false,
-  name: "idk"
+  name: "toddys"
 }];
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -44,7 +45,6 @@ const aqua = new Aqua(client, nodes, {
   shouldDeleteMessage: true
 });
 
-
 // Format time into MM:SS format
 const formatTime = (time) => {
   const minutes = Math.floor(time / 60);
@@ -55,7 +55,7 @@ const formatTime = (time) => {
 // Create a track embed with enhanced UI
 const createTrackEmbed = (player, track) => {
   return new EmbedBuilder()
-    .setColor(0x000000) // Changed color for better visibility
+    .setColor(0x000000)
     .setDescription(`> [\`${track.info.title}\`](${track.info.uri})`)
     .addFields(
       { name: "> ⏱️ Duration", value: `> \`${formatTime(Math.round(track.info.length / 1000))}\``, inline: true },
@@ -68,6 +68,7 @@ const createTrackEmbed = (player, track) => {
     .setAuthor({ name: "Kenium v2.4.0 | by mushroom0162", iconURL: client.user.avatarURL() })
     .setTimestamp();
 };
+
 // Event listeners
 aqua.on('trackStart', async (player, track) => {
   const channel = client.channels.cache.get(player.textChannel);
@@ -105,13 +106,13 @@ aqua.on('trackError', async (player, track, payload) => {
       .setDescription(`Error playing track: \`${track.info.title}\`\nMessage: \`${payload.exception.message}\``)
       .setFooter({ text: "Kenium v2.4.0 | by mushroom0162" })
       .setTimestamp();
-    
     const message = await channel.send({ embeds: [embed] });
     setTimeout(() => message.delete().catch(console.error), 5000);
   }
 });
 
 client.aqua = aqua;
+
 // Update the voice state
 client.on("raw", (d) => {
   if (![GatewayDispatchEvents.VoiceStateUpdate, GatewayDispatchEvents.VoiceServerUpdate].includes(d.t)) return;
