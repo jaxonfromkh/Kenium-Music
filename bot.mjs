@@ -56,19 +56,16 @@ const formatTime = (time) => {
 const createTrackEmbed = (player, track) => {
   return new EmbedBuilder()
     .setColor(0x000000) // Changed color for better visibility
-    .setTitle("🎶 Now Playing")
-    .setDescription(`
-        **Title:** [\`${track.info.title}\`](${track.info.uri})  
-        **Duration:** \`${formatTime(Math.round(track.info.length / 1000))}\`  
-        **Author:** \`${track.info.author}\`  
-        **Album:** \`${track.info.album || 'N/A'}\`
-      `)
-    .setThumbnail(track.info.artworkUrl)
+    .setDescription(`> [\`${track.info.title}\`](${track.info.uri})`)
     .addFields(
-      { name: "Volume", value: `${player.volume}%`, inline: true },
-      { name: "Loop", value: `${player.loop}`, inline: true }
+      { name: "> ⏱️ Duration", value: `> \`${formatTime(Math.round(track.info.length / 1000))}\``, inline: true },
+      { name: "> 👤 Author", value: `> \`${track.info.author}\``, inline: true },
+      { name: "> 💿 Album", value: `> \`${track.info.album || 'N/A'}\``, inline: true },
+      { name: "> 🔊 Volume", value: `> \`${player.volume}%\``, inline: true },
+      { name: "> 🔁 Loop", value: `> ${player.loop ? 'On' : 'Off'}`, inline: true }
     )
-    .setFooter({ text: "🎵 Kenium v2.4.0 | by mushroom0162" })
+    .setThumbnail(track.info.artworkUrl)
+    .setAuthor({ name: "Kenium v2.4.0 | by mushroom0162", iconURL: client.user.avatarURL() })
     .setTimestamp();
 };
 // Event listeners
