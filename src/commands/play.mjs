@@ -40,7 +40,7 @@ export const Command = {
       const embed = new EmbedBuilder().setColor(0x000000)
       const tracks = result.tracks;
       
-      switch (result.loadType) {
+           switch (result.loadType) {
         case "track":
           player.queue.add(tracks[0]);
           embed.setDescription(
@@ -55,7 +55,6 @@ export const Command = {
           break;
         case "playlist":
           for (const track of tracks) {
-            track.info.requester = interaction.member;
             player.queue.add(track);
           }
 
