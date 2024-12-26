@@ -3,47 +3,35 @@ import { token, id } from "../../config.mjs";
 import { Filereader } from "./filereader.mjs";
 
 export const CommandHandler = async (client, rootPath) => {
+    const loadErrors = [];
     try {
         const allFiles = await Filereader(`${rootPath}/src/commands`);
         const rest = new REST({ version: "10" }).setToken(token);
+        const commandsArray = [];
 
-        const commandModules = await Promise.allSettled(allFiles.map(async (commandFile) => {
-            try {
-                const { Command } = await import(`file://` + commandFile);
-                return { Command, commandFile };
-            } catch (error) {
-                console.error(`Failed to import command file ${commandFile}:`, error);
-                return null;
-            }
-        }));
-
-        const commandsArray = commandModules
-            .filter(result => result && result.status === 'fulfilled' && result.value.Command)
-            .map(({ value: { Command } }) => {
-                if (Command && !Command.ignore && Command.name && Command.description) {
-                    client.slashCommands?.set(Command.name, Command);
-                    return {
-                        name: Command.name,
-                        description: Command.description,
-                        type: 1,
-                        options: Command.options ?? []
-                    };
-                }
-                return null;
+        const commandImports = allFiles.map(commandFile => 
+            import(`file://` + commandFile).catch(error => {
+                loadErrors.push(`Failed to import ${commandFile}: ${error.message}`);
+                return null; 
             })
-            .filter(Boolean);
+        );
 
-        if (commandsArray.length > 0) {
-            console.log("Started refreshing application (/) commands.");
-            await rest.put(
-                Routes.applicationCommands(id),
-                { body: commandsArray }
-            );
-            console.log("Successfully reloaded application (/) commands.");
-        } else {
-            console.log("No valid commands found to reload.");
+        const commandModules = (await Promise.all(commandImports)).filter(m => m && m.Command && !m.Command.ignore && m.Command.name && m.Command.description);
+        for (const { Command } of commandModules) {
+            client.slashCommands.set(Command.name, Command);
+            commandsArray.push({
+                name: Command.name,
+                description: Command.description,
+                type: 1,
+                options: Command.options ?? []
+            });
         }
+    
+        console.log("Started refreshing application (/) commands.");
+        await rest.put(Routes.applicationCommands(id), { body: commandsArray });
+        console.log(`Successfully reloaded ${commandsArray.length} application (/) commands.`);
     } catch (error) {
         console.error("Failed to refresh application commands:", error);
+        throw error;
     }
 };

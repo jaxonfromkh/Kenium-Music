@@ -1,51 +1,45 @@
-import { readdir } from "fs/promises";
-import { join } from "path";
+import fs from "fs/promises";
+import path from "path";
 
 export const EventHandler = async (client, rootPath) => {
-    const eventsDir = join(rootPath, "src", "events");
+    if (!client || !rootPath) {
+        throw new Error('Client and rootPath are required parameters');
+    }
+
+    const eventsDir = path.join(rootPath, "src", "events");
+    
     try {
-        // Read directory once and cache the results
-        const eventFiles = await readdir(eventsDir, { withFileTypes: true });
-
-        // Process files in a single pass
-        const events = await Promise.all(
-            eventFiles
-                .filter(file => file.isFile() && /\.m?js$/.test(file.name))
-                .map(async file => {
-                    const eventPath = join(eventsDir, file.name);
-                    try {
-                        const { Event } = await import(new URL(`file://${eventPath}`, import.meta.url));
-                        // Ensure that Event is a valid object
-                        if (Event && typeof Event.run === 'function') {
-                            return { Event, eventPath };
-                        } else {
-                            console.warn(`Invalid event structure in file: ${eventPath}`);
-                            return null;
-                        }
-                    } catch (error) {
-                        console.error(`Failed to load event from file: ${eventPath}`, error);
-                        return null;
-                    }
-                })
+        const eventFiles = await fs.readdir(eventsDir, { withFileTypes: true });
+        const validEventFiles = eventFiles.filter(file => 
+            file.isFile() && /\.(js|mjs)$/.test(file.name)
         );
+        await Promise.all(validEventFiles.map(async (eventFile) => {
+            const eventPath = path.join(eventsDir, eventFile.name);
+            try {
+                const { Event } = await import(new URL(`file://${eventPath}`, import.meta.url));
+                if (!Event || Event.ignore) return;
+                const eventFunction = (...args) => {
+                    try {
+                        return Event.run(client, ...args);
+                    } catch (error) {
+                        console.error(`Error in event ${Event.name}:`, error);
+    
+                        client.removeListener(Event.name, eventFunction);
+                    }
+                };
+                if (Event.runOnce) {
+                    client.once(Event.name, eventFunction);
+                } else {
+                    client.on(Event.name, eventFunction);
+                }
 
-        // Register events and clean up references
-        for (const entry of events) {
-            if (!entry || !entry.Event || entry.Event.ignore) continue;
-
-            const { Event } = entry;
-            const eventFunction = (...args) => Event.run(client, ...args);
-
-            // Store event handler reference for potential cleanup
-            client[`_${Event.name}Handler`] = eventFunction;
-
-            if (Event.runOnce) {
-                client.once(Event.name, eventFunction);
-            } else {
-                client.on(Event.name, eventFunction);
+            } catch (error) {
+                console.error(`Failed to load event from file: ${eventPath}`, error);
             }
-        }
+        }));
+
     } catch (error) {
         console.error("Failed to read events directory:", error);
+        throw error; 
     }
 };
