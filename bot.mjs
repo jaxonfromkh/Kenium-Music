@@ -14,7 +14,7 @@ const { Aqua } = require('aqualink');
 
 const nodes = [{
   host: "",
-  password: "pass",
+  password: "a",
   port: 433,
   secure: false,
   name: "toddys"
@@ -67,14 +67,19 @@ function createTrackEmbed(player, track) {
     .setTimestamp();
 }
 
-const channelCache = new Map();
+const channelCache = new WeakMap();
+
+const getChannelFromCache = (channelId) => {
+  let channel = channelCache.get(channelId);
+  if (!channel) {
+    channel = client.channels.cache.get(channelId);
+    if (channel) channelCache.set(channel, channelId);
+  }
+  return channel;
+};
 
 aqua.on('trackStart', async (player, track) => {
-  let channel = channelCache.get(player.textChannel);
-  if (!channel) {
-    channel = client.channels.cache.get(player.textChannel);
-    channelCache.set(player.textChannel, channel);
-  }
+  const channel = getChannelFromCache(player.textChannel);
   if (channel) {
     player.nowPlayingMessage = await channel.send({ embeds: [createTrackEmbed(player, track)] });
   }
@@ -87,17 +92,20 @@ aqua.on('trackChange', async (player, newTrack) => {
 });
 
 aqua.on('trackEnd', async (player) => {
+  if (player.queue.length === 0) {
+    const channel = getChannelFromCache(player.textChannel);
+    if (channel) {
+      channelCache.delete(channel);
+    }
+  }
   player.nowPlayingMessage = null;
 });
 
 aqua.on('trackError', async (player, track, payload) => {
   console.error(`Error ${payload} / ${payload}`);
-  let channel = channelCache.get(player.textChannel);
-  if (!channel) {
-    channel = client.channels.cache.get(player.textChannel);
-    channelCache.set(player.textChannel, channel);
-  }
-  if (channel && player.nowPlayingMessage) {
+  const channel = getChannelFromCache(player.textChannel);
+  
+  if (channel) {
     const embed = new EmbedBuilder()
       .setColor(0xff0000)
       .setTitle("❌ Error Playing Track")
@@ -127,16 +135,6 @@ aqua.on("debug", (message) => console.log(message));
 
 client.aqua.on('nodeError', (node, error) => {
   console.error(`Node "${node.name}" encountered an error: ${error.message}.`);
-});
-
-process.on('SIGINT', () => {
-  client.destroy();
-  process.exit();
-});
-
-process.on('SIGTERM', () => {
-  client.destroy();
-  process.exit();
 });
 
 client.slashCommands = new Collection();
