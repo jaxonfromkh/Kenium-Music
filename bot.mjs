@@ -139,11 +139,10 @@ client.aqua.on('nodeError', (node, error) => {
 
 client.slashCommands = new Collection();
 client.events = new Collection();
-client.buttonCommands = new Collection();
 client.selectMenus = new Collection();
+
 
 await import("./src/handlers/Command.mjs").then(({ CommandHandler }) => CommandHandler(client, rootPath));
 await import("./src/handlers/Events.mjs").then(({ EventHandler }) => EventHandler(client, rootPath));
-await import("./src/handlers/Button.mjs").then(({ ButtonHandler }) => ButtonHandler(client, rootPath));
 
 client.login(token);
