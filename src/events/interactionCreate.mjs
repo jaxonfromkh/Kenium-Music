@@ -4,7 +4,6 @@ export const Event = {
         try {
             const command = (
                 client.slashCommands?.get(interaction.commandName) ||
-                client.buttonCommands.get(interaction.customId) ||
                 (interaction.isStringSelectMenu() &&
                     (client.selectMenus.get(interaction.customId) ||
                         client.selectMenus.get(interaction.values[0])))
