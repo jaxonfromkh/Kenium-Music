@@ -16,14 +16,14 @@ export const Event = {
                 state: `🚀 Running with Node.js v21.7.3 and Java 21`
             },
             {
-                name: `🌐 Running on ${client.guilds.cache.size} servers`,
+                name: `🌐 Server`,
                 type: ActivityType.Custom,
-                state: `⚙️ Optimizing processes... or not`
+                state: `Idk what to put here... maybe Aqualink + Discord?`
             },
             {
-                name: `👥 With ${client.guilds.cache.reduce((a, b) => a + b.memberCount, 0)} users, prob none of them use this!!!`,
+                name: `Lol`,
                 type: ActivityType.Custom,
-                state: `🤷‍♂️ Idk what to put here... Lavalink + aqualink`
+                state: `👥 With ${client.guilds.cache.reduce((a, b) => a + b.memberCount, 0)} users, prob none of them use this!!!`
             }
         ];
 
