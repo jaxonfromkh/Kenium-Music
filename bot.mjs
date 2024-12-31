@@ -15,11 +15,10 @@ const { Aqua } = require('aqualink');
 const nodes = [{
   host: "",
   password: "a",
-  port: 433,
+  port: 133,
   secure: false,
   name: "toddys"
 }];
-
 const __dirname = dirname(fileURLToPath(import.meta.url));
 export const rootPath = __dirname;
 
@@ -45,6 +44,7 @@ const aqua = new Aqua(client, nodes, {
   autoResume: false, 
 });
 
+
 function formatTime(time) {
   const minutes = Math.floor(time / 60);
   const seconds = Math.floor(time % 60);
@@ -52,6 +52,11 @@ function formatTime(time) {
 }
 
 function createTrackEmbed(player, track) {
+  const position = player.position || 0;
+  const duration = track.info.length;
+  const progress = Math.floor((position / duration) * 20);
+  const progressBar = '▰'.repeat(progress) + '▱'.repeat(20 - progress);
+  
   return new EmbedBuilder()
     .setColor(0x000000)
     .setDescription(`> [\`${track.info.title}\`](${track.info.uri})`)
@@ -60,15 +65,27 @@ function createTrackEmbed(player, track) {
       { name: "> 👤 Author", value: `> \`${track.info.author}\``, inline: true },
       { name: "> 💿 Album", value: `> \`${track.info.album || 'N/A'}\``, inline: true },
       { name: "> 🔊 Volume", value: `> \`${player.volume}%\``, inline: true },
-      { name: "> 🔁 Loop", value: `> ${player.loop ? 'Off' : 'On'}`, inline: true }
+      { name: "> 🔁 Loop", value: `> ${player.loop ? 'Off' : 'On'}`, inline: true },
+      { name: "▶️ Progress", value: `\`${Math.round((position / duration) * 100)}%\` [${progressBar}]`, inline: false } 
     )
     .setThumbnail(track.info.artworkUrl)
-    .setAuthor({ name: "Kenium v2.4.0 | by mushroom0162", iconURL: client.user.avatarURL() })
-    .setTimestamp();
+    .setAuthor({ name: "Kenium v2.5.0 | by mushroom0162", iconURL: client.user.avatarURL() });
 }
+async function updateTrackEmbed(player, track, message) {
+  const interval = setInterval(async () => {
+    if (player.playing) {
+      const newEmbed = createTrackEmbed(player, track);
+      await message.edit({ embeds: [newEmbed] });
+    } else {
+      clearInterval(interval); 
+    }
+  }, 20000); 
 
+  player.on('trackEnd', () => {
+    clearInterval(interval);
+  });
+}
 const channelCache = new WeakMap();
-
 const getChannelFromCache = (channelId) => {
   let channel = channelCache.get(channelId);
   if (!channel) {
@@ -78,31 +95,29 @@ const getChannelFromCache = (channelId) => {
   return channel;
 };
 
+// Example usage in your event listener
 aqua.on('trackStart', async (player, track) => {
   const channel = getChannelFromCache(player.textChannel);
   if (channel) {
     player.nowPlayingMessage = await channel.send({ embeds: [createTrackEmbed(player, track)] });
+    updateTrackEmbed(player, track, player.nowPlayingMessage); // Start updating the embed
   }
 });
 
 aqua.on('trackChange', async (player, newTrack) => {
   if (player.nowPlayingMessage && !player.shouldDeleteMessage) {
     await player.nowPlayingMessage.edit({ embeds: [createTrackEmbed(player, newTrack)] });
+    // Restart the update interval for the new track
+    updateTrackEmbed(player, newTrack, player.nowPlayingMessage);
   }
 });
 
 aqua.on('trackEnd', async (player) => {
-  if (player.queue.length === 0) {
-    const channel = getChannelFromCache(player.textChannel);
-    if (channel) {
-      channelCache.delete(channel);
-    }
-  }
   player.nowPlayingMessage = null;
 });
 
 aqua.on('trackError', async (player, track, payload) => {
-  console.error(`Error ${payload} / ${payload}`);
+  console.error(`Error ${payload.exception.code} / ${payload.exception.message}`);
   const channel = getChannelFromCache(player.textChannel);
   
   if (channel) {
@@ -110,7 +125,7 @@ aqua.on('trackError', async (player, track, payload) => {
       .setColor(0xff0000)
       .setTitle("❌ Error Playing Track")
       .setDescription(`Error playing track: \`${track.info.title}\`\nMessage: \`${payload.exception.message}\``)
-      .setFooter({ text: "Kenium v2.4.0 | by mushroom0162" })
+      .setFooter({ text: "Kenium v2.5.0 | by mushroom0162" })
       .setTimestamp();
     try {
       const message = await channel.send({ embeds: [embed] });
@@ -140,7 +155,6 @@ client.aqua.on('nodeError', (node, error) => {
 client.slashCommands = new Collection();
 client.events = new Collection();
 client.selectMenus = new Collection();
-
 
 await import("./src/handlers/Command.mjs").then(({ CommandHandler }) => CommandHandler(client, rootPath));
 await import("./src/handlers/Events.mjs").then(({ EventHandler }) => EventHandler(client, rootPath));
