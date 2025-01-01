@@ -2,7 +2,7 @@
 
 - Provides and fast code, with optimization built in mind tho
 - An fast loading music system, queue and commands
-- Full support for youtube (Songs, playlists, autoplay, etc), also has support for spotify (playlists, tracks)
+- Full support for youtube (Songs, playlists, autoplay, etc), also has support for spotify (playlists, tracks), also for soundcloud
 - An 24/7 Uptime, powered by 2 different hostings!
 - Exclusive features (Example: Import and export system, with .txt and .pdf support)
 - Frequent updates, both in lavalink and the bot
