@@ -1,3 +1,7 @@
+// todo: fix memory leaks and remove the progress bar for now
+
+console.log('vps test')
+
 import {
   Client,
   GatewayIntentBits,
