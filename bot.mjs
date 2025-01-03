@@ -1,7 +1,3 @@
-// todo: fix memory leaks and remove the progress bar for now
-
-console.log('vps test')
-
 import {
   Client,
   GatewayIntentBits,
@@ -17,9 +13,9 @@ const require = createRequire(import.meta.url);
 const { Aqua } = require('aqualink');
 
 const nodes = [{
-  host: "",
-  password: "a",
-  port: 133,
+  host: "38.22.104.155",
+  password: "anpasswordthatiforgotforever",
+  port: 1073,
   secure: false,
   name: "toddys"
 }];
@@ -56,11 +52,6 @@ function formatTime(time) {
 }
 
 function createTrackEmbed(player, track) {
-  const position = player.position || 0;
-  const duration = track.info.length;
-  const progress = Math.floor((position / duration) * 20);
-  const progressBar = '▰'.repeat(progress) + '▱'.repeat(20 - progress);
-  
   return new EmbedBuilder()
     .setColor(0x000000)
     .setDescription(`> [\`${track.info.title}\`](${track.info.uri})`)
@@ -69,27 +60,15 @@ function createTrackEmbed(player, track) {
       { name: "> 👤 Author", value: `> \`${track.info.author}\``, inline: true },
       { name: "> 💿 Album", value: `> \`${track.info.album || 'N/A'}\``, inline: true },
       { name: "> 🔊 Volume", value: `> \`${player.volume}%\``, inline: true },
-      { name: "> 🔁 Loop", value: `> ${player.loop ? 'Off' : 'On'}`, inline: true },
-      { name: "▶️ Progress", value: `\`${Math.round((position / duration) * 100)}%\` [${progressBar}]`, inline: false } 
+      { name: "> 🔁 Loop", value: `> ${player.loop ? 'Off' : 'On'}`, inline: true }
     )
     .setThumbnail(track.info.artworkUrl)
-    .setAuthor({ name: "Kenium v2.5.0 | by mushroom0162", iconURL: client.user.avatarURL() });
+    .setAuthor({ name: "Kenium v2.5.0 | by mushroom0162", iconURL: client.user.avatarURL() })
+    .setTimestamp();
 }
-async function updateTrackEmbed(player, track, message) {
-  const interval = setInterval(async () => {
-    if (player.playing) {
-      const newEmbed = createTrackEmbed(player, track);
-      await message.edit({ embeds: [newEmbed] });
-    } else {
-      clearInterval(interval); 
-    }
-  }, 20000); 
 
-  player.on('trackEnd', () => {
-    clearInterval(interval);
-  });
-}
 const channelCache = new WeakMap();
+
 const getChannelFromCache = (channelId) => {
   let channel = channelCache.get(channelId);
   if (!channel) {
@@ -99,26 +78,29 @@ const getChannelFromCache = (channelId) => {
   return channel;
 };
 
-// Example usage in your event listener
 aqua.on('trackStart', async (player, track) => {
   const channel = getChannelFromCache(player.textChannel);
   if (channel) {
     player.nowPlayingMessage = await channel.send({ embeds: [createTrackEmbed(player, track)] });
-    updateTrackEmbed(player, track, player.nowPlayingMessage); // Start updating the embed
   }
 });
 
 aqua.on('trackChange', async (player, newTrack) => {
   if (player.nowPlayingMessage && !player.shouldDeleteMessage) {
     await player.nowPlayingMessage.edit({ embeds: [createTrackEmbed(player, newTrack)] });
-    // Restart the update interval for the new track
-    updateTrackEmbed(player, newTrack, player.nowPlayingMessage);
   }
 });
 
 aqua.on('trackEnd', async (player) => {
+  if (player.queue.length === 0) {
+    const channel = getChannelFromCache(player.textChannel);
+    if (channel) {
+      channelCache.delete(channel);
+    }
+  }
   player.nowPlayingMessage = null;
 });
+
 
 aqua.on('trackError', async (player, track, payload) => {
   console.error(`Error ${payload.exception.code} / ${payload.exception.message}`);
@@ -149,8 +131,6 @@ client.on("raw", (d) => {
 client.aqua.on('nodeConnect', (node) => {
   console.log(`Node "${node.name}" connected.`);
 });
-
-aqua.on("debug", (message) => console.log(message));
 
 client.aqua.on('nodeError', (node, error) => {
   console.error(`Node "${node.name}" encountered an error: ${error.message}.`);
