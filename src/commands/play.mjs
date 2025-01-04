@@ -12,112 +12,144 @@ export const Command = {
       autocomplete: true,
     },
   ],
+
+  // Improved autocomplete with better memory management and error handling
   async autocomplete(client, interaction) {
-    // Clear previous references
-    const focused = interaction.options.getFocused();
-    
-    // Get query directly from the focused interaction
-    const query = focused ? focused : interaction.options.getString('query');
-    if (query) {
-        try {
-            // Fetch results while maintaining minimal data in memory
-            const results = await client.aqua.resolve({ query, requester: interaction.user });
-            if (results.tracks) {
-                // We map and create options only when we have tracks
-                const options = results.tracks.slice(0, 9).map(track => ({
-                    name: track.info.title,
-                    value: track.info.uri
-                }));
-                await interaction.respond(options);
-            }
-        } catch (error) {
-            console.error('Error fetching autocomplete data:', error);
-            // It's important to handle errors; either send a response or log it
-        }
+    try {
+      const focused = interaction.options.getFocused();
+      if (!focused || focused.length < 2) {
+        return interaction.respond([]);
+      }
+
+      // Implement debouncing to prevent too many API calls
+      const now = Date.now();
+      if (this.lastAutocomplete && (now - this.lastAutocomplete) < 300) {
+        return interaction.respond([]);
+      }
+      this.lastAutocomplete = now;
+
+      const results = await client.aqua.resolve({
+        query: focused,
+        requester: interaction.user,
+      });
+
+      if (!results?.tracks?.length) {
+        return interaction.respond([]);
+      }
+
+      // Map directly to response format without storing extra data
+      const options = results.tracks.slice(0, 9).map(({ info: { title, uri } }) => ({
+        name: title.slice(0, 100), // Discord has a limit on option name length
+        value: uri
+      }));
+
+      return interaction.respond(options);
+    } catch (error) {
+      console.error('Autocomplete error:', error);
+      return interaction.respond([]);
     }
   },
-//   async autocomplete(client, interaction) {
-//     try {
-//       // Early return if no focused option
-//       if (!interaction.options.getFocused()) return interaction.respond([]);
-  
-//       const query = interaction.options.getString('query');
-//       if (!query) return interaction.respond([]);
-  
-//       // Set a reasonable limit for results
-//       const RESULTS_LIMIT = 9;
-      
-//       // Stream results instead of loading all at once
-//       const results = await client.aqua.resolve({ 
-//         query, 
-//         requester: interaction.user,
-//         limit: RESULTS_LIMIT // Only fetch what we need
-//       });
-  
-//       // Map directly without storing full track objects
-//       const options = results.tracks.map(track => ({
-//         name: track.info.title,
-//         value: track.info.uri
-//       })).slice(0, RESULTS_LIMIT);
-  
-//       // Clear any references
-//       results.tracks = null;
-  
-//       return interaction.respond(options);
-//     } catch (error) {
-//       console.error('Autocomplete error:', error);
-// //       return interaction.respond([]);
-// //    }
-//  }
 
-  run: async (client, interaction) => {
+  async run(client, interaction) {
     try {
-      const { guild, member } = interaction;
-      const voiceChannel = member.voice.channel;
+      // Destructure needed properties immediately
+      const { guild, member, channel } = interaction;
+      const voiceChannel = member?.voice?.channel;
 
-      if (!voiceChannel) return;
-      const lol = guild.channels.cache.find(
-        (chnl) => chnl.type === 2 && chnl.members.has(client.user.id)
-      );
-      if (lol && voiceChannel.id !== lol.id) {
+      // Early validation with specific error messages
+      if (!voiceChannel) {
         return interaction.reply({
-          content: `im already on <#${lol.id}>`,
-          ephemeral: true,
+          content: 'You must be in a voice channel to use this command.',
+          ephemeral: true
         });
       }
-      const player =  client.aqua.createConnection({
+
+      // Check if bot is already in another channel
+      const currentVoiceChannel = guild.channels.cache.find(
+        channel => channel.type === 2 && channel.members.has(client.user.id)
+      );
+
+      if (currentVoiceChannel && voiceChannel.id !== currentVoiceChannel.id) {
+        return interaction.reply({
+          content: `I'm already in <#${currentVoiceChannel.id}>`,
+          ephemeral: true
+        });
+      }
+
+      await interaction.deferReply({ ephemeral: true });
+
+      const player = client.aqua.createConnection({
         guildId: guild.id,
         voiceChannel: voiceChannel.id,
-        textChannel: interaction.channel.id,
+        textChannel: channel.id,
         deaf: true,
       });
 
+      // Fetch track with timeout
       const query = interaction.options.getString('query');
-      const result = await client.aqua.resolve({ query, requester: member });
+      const result = await Promise.race([
+        client.aqua.resolve({ 
+          query, 
+          requester: member,
+          searchLimit: 1 
+        }),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Query timeout')), 10000)
+        )
+      ]);
 
-      if (!result.tracks.length) {
-        return interaction.reply({ content: 'No tracks found for the given query.', ephemeral: true });
+      if (!result?.tracks?.length) {
+        return interaction.editReply('No tracks found for the given query.');
       }
 
-      const embed = new EmbedBuilder().setColor(0x000000);
-      const { loadType, tracks, playlistInfo } = result;
+      const embed = new EmbedBuilder()
+        .setColor(0x000000)
+        .setTimestamp();
 
-      if (loadType === "track" || loadType === "search") {
-        player.queue.add(tracks[0]);
-        embed.setDescription(`Added [${tracks[0].info.title}](${tracks[0].info.uri}) to the queue.`);
-      } else if (loadType === "playlist") {
-        tracks.forEach(track => player.queue.add(track));
-        embed.setDescription(`Added ${playlistInfo.name} playlist to the queue.`);
+      switch (result.loadType) {
+        case "track":
+        case "search": {
+          const track = result.tracks[0];
+          player.queue.add(track);
+          embed.setDescription(`Added [${track.info.title}](${track.info.uri}) to the queue.`);
+          break;
+        }
+        case "playlist": {
+          const { tracks, playlistInfo } = result;
+          const chunkSize = 100;
+          
+          for (let i = 0; i < tracks.length; i += chunkSize) {
+            const chunk = tracks.slice(i, i + chunkSize);
+            player.queue.add(...chunk);
+            if (i + chunkSize < tracks.length) {
+              await new Promise(resolve => setTimeout(resolve, 0));
+            }
+          }
+          
+          embed.setDescription(`Added ${playlistInfo.name} playlist (${tracks.length} tracks) to the queue.`);
+          break;
+        }
+        default:
+          return interaction.editReply('Unsupported content type.');
       }
 
-      await interaction.reply({ embeds: [embed], ephemeral: true });
+      await interaction.editReply({ embeds: [embed] });
 
       if (!player.playing && !player.paused && player.queue.size > 0) {
         player.play();
       }
+
     } catch (error) {
-      console.error('An error occurred while executing the play command:', error);
-      await interaction.reply({ content: 'An error occurred while trying to play the song. Please try again later.', ephemeral: true });
+      console.error('Play command error:', error);
+      const errorMessage = error.message === 'Query timeout' 
+        ? 'The request timed out. Please try again.'
+        : 'An error occurred while processing your request. Please try again later.';
+      
+      if (interaction.deferred) {
+        await interaction.editReply({ content: errorMessage });
+      } else {
+        await interaction.reply({ content: errorMessage, ephemeral: true });
+      }
     }
   },
 };
