@@ -1,4 +1,4 @@
-import { ChannelType, EmbedBuilder, ApplicationCommandOptionType } from "discord.js";
+import { EmbedBuilder } from "discord.js";
 
 export const Command = {
   name: "play",
@@ -7,7 +7,7 @@ export const Command = {
     {
       name: 'query',
       description: 'The song you want to search for',
-      type: ApplicationCommandOptionType.String,
+      type: 3,
       required: true,
       autocomplete: true,
     },
@@ -76,7 +76,15 @@ export const Command = {
       const voiceChannel = member.voice.channel;
 
       if (!voiceChannel) return;
-      if (guild.members.me.voice.channelId !== voiceChannel.id) return await interaction.reply({ content: 'You must be in the same voice channel as me to use this command.', ephemeral: true });
+      const lol = guild.channels.cache.find(
+        (chnl) => chnl.type === 2 && chnl.members.has(client.user.id)
+      );
+      if (lol && voiceChannel.id !== lol.id) {
+        return interaction.reply({
+          content: `im already on <#${lol.id}>`,
+          ephemeral: true,
+        });
+      }
       const player =  client.aqua.createConnection({
         guildId: guild.id,
         voiceChannel: voiceChannel.id,
