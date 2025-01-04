@@ -4,11 +4,27 @@ export const Command = {
     name: "search",
     description: "Search for a song",
     options: [{
-        name: "query",
-        description: "The song you want to search for",
-        type: 3,
-        required: true,
+        name: 'youtube',
+        description: 'Search for a song on YouTube',
+        type: 1,
+        options: [{
+            name: 'query',
+            description: 'The query to search for',
+            type: 3,
+            required: true
+        }]
+    }, {
+        name: 'soundcloud',
+        description: 'Search for a song on SoundCloud',
+        type: 1,
+        options: [{
+            name: 'query',
+            description: 'The query to search for',
+            type: 3,
+            required: true
+        }],
     }],
+
     run: async (client, interaction) => {
         const vc = interaction.member?.voice?.channel;
         if (!vc) {
@@ -18,12 +34,11 @@ export const Command = {
             });
         }
 
-        // Check existing connection using Collection#find for better performance
         const existingConnection = client.aqua.connections?.get(interaction.guildId);
         if (existingConnection?.channelId && vc.id !== existingConnection.channelId) {
-            return interaction.reply({ 
-                content: `I'm already in <#${existingConnection.channelId}>`, 
-                ephemeral: true 
+            return interaction.reply({
+                content: `I'm already in <#${existingConnection.channelId}>`,
+                ephemeral: true
             });
         }
 
@@ -37,32 +52,35 @@ export const Command = {
             });
         } catch (err) {
             console.error('Connection error:', err);
-            return interaction.reply({ 
-                content: 'Failed to create connection.', 
-                ephemeral: true 
+            return interaction.reply({
+                content: 'Failed to create connection.',
+                ephemeral: true
             });
         }
 
+        // Determine which sub-command was used
+        const subCommand = interaction.options.getSubcommand();
         const query = interaction.options.getString('query');
+
         let tracks;
         try {
-            const result = await client.aqua.resolve({ 
-                query, 
-                requester: interaction.member 
+            const result = await client.aqua.resolve({
+                query,
+                source: subCommand === 'youtube' ? 'ytsearch' : 'scsearch', // Specify the source
+                requester: interaction.member
             });
             tracks = result.tracks?.slice(0, 5);
-            
             if (!tracks?.length) {
-                return interaction.reply({ 
-                    content: 'No results found.', 
-                    ephemeral: true 
+                return interaction.reply({
+                    content: 'No results found.',
+                    ephemeral: true
                 });
             }
         } catch (err) {
             console.error('Query error:', err);
-            return interaction.reply({ 
-                content: 'Failed to search for tracks.', 
-                ephemeral: true 
+            return interaction.reply({
+                content: 'Failed to search for tracks.',
+                ephemeral: true
             });
         }
 
@@ -70,24 +88,24 @@ export const Command = {
             .setCustomId('search-select')
             .setPlaceholder('Select a song')
             .addOptions(tracks.map(track => ({
-                label: track.info.title.slice(0, 100),
+                label: track.info.title.length > 100 ? track.info.title.slice(0, 100) + '...' : track.info.title,
                 value: track.info.uri,
             })));
 
         const embed = new EmbedBuilder()
             .setColor(0x000000)
             .setTitle('Search Results')
-            .setDescription(`**Query:** ${query}`)
+            .setDescription(`**Query:** ${query}\n**Source:** ${subCommand === 'youtube' ? 'YouTube' : 'SoundCloud'}`)
             .setThumbnail(client.user.displayAvatarURL())
-            .setFooter({ 
-                text: 'Kenium v2.4.0 | by mushroom0162', 
-                iconURL: interaction.user.displayAvatarURL() 
+            .setFooter({
+                text: 'Kenium v2.5.0 | by mushroom0162',
+                iconURL: interaction.user.displayAvatarURL()
             });
 
-        const message = await interaction.reply({ 
-            embeds: [embed], 
-            components: [new ActionRowBuilder().addComponents(selectMenu)], 
-            fetchReply: true 
+        const message = await interaction.reply({
+            embeds: [embed],
+            components: [new ActionRowBuilder().addComponents(selectMenu)],
+            fetchReply: true
         });
 
         const collector = message.createMessageComponentCollector({
@@ -97,32 +115,21 @@ export const Command = {
         });
 
         collector.on('collect', async (i) => {
-            if (i.user.id !== interaction.user.id) {
-                return i.reply({
-                    content: 'You are not allowed to use this.',
-                    ephemeral: true
-                })
-            }
-            const selectedTrack = tracks.find(
-                track => track.info.uri === i.values[0]
-            );
-
-            if (!selectedTrack) {
-                await i.update({ 
-                    content: 'Track not found!', 
-                    components: [], 
-                    embeds: [] 
-                });
-                return;
-            }
-
             await i.deferUpdate();
-            player.queue.add(selectedTrack);
+            const selectedTrack = tracks.find(track => track.info.uri === i.values[0]);
+            if (!selectedTrack) {
+                return await i.editReply({
+                    content: 'Track not found!',
+                    components: [],
+                    embeds: []
+                });
+            }
 
-            await i.editReply({ 
-                content: `Added **${selectedTrack.info.title}** to the queue`, 
-                components: [], 
-                embeds: [] 
+            player.queue.add(selectedTrack);
+            await i.editReply({
+                content: `Added **${selectedTrack.info.title}** to the queue`,
+                components: [],
+                embeds: []
             });
 
             if (!player.playing && !player.paused && player.queue.size > 0) {
@@ -130,14 +137,13 @@ export const Command = {
             }
         });
 
-        collector.on('end', () => {
+        collector.on('end', async () => {
             if (!message.deleted) {
-                message.delete().catch(() => null);
+                await message.delete().catch(() => null);
             }
-            collector.removeAllListeners();
         });
 
-        // Cleanup on command completion
+        // Ensure collector is cleaned up properly
         return () => {
             collector.stop();
             if (!message.deleted) {
