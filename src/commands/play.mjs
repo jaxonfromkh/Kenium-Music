@@ -115,18 +115,13 @@ export const Command = {
           break;
         }
         case "playlist": {
-          const { tracks, playlistInfo } = result;
-          const chunkSize = 100;
-          
-          for (let i = 0; i < tracks.length; i += chunkSize) {
-            const chunk = tracks.slice(i, i + chunkSize);
-            player.queue.add(...chunk);
-            if (i + chunkSize < tracks.length) {
-              await new Promise(resolve => setTimeout(resolve, 0));
+          const { tracks } = result;
+        
+            for (const track of tracks) {
+              player.queue.add(track);
             }
-          }
           
-          embed.setDescription(`Added ${playlistInfo.name} playlist (${tracks.length} tracks) to the queue.`);
+          embed.setDescription(`Added ${result.playlistInfo.name} playlist (${tracks.length} tracks) to the queue.`);
           break;
         }
         default:
