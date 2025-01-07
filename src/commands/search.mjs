@@ -8,8 +8,8 @@ const CONSTANTS = {
         SOUNDCLOUD: 0xFF5500
     },
     EMOJIS: {
-        youtube: '<:youtube:1326226014489149551>',
-        soundcloud: '<:soundcloud:1326225982427758753>'
+        youtube: '<:youtube:1326295615017058304>',
+        soundcloud: '<:soundcloud:1326295646818406486>'
     },
     PLATFORMS: {
         YOUTUBE: {
@@ -22,7 +22,6 @@ const CONSTANTS = {
         }
     }
 };
-
 export const Command = {
     name: "search",
     description: "Search for a song",
@@ -158,7 +157,7 @@ function createEmbed(title, query, tracks, client, interaction, source) {
     return new EmbedBuilder()
         .setColor(color)
         .setTitle(title)
-        .setDescription(`**Query:** \`${query}\`\n\n${trackListMarkdown}`)
+        .setDescription(`${trackListMarkdown}`)
         .setThumbnail(client.user.displayAvatarURL())
         .setFooter({ 
             text: `Results from ${title.split(' ')[0]}.`, 
