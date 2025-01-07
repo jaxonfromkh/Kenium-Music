@@ -1,36 +1,22 @@
-import { ActionRowBuilder, EmbedBuilder, StringSelectMenuBuilder } from "discord.js";
+import { ActionRowBuilder, EmbedBuilder, ButtonBuilder, ButtonStyle } from "discord.js";
 
 export const Command = {
     name: "search",
     description: "Search for a song",
-    options: [{
-        name: 'youtube',
-        description: 'Search for a song on YouTube',
-        type: 1,
-        options: [{
-            name: 'query',
-            description: 'The query to search for',
+    options: [
+        {
+            name: "query",
+            description: "The song you want to search for",
             type: 3,
             required: true
-        }]
-    }, {
-        name: 'soundcloud',
-        description: 'Search for a song on SoundCloud',
-        type: 1,
-        options: [{
-            name: 'query',
-            description: 'The query to search for',
-            type: 3,
-            required: true
-        }],
-    }],
-
-    run: async (client, interaction) => {
+        }
+    ],
+    async run(client, interaction) {
         const vc = interaction.member?.voice?.channel;
         if (!vc) {
-            return interaction.reply({ 
-                content: 'You must be in a voice channel!', 
-                ephemeral: true 
+            return interaction.reply({
+                content: 'You must be in a voice channel!',
+                ephemeral: true
             });
         }
 
@@ -42,113 +28,113 @@ export const Command = {
             });
         }
 
-        let player;
-        try {
-            player = existingConnection || client.aqua.createConnection({
-                guildId: interaction.guildId,
-                voiceChannel: vc.id,
-                textChannel: interaction.channel.id,
-                deaf: true,
-            });
-        } catch (err) {
-            console.error('Connection error:', err);
-            return interaction.reply({
-                content: 'Failed to create connection.',
-                ephemeral: true
-            });
-        }
+        const player = existingConnection || client.aqua.createConnection({
+            guildId: interaction.guildId,
+            voiceChannel: vc.id,
+            textChannel: interaction.channel.id,
+            deaf: true,
+        });
 
-        // Determine which sub-command was used
-        const subCommand = interaction.options.getSubcommand();
         const query = interaction.options.getString('query');
-
-        let tracks;
-        try {
-            const result = await client.aqua.resolve({
-                query,
-                source: subCommand === 'youtube' ? 'ytsearch' : 'scsearch', // Specify the source
-                requester: interaction.member
-            });
-            tracks = result.tracks?.slice(0, 5);
-            if (!tracks?.length) {
-                return interaction.reply({
-                    content: 'No results found.',
-                    ephemeral: true
-                });
-            }
-        } catch (err) {
-            console.error('Query error:', err);
+        const tracks = await searchTracks(client, query, 'ytsearch', interaction.member);
+        if (!tracks.length) {
             return interaction.reply({
-                content: 'Failed to search for tracks.',
+                content: 'No results found on YouTube.',
                 ephemeral: true
             });
         }
 
-        const selectMenu = new StringSelectMenuBuilder()
-            .setCustomId('search-select')
-            .setPlaceholder('Select a song')
-            .addOptions(tracks.map(track => ({
-                label: track.info.title.length > 100 ? track.info.title.slice(0, 100) + '...' : track.info.title,
-                value: track.info.uri,
-            })));
-
-        const embed = new EmbedBuilder()
-            .setColor(0x000000)
-            .setTitle('Search Results')
-            .setDescription(`**Query:** ${query}\n**Source:** ${subCommand === 'youtube' ? 'YouTube' : 'SoundCloud'}`)
-            .setThumbnail(client.user.displayAvatarURL())
-            .setFooter({
-                text: 'Kenium v2.5.0 | by mushroom0162',
-                iconURL: interaction.user.displayAvatarURL()
-            });
-
+        const buttonRow = createPlatformButtons();
+        const embed = createEmbed('YouTube Search Results', query, tracks, client, interaction);
         const message = await interaction.reply({
             embeds: [embed],
-            components: [new ActionRowBuilder().addComponents(selectMenu)],
+            components: [buttonRow, createSongSelectionButtons(tracks)],
             fetchReply: true
         });
 
-        const collector = message.createMessageComponentCollector({
-            filter: i => i.user.id === interaction.user.id && i.customId === 'search-select',
-            componentType: 3,
-            time: 15000,
-        });
+        const filter = (i) => i.user.id === interaction.user.id;
+        const collector = message.createMessageComponentCollector({ filter, time: 15000 });
 
         collector.on('collect', async (i) => {
             await i.deferUpdate();
-            const selectedTrack = tracks.find(track => track.info.uri === i.values[0]);
-            if (!selectedTrack) {
-                return await i.editReply({
-                    content: 'Track not found!',
-                    components: [],
-                    embeds: []
-                });
-            }
+            const subCommand = i.customId.split('_')[1];
 
-            player.queue.add(selectedTrack);
-            await i.editReply({
-                content: `Added **${selectedTrack.info.title}** to the queue`,
-                components: [],
-                embeds: []
-            });
+            if (i.customId.startsWith('select_song_')) {
+                const songIndex = parseInt(i.customId.split('_')[2]) - 1;
+                const selectedTrack = tracks[songIndex];
+                if (!selectedTrack) {
+                    return await i.followUp({ content: 'Track not found!', ephemeral: true });
+                }
+                player.queue.add(selectedTrack);
+                await i.followUp({ content: `Added **${selectedTrack.info.title}** to the queue`, ephemeral: true });
+                if (!player.playing && !player.paused && player.queue.size > 0) {
+                    player.play();
+                }
+            } else {
+                try {
+                    const source = subCommand === 'soundcloud' ? 'scsearch' : 'ytsearch';
+                    const newTracks = await searchTracks(client, query, source, interaction.member);
+                    if (!newTracks.length) {
+                        return await i.followUp({ content: `No results found on ${subCommand.charAt(0).toUpperCase() + subCommand.slice(1)}.`, ephemeral: true });
+                    }
 
-            if (!player.playing && !player.paused && player.queue.size > 0) {
-                player.play();
+                    const updatedEmbed = createEmbed(`${subCommand.charAt(0).toUpperCase() + subCommand.slice(1)} Search Results`, query, newTracks, client, interaction);
+                    const updatedSongSelectionRow = createSongSelectionButtons(newTracks);
+                    await message.edit({ embeds: [updatedEmbed], components: [buttonRow, updatedSongSelectionRow] });
+                } catch (err) {
+                    return handleError(err, subCommand.charAt(0).toUpperCase() + subCommand.slice(1), i);
+                }
             }
         });
 
         collector.on('end', async () => {
             if (!message.deleted) {
-                await message.delete().catch(() => null);
+                await message.delete();
             }
         });
-
-        // Ensure collector is cleaned up properly
-        return () => {
-            collector.stop();
-            if (!message.deleted) {
-                message.delete().catch(() => null);
-            }
-        };
     }
 };
+
+async function searchTracks(client, query, source, requester) {
+    const result = await client.aqua.resolve({ query, source, requester });
+    return result.tracks?.slice(0, 5) || [];
+}
+
+function handleError(err, source, interaction) {
+    console.error(`${source} search error:`, err);
+    return interaction.followUp({ content: `Failed to search for tracks on ${source}.`, ephemeral: true });
+}
+
+function createPlatformButtons() {
+    const youtubeButton = new ButtonBuilder()
+        .setCustomId('search_youtube')
+        .setLabel('YouTube 📺')
+        .setStyle(ButtonStyle.Primary);
+    
+    const soundcloudButton = new ButtonBuilder()
+        .setCustomId('search_soundcloud')
+        .setLabel('SoundCloud 🎵')
+        .setStyle(ButtonStyle.Primary);
+    
+    return new ActionRowBuilder().addComponents(youtubeButton, soundcloudButton);
+}
+
+function createEmbed(title, query, tracks, client, interaction) {
+    const color = title.includes('YouTube') ? 0xFF0000 : 0xFF5500;
+    return new EmbedBuilder()
+        .setColor(color)
+        .setTitle(title)
+        .setDescription(`**Query:** \`${query}\`\n\n` +
+            tracks.map((track, index) => `${index + 1}. **${track.info.title}** - [Listen Here](${track.info.uri})`).join('\n'))
+        .setThumbnail(client.user.displayAvatarURL())
+        .setFooter({ text: `Results from ${title.split(' ')[0]}.`, iconURL: interaction.user.displayAvatarURL(), color });
+}
+
+function createSongSelectionButtons(tracks) {
+    return new ActionRowBuilder().addComponents(
+        ...tracks.map((_, index) => new ButtonBuilder()
+            .setCustomId(`select_song_${index + 1}`)
+            .setLabel(`${index + 1}`)
+            .setStyle(ButtonStyle.Secondary))
+    );
+}
