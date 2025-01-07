@@ -19,7 +19,6 @@ export const Command = {
                 ephemeral: true
             });
         }
-
         const existingConnection = client.aqua.connections?.get(interaction.guildId);
         if (existingConnection?.channelId && vc.id !== existingConnection.channelId) {
             return interaction.reply({
@@ -27,14 +26,12 @@ export const Command = {
                 ephemeral: true
             });
         }
-
         const player = existingConnection || client.aqua.createConnection({
             guildId: interaction.guildId,
             voiceChannel: vc.id,
             textChannel: interaction.channel.id,
             deaf: true,
         });
-
         const query = interaction.options.getString('query');
         const tracks = await searchTracks(client, query, 'ytsearch', interaction.member);
         if (!tracks.length) {
@@ -43,22 +40,17 @@ export const Command = {
                 ephemeral: true
             });
         }
-
         const buttonRow = createPlatformButtons();
-        const embed = createEmbed('YouTube Search Results', query, tracks, client, interaction);
         const message = await interaction.reply({
-            embeds: [embed],
-            components: [buttonRow, createSongSelectionButtons(tracks)],
+            embeds: [createEmbed('YouTube Search Results', query, tracks, client, interaction, 'youtube')],
+            components: [createSongSelectionButtons(tracks), buttonRow],
             fetchReply: true
         });
-
         const filter = (i) => i.user.id === interaction.user.id;
         const collector = message.createMessageComponentCollector({ filter, time: 15000 });
-
         collector.on('collect', async (i) => {
             await i.deferUpdate();
             const subCommand = i.customId.split('_')[1];
-
             if (i.customId.startsWith('select_song_')) {
                 const songIndex = parseInt(i.customId.split('_')[2]) - 1;
                 const selectedTrack = tracks[songIndex];
@@ -77,16 +69,14 @@ export const Command = {
                     if (!newTracks.length) {
                         return await i.followUp({ content: `No results found on ${subCommand.charAt(0).toUpperCase() + subCommand.slice(1)}.`, ephemeral: true });
                     }
-
-                    const updatedEmbed = createEmbed(`${subCommand.charAt(0).toUpperCase() + subCommand.slice(1)} Search Results`, query, newTracks, client, interaction);
+                    const updatedEmbed = createEmbed(`${subCommand.charAt(0).toUpperCase() + subCommand.slice(1)} Search Results`, query, newTracks, client, interaction, subCommand);
                     const updatedSongSelectionRow = createSongSelectionButtons(newTracks);
-                    await message.edit({ embeds: [updatedEmbed], components: [buttonRow, updatedSongSelectionRow] });
+                    await message.edit({ embeds: [updatedEmbed], components: [updatedSongSelectionRow, buttonRow] });
                 } catch (err) {
                     return handleError(err, subCommand.charAt(0).toUpperCase() + subCommand.slice(1), i);
                 }
             }
         });
-
         collector.on('end', async () => {
             if (!message.deleted) {
                 await message.delete();
@@ -110,24 +100,24 @@ function createPlatformButtons() {
         .setCustomId('search_youtube')
         .setLabel('YouTube 📺')
         .setStyle(ButtonStyle.Primary);
-    
     const soundcloudButton = new ButtonBuilder()
         .setCustomId('search_soundcloud')
         .setLabel('SoundCloud 🎵')
         .setStyle(ButtonStyle.Primary);
-    
     return new ActionRowBuilder().addComponents(youtubeButton, soundcloudButton);
 }
 
-function createEmbed(title, query, tracks, client, interaction) {
+function createEmbed(title, query, tracks, client, interaction, source) {
     const color = title.includes('YouTube') ? 0xFF0000 : 0xFF5500;
+    const emoji = source === 'youtube' ? '<:youtube:1326226014489149551>' : '<:soundcloud:1326225982427758753>';
+    
     return new EmbedBuilder()
         .setColor(color)
         .setTitle(title)
         .setDescription(`**Query:** \`${query}\`\n\n` +
-            tracks.map((track, index) => `${index + 1}. **${track.info.title}** - [Listen Here](${track.info.uri})`).join('\n'))
+            tracks.map((track, index) => `${index + 1}. ${emoji} [\`${track.info.title}\`](${track.info.uri})`).join('\n'))
         .setThumbnail(client.user.displayAvatarURL())
-        .setFooter({ text: `Results from ${title.split(' ')[0]}.`, iconURL: interaction.user.displayAvatarURL(), color });
+        .setFooter({ text: `Results from ${title.split(' ')[0]}.`, iconURL: interaction.user.displayAvatarURL() });
 }
 
 function createSongSelectionButtons(tracks) {
