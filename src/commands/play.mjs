@@ -13,37 +13,23 @@ export const Command = {
     },
   ],
 
-  // Improved autocomplete with better memory management and error handling
   async autocomplete(client, interaction) {
     try {
-      const focused = interaction.options.getFocused();
-      if (!focused || focused.length < 2) {
-        return interaction.respond([]);
-      }
+      const focused = interaction.options.getFocused() || '';
+      if (focused.length < 2) return interaction.respond([]);
 
-      // Implement debouncing to prevent too many API calls
       const now = Date.now();
-      if (this.lastAutocomplete && (now - this.lastAutocomplete) < 300) {
-        return interaction.respond([]);
-      }
+      if ((this.lastAutocomplete || 0) + 450 > now) return interaction.respond([]);
+
       this.lastAutocomplete = now;
 
-      const results = await client.aqua.resolve({
-        query: focused,
-        requester: interaction.user,
-      });
+      const { tracks } = await client.aqua.resolve({ query: focused, requester: interaction.user }) || {};
+      if (!tracks?.length) return interaction.respond([]);
 
-      if (!results?.tracks?.length) {
-        return interaction.respond([]);
-      }
-
-      // Map directly to response format without storing extra data
-      const options = results.tracks.slice(0, 9).map(({ info: { title, uri } }) => ({
-        name: title.slice(0, 100), // Discord has a limit on option name length
+      return interaction.respond(tracks.slice(0, 9).map(({ info: { title, uri } }) => ({
+        name: title.slice(0, 100),
         value: uri
-      }));
-
-      return interaction.respond(options);
+      })));
     } catch (error) {
       console.error('Autocomplete error:', error);
       return interaction.respond([]);
