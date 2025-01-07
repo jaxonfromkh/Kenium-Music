@@ -62,7 +62,7 @@ function createTrackEmbed(player, track) {
       { name: "> 🔊 Volume", value: `> \`${player.volume}%\``, inline: true },
       { name: "> 🔁 Loop", value: `> ${player.loop ? 'Off' : 'On'}`, inline: true }
     )
-    .setThumbnail(track.info.artworkUrl)
+    .setThumbnail(track.info.artworkUrl || client.user.avatarURL())
     .setAuthor({ name: "Kenium v2.5.0 | by mushroom0162", iconURL: client.user.avatarURL() })
     .setTimestamp();
 }
