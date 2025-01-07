@@ -20,6 +20,18 @@ export const Command = {
             });
         }
 
+        const currentVoiceChannel = guild.channels.cache.find(
+            channel => channel.type === 2 && channel.members.has(client.user.id)
+          );
+    
+          if (currentVoiceChannel && voiceChannel.id !== currentVoiceChannel.id) {
+            return interaction.reply({
+              content: `I'm already in <#${currentVoiceChannel.id}>`,
+              ephemeral: true
+            });
+          }
+          
+
         const player = client.aqua.players.get(guild.id) || client.aqua.createConnection({
             guildId: guild.id,
             voiceChannel: voiceChannel.id,
