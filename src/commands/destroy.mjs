@@ -10,7 +10,7 @@ export const Command = {
         player.destroy()
         await interaction.reply({
             content: "Destroyed the music",
-            ephemeral: true,
+            flags: 64,
         })
     }
 }

@@ -13,7 +13,7 @@ export const Command = {
   ],
   run: async (client, interaction) => {
     const replyError = async (msg) => {
-      await interaction.reply({ content: msg, ephemeral: true });
+      await interaction.reply({ content: msg, flags: 64 });
     };
 
     const errorMessages = [];
@@ -75,7 +75,7 @@ export const Command = {
         }
         await interaction.reply({
           content: `Successfully imported ${validTracks.length} songs.`,
-          ephemeral: true,
+          flags: 64,
         });
       } else {
         errorMessages.push("No valid tracks found after resolving URLs.");

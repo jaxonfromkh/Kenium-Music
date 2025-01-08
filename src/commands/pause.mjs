@@ -13,7 +13,7 @@ export const Command = {
 
         return interaction.reply({
             content: 'Paused the song',
-            ephemeral: true
+            flags: 64
         })
     }
 }

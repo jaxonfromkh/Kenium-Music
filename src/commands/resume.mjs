@@ -12,7 +12,7 @@ export const Command = {
         player.pause(false);
         return interaction.reply({
             content: 'Resumed the music',
-            ephemeral: true
+            flags: 64
         })
     }
 }

@@ -1,5 +1,3 @@
-import { ChannelType } from "discord.js";
-
 export const Command = {
   name: "stop",
   description: "stop the music",
@@ -11,7 +9,7 @@ export const Command = {
     player.stop()
     await interaction.reply({
       content: "Stopped the music",
-      ephemeral: true,
+      flags: 64,
     })
   }
 }

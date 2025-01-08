@@ -8,7 +8,7 @@ export const Command = {
         // Create the embed
         const embed = new EmbedBuilder()
             .setAuthor({ 
-                name: "Kenium v2.4.0 | by mushroom0162", 
+                name: "Kenium v2.5.0 | by mushroom0162", 
                 iconURL: client.user.avatarURL() 
             })
             .setDescription(`**Invite me to your server with [\`This link\`](https://discord.com/oauth2/authorize?client_id=1202232935311495209) and I'll try my best to play music...

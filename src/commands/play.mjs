@@ -1,4 +1,4 @@
-import { EmbedBuilder } from "discord.js";
+import { EmbedBuilder, MessageFlags } from "discord.js";
 
 export const Command = {
   name: "play",
@@ -46,7 +46,7 @@ export const Command = {
       if (!voiceChannel) {
         return interaction.reply({
           content: 'You must be in a voice channel to use this command.',
-          ephemeral: true
+          flags: 64
         });
       }
 
@@ -58,11 +58,11 @@ export const Command = {
       if (currentVoiceChannel && voiceChannel.id !== currentVoiceChannel.id) {
         return interaction.reply({
           content: `I'm already in <#${currentVoiceChannel.id}>`,
-          ephemeral: true
+          flags: 64
         });
       }
 
-      await interaction.deferReply({ ephemeral: true });
+      await interaction.deferReply({ flags: 64 });
 
       const player = client.aqua.createConnection({
         guildId: guild.id,
@@ -129,7 +129,7 @@ export const Command = {
       if (interaction.deferred) {
         await interaction.editReply({ content: errorMessage });
       } else {
-        await interaction.reply({ content: errorMessage, ephemeral: true });
+        await interaction.reply({ content: errorMessage, flags: 64 });
       }
     }
   },

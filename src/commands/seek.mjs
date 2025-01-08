@@ -20,7 +20,7 @@ export const Command = {
         const position = interaction.options.getInteger("position");
         player.seek(position * 1000);
 
-        return interaction.reply({ content: `Seeked to ${position} seconds`, ephemeral: true });
+        return interaction.reply({ content: `Seeked to ${position} seconds`, flags: 64 });
     }
 }
 

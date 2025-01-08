@@ -15,7 +15,7 @@ export const Command = {
 
             player.replay();
 
-            return interaction.reply({ content: "Restarted the music", ephemeral: true });
+            return interaction.reply({ content: "Restarted the music", flags: 64 });
 
         } catch (e) {
             console.log(e);

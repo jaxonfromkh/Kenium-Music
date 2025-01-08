@@ -1,4 +1,3 @@
-import { ChannelType } from "discord.js";
 
 export const Command = {
     name: "skip",
@@ -13,12 +12,12 @@ export const Command = {
 
 
         if (!player || player.queue.size == 0) {
-            return interaction.reply({ content: player ? "No song to skip" : "Nothing is playing", ephemeral: true });
+            return interaction.reply({ content: player ? "No song to skip" : "Nothing is playing", flags: 64 });
         }
 
         if (interaction.guild.members.me.voice.channelId !== interaction.member.voice.channelId) return;
 
-        player.stop()
+        player.skip()
 
         return interaction.reply(`Skipped the current track`)
 

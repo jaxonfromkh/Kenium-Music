@@ -68,14 +68,14 @@ export const Command = {
         // Quick validation checks
         const vc = interaction.member?.voice?.channel;
         if (!vc) {
-            return interaction.reply({ content: 'You must be in a voice channel!', ephemeral: true });
+            return interaction.reply({ content: 'You must be in a voice channel!', flags: 64 });
         }
 
         const existingConnection = client.aqua.connections?.get(interaction.guildId);
         if (existingConnection?.channelId && vc.id !== existingConnection.channelId) {
             return interaction.reply({
                 content: `I'm already in <#${existingConnection.channelId}>`,
-                ephemeral: true
+                flags: 64
             });
         }
 
@@ -99,7 +99,7 @@ export const Command = {
             if (!tracks.length) {
                 return interaction.reply({
                     content: `No results found on ${searchState.currentPlatform.name}.`,
-                    ephemeral: true
+                    flags: 64
                 });
             }
 
@@ -111,7 +111,7 @@ export const Command = {
             console.error('Search error:', error);
             return interaction.reply({
                 content: `Failed to search on ${searchState.currentPlatform.name}.`,
-                ephemeral: true
+                flags: 64
             });
         }
     }
@@ -179,7 +179,7 @@ function setupCollector(message, interaction, player, query, client, searchState
                 player.queue.add(track);
                 await i.followUp({
                     content: `Added **${track.info.title}** to the queue`,
-                    ephemeral: true
+                    flags: 64
                 });
 
                 if (!player.playing && !player.paused && player.queue.size > 0) {
@@ -204,7 +204,7 @@ function setupCollector(message, interaction, player, query, client, searchState
                 console.error(`${platform.name} search error:`, err);
                 await i.followUp({
                     content: `Failed to search for tracks on ${platform.name}.`,
-                    ephemeral: true
+                    flags: 64
                 });
             }
         }

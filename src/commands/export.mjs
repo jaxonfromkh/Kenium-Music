@@ -14,11 +14,11 @@ export const Command = {
         const player = client.aqua.players.get(interaction.guildId);
         
         if (!player || player.queue.length === 0) {
-            return interaction.reply({ content: player ? "Queue is empty" : "Nothing is playing", ephemeral: true });
+            return interaction.reply({ content: player ? "Queue is empty" : "Nothing is playing", flags: 64 });
         }
 
         if (interaction.guild.members.me.voice.channelId !== interaction.member.voice.channelId) {
-            return interaction.reply({ content: "You must be in the same voice channel to use this command.", ephemeral: true });
+            return interaction.reply({ content: "You must be in the same voice channel to use this command.", flags: 64 });
         }
 
         const tracks = player.queue.map(track => track.info.uri);

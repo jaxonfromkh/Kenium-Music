@@ -20,7 +20,7 @@ export const Command = {
     run: async (client, interaction) => {
         if (!interaction.member?.voice?.channel) return;
         const player = client.aqua.players.get(interaction.guildId);
-        if (!player) return interaction.reply({ content: "Nothing is playing", ephemeral: true });
+        if (!player) return interaction.reply({ content: "Nothing is playing", flags: 64 });
         if (interaction.guild.members.me.voice.channelId !== interaction.member.voice.channelId) return;
 
         const mode = interaction.options.getString("mode");
@@ -37,7 +37,7 @@ export const Command = {
                 break;
         }
 
-        const status = mode === "off" ? "disabled" : player.loop ? "enabled" : player.queueRepeat ? "enabled" : "disabled";
+        const status = mode === "off" ? "disabled" : player.loop ? "enabled" : "disabled" ;
         return interaction.reply({
             embeds: [
                 new EmbedBuilder()

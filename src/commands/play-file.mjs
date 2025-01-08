@@ -16,7 +16,7 @@ export const Command = {
         if (!voiceChannel) {
             return interaction.reply({
                 content: 'You must be in a voice channel to use this command.',
-                ephemeral: true
+                flags: 64
             });
         }
 
@@ -27,7 +27,7 @@ export const Command = {
           if (currentVoiceChannel && voiceChannel.id !== currentVoiceChannel.id) {
             return interaction.reply({
               content: `I'm already in <#${currentVoiceChannel.id}>`,
-              ephemeral: true
+              flags: 64
             });
           }
           
@@ -43,7 +43,7 @@ export const Command = {
         if (!file) {
             return interaction.reply({
                 content: "You must provide a file",
-                ephemeral: true,
+                flags: 64,
             });
         }
 
@@ -57,7 +57,7 @@ export const Command = {
                 player.queue.add(result.tracks[0]);
                 await interaction.reply({
                     content: `Added \`${result.tracks[0].info.title}\` to the queue.`,
-                    ephemeral: true,
+                    flags: 64,
                 });
 
                 if (!player.playing && player.queue.size > 0) {
@@ -66,14 +66,14 @@ export const Command = {
             } else {
                 return interaction.reply({
                     content: "No tracks found.",
-                    ephemeral: true,
+                    flags: 64,
                 });
             }
         } catch (error) {
             console.error('Error processing the file:', error);
             return interaction.reply({
                 content: "There was an error processing the file: " + error.message,
-                ephemeral: true,
+                flags: 64,
             });
         }
     },

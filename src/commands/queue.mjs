@@ -9,7 +9,7 @@ export const Command = {
         const player = client.aqua.players.get(interaction.guildId);
 
         if (!player || player.queue.length === 0) {
-            return interaction.reply({ content: player ? "Queue is empty" : "Nothing is playing", ephemeral: true });
+            return interaction.reply({ content: player ? "Queue is empty" : "Nothing is playing", flags: 64 });
         }
 
         if (interaction.guild.members.me.voice.channelId !== interaction.member.voice.channelId) return;
@@ -25,7 +25,7 @@ export const Command = {
             .setDescription(queue)
             .setColor(0x000000)
             .setThumbnail(client.user.displayAvatarURL())
-            .setFooter({ text: 'Kenium v2.4.0 | by mushroom0162', iconURL: interaction.user.displayAvatarURL() });
+            .setFooter({ text: 'Kenium v2.5.0 | by mushroom0162', iconURL: interaction.user.displayAvatarURL() });
 
         try {
             await interaction.reply({ embeds: [embed] });

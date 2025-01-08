@@ -13,11 +13,11 @@ const require = createRequire(import.meta.url);
 const { Aqua } = require('aqualink');
 
 const nodes = [{
-  host: "",
-  password: "",
-  port: 111,
+  host: "191.101.148.181",
+  password: "fuckialwaysgetthewrongpasswordsonlavalink",
+  port: 1084,
   secure: false,
-  name: "toddys"
+  name: "toddy's"
 }];
 const __dirname = dirname(fileURLToPath(import.meta.url));
 export const rootPath = __dirname;
@@ -41,7 +41,8 @@ const aqua = new Aqua(client, nodes, {
   defaultSearchPlatform: "ytsearch",
   restVersion: "v4",
   shouldDeleteMessage: true,
-  autoResume: false, 
+  autoResume: false,
+  infiniteReconnects: true,
 });
 
 
@@ -66,7 +67,7 @@ function createTrackEmbed(player, track) {
     .setAuthor({ name: "Kenium v2.5.0 | by mushroom0162", iconURL: client.user.avatarURL() })
     .setTimestamp();
 }
-
+aqua.on('debug', (message) => console.log(message));
 const channelCache = new WeakMap();
 
 const getChannelFromCache = (channelId) => {
@@ -127,6 +128,8 @@ client.on("raw", (d) => {
   if (![GatewayDispatchEvents.VoiceStateUpdate, GatewayDispatchEvents.VoiceServerUpdate].includes(d.t)) return;
   client.aqua.updateVoiceState(d);
 });
+
+
 
 client.aqua.on('nodeConnect', (node) => {
   console.log(`Node "${node.name}" connected.`);
