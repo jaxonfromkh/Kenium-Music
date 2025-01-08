@@ -13,9 +13,9 @@ const require = createRequire(import.meta.url);
 const { Aqua } = require('aqualink');
 
 const nodes = [{
-  host: "191.101.148.181",
-  password: "fuckialwaysgetthewrongpasswordsonlavalink",
-  port: 1084,
+  host: "",
+  password: "",
+  port: 133,
   secure: false,
   name: "toddy's"
 }];
