@@ -5,11 +5,13 @@ const CONSTANTS = {
     MAX_TRACKS: 5,
     COLORS: {
         YOUTUBE: 0xFF0000,
-        SOUNDCLOUD: 0xFF5500
+        SOUNDCLOUD: 0xFF5500,
+        SPOTIFY: 0x1DB954 
     },
     EMOJIS: {
-        youtube: '<:youtube:1326295615017058304>',
-        soundcloud: '<:soundcloud:1326295646818406486>'
+        youtube: '<:youtube:1326226014489149551>',
+        soundcloud: '<:soundcloud:1326225982427758753>',
+        spotify: '<:spotify:1326625661108092928>'
     },
     PLATFORMS: {
         YOUTUBE: {
@@ -19,6 +21,10 @@ const CONSTANTS = {
         SOUNDCLOUD: {
             name: 'SoundCloud',
             source: 'scsearch'
+        },
+        SPOTIFY: {
+            name: 'Spotify',
+            source: 'spsearch'
         }
     }
 };
@@ -126,7 +132,7 @@ function createPlatformButtons() {
         Object.entries(CONSTANTS.PLATFORMS).map(([platform, data]) => 
             new ButtonBuilder()
                 .setCustomId(`search_${platform.toLowerCase()}`)
-                .setLabel(`${data.name} ${platform === 'YOUTUBE' ? '📺' : '🎵'}`)
+                .setLabel(`${data.name} ${platform === 'YOUTUBE' ? '📺' : platform === 'SOUNDCLOUD' ? '🎵' : '🎧'}`)
                 .setStyle(ButtonStyle.Primary)
         )
     );
@@ -144,8 +150,10 @@ function createSongSelectionButtons(tracks, platform) {
 }
 
 function createEmbed(title, query, tracks, client, interaction, source) {
-    const color = title.includes(CONSTANTS.PLATFORMS.YOUTUBE.name) 
-        ? CONSTANTS.COLORS.YOUTUBE 
+    const color = title.includes(CONSTANTS.PLATFORMS.YOUTUBE.name)
+        ? CONSTANTS.COLORS.YOUTUBE
+        : title.includes(CONSTANTS.PLATFORMS.SPOTIFY.name)
+        ? CONSTANTS.COLORS.SPOTIFY
         : CONSTANTS.COLORS.SOUNDCLOUD;
 
     const trackListMarkdown = tracks
@@ -233,14 +241,10 @@ async function handleSongSelection(interaction, tracksRef, player) {
 
 async function handlePlatformSwitch(interaction, client, query, tracksRef) {
     const platform = interaction.customId.split('_')[1];
-    const platformConfig = platform === 'soundcloud' 
-        ? CONSTANTS.PLATFORMS.SOUNDCLOUD 
-        : CONSTANTS.PLATFORMS.YOUTUBE;
-
+    const platformConfig = CONSTANTS.PLATFORMS[platform.toUpperCase()];
     try {
         const searchResult = await performSearch(client, query, platformConfig, interaction);
         if (!searchResult.success) return;
-
         const updatedEmbed = createEmbed(
             `${platformConfig.name} Search Results`,
             query,
@@ -249,14 +253,11 @@ async function handlePlatformSwitch(interaction, client, query, tracksRef) {
             interaction,
             platform
         );
-
         const components = [
             createSongSelectionButtons(searchResult.tracks, platform),
             createPlatformButtons()
         ];
-
         await interaction.message.edit({ embeds: [updatedEmbed], components });
-        
         tracksRef.length = 0;
         tracksRef.push(...searchResult.tracks);
     } catch (err) {
