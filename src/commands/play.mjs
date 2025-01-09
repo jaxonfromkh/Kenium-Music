@@ -38,11 +38,9 @@ export const Command = {
 
   async run(client, interaction) {
     try {
-      // Destructure needed properties immediately
       const { guild, member, channel } = interaction;
       const voiceChannel = member?.voice?.channel;
 
-      // Early validation with specific error messages
       if (!voiceChannel) {
         return interaction.reply({
           content: 'You must be in a voice channel to use this command.',
@@ -50,7 +48,6 @@ export const Command = {
         });
       }
 
-      // Check if bot is already in another channel
       const currentVoiceChannel = guild.channels.cache.find(
         channel => channel.type === 2 && channel.members.has(client.user.id)
       );
@@ -71,18 +68,9 @@ export const Command = {
         deaf: true,
       });
 
-      // Fetch track with timeout
       const query = interaction.options.getString('query');
-      const result = await Promise.race([
-        client.aqua.resolve({ 
-          query, 
-          requester: member,
-          searchLimit: 1 
-        }),
-        new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Query timeout')), 10000)
-        )
-      ]);
+
+      const result = await client.aqua.resolve({ query, requester: interaction.user });
 
       if (!result?.tracks?.length) {
         return interaction.editReply('No tracks found for the given query.');
