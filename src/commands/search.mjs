@@ -19,21 +19,21 @@ const CONSTANTS = {
             name: 'YouTube',
             source: 'ytsearch',
             color: 0xFF0000,
-            emoji: '<:youtube:1326226014489149551>',
+            emoji: '<:youtube:1326295615017058304>',
             icon: '📺'
         },
         SOUNDCLOUD: {
             name: 'SoundCloud',
             source: 'scsearch',
             color: 0xFF5500,
-            emoji: '<:soundcloud:1326225982427758753>',
+            emoji: '<:soundcloud:1326295646818406486>',
             icon: '🎵'
         },
         SPOTIFY: {
             name: 'Spotify',
             source: 'spsearch',
             color: 0x1DB954,
-            emoji: '<:spotify:1326625661108092928>',
+            emoji: '<:spotify:1326702792269893752>',
             icon: '🎧'
         }
     }
@@ -158,7 +158,6 @@ async function createSearchMessage(client, interaction, query, searchState) {
     return interaction.reply({
         embeds: [embed],
         components: [selectionButtons, platformButtons],
-        fetchReply: true
     });
 }
 
@@ -167,21 +166,17 @@ function setupCollector(message, interaction, player, query, client, searchState
         filter: i => i.user.id === interaction.user.id,
         time: CONSTANTS.COLLECTOR_TIMEOUT
     });
-
     collector.on('collect', async (i) => {
         await i.deferUpdate();
-
         if (i.customId.startsWith('select_song_')) {
             const songIndex = parseInt(i.customId.split('_')[2]) - 1;
             const track = searchState.tracks[songIndex];
-
             if (track) {
                 player.queue.add(track);
                 await i.followUp({
                     content: `Added **${track.info.title}** to the queue`,
-                    flags: 64
+                    ephemeral: true // Only show to the user who selected
                 });
-
                 if (!player.playing && !player.paused && player.queue.size > 0) {
                     player.play();
                 }
@@ -189,13 +184,11 @@ function setupCollector(message, interaction, player, query, client, searchState
         } else {
             const platformKey = i.customId.split('_')[1].toUpperCase();
             const platform = CONSTANTS.PLATFORMS[platformKey];
-            
             try {
                 const tracks = await searchTracks(client, query, platform.source, interaction.member);
                 if (tracks.length) {
                     searchState.tracks = tracks;
                     searchState.currentPlatform = platform;
-
                     const embed = createEmbed(client, interaction, query, tracks, platform);
                     const selectionButtons = createSelectionButtons(tracks, platformKey.toLowerCase());
                     await message.edit({ embeds: [embed], components: [selectionButtons, platformButtons] });
@@ -204,12 +197,11 @@ function setupCollector(message, interaction, player, query, client, searchState
                 console.error(`${platform.name} search error:`, err);
                 await i.followUp({
                     content: `Failed to search for tracks on ${platform.name}.`,
-                    flags: 64
+                    ephemeral: true // Only show to the user who triggered the error
                 });
             }
         }
     });
-
     collector.on('end', () => {
         if (!message.deleted) {
             message.delete().catch(() => {});
