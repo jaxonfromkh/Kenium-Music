@@ -15,7 +15,7 @@ export const Command = {
     const player = client.aqua.players.get(interaction.guildId);
     if (!player || !interaction.member.voice.channel || interaction.guild.members.me.voice.channelId !== interaction.member.voice.channelId) return;
     const volume = interaction.options.getInteger("volume", true);
-    if (volume < 0 || volume > 150) {
+    if (volume < 0 || volume > 200) {
       return interaction.reply({
         embeds: [
           new EmbedBuilder()
