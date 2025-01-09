@@ -10,9 +10,9 @@ const CONSTANTS = {
         SPOTIFY: 0x1DB954 
     },
     EMOJIS: {
-        youtube: '<:youtube:1326226014489149551>',
-        soundcloud: '<:soundcloud:1326225982427758753>',
-        spotify: '<:spotify:1326625661108092928>'
+        youtube: '<:youtube:1326295615017058304>',
+        soundcloud: '<:soundcloud:1326295646818406486>',
+        spotify: '<:spotify:1326702792269893752>'
     },
     PLATFORMS: {
         YOUTUBE: {
