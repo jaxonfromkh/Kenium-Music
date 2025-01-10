@@ -16,20 +16,12 @@ export const Command = {
       await interaction.reply({ content: msg, flags: 64 });
     };
 
-    const errorMessages = [];
-
     try {
       const file = interaction.options.getAttachment("file");
-      if (!file) {
-        errorMessages.push("Please provide a file");
-        return await replyError(errorMessages.join('\n'));
-      }
+      if (!file) return await replyError("Please provide a file");
 
       const response = await fetch(file.url);
-      if (!response.ok) {
-        errorMessages.push("Failed to fetch file");
-        return await replyError(errorMessages.join('\n'));
-      }
+      if (!response.ok) return await replyError("Failed to fetch file");
 
       const text = await response.text();
       const queue = text
@@ -37,16 +29,10 @@ export const Command = {
         .map((line) => line.trim())
         .filter((line) => /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.?be|open\.spotify\.com|soundcloud\.com)\/.+$/.test(line));
 
-      if (queue.length < 2) {
-        errorMessages.push("No valid URLs found in the file. Please ensure there are at least 2 URLs.");
-        return await replyError(errorMessages.join('\n'));
-      }
+      if (queue.length < 2) return await replyError("No valid URLs found in the file. Please ensure there are at least 2 URLs.");
 
       const vc = interaction.member.voice.channel;
-      if (!vc) {
-        errorMessages.push("You need to be in a voice channel to import a queue.");
-        return await replyError(errorMessages.join('\n'));
-      }
+      if (!vc) return await replyError("You need to be in a voice channel to import a queue.");
 
       const player = client.aqua.createConnection({
         guildId: interaction.guildId,
@@ -55,15 +41,14 @@ export const Command = {
         deaf: true,
       });
 
-      const trackPromises = queue.map(async (url) => {
-        try {
-          const searchResult = await client.aqua.resolve({ query: url, requester: interaction.member });
-          return searchResult.tracks[0] || null;
-        } catch (error) {
-          console.error(`Failed to resolve track: ${url}`, error);
-          return null;
-        }
-      });
+      const trackPromises = queue.map((url) =>
+        client.aqua.resolve({ query: url, requester: interaction.member })
+          .then(searchResult => searchResult.tracks[0] || null)
+          .catch(error => {
+            console.error(`Failed to resolve track: ${url}`, error);
+            return null;
+          })
+      );
 
       const tracks = await Promise.all(trackPromises);
       const validTracks = tracks.filter(Boolean);
@@ -73,13 +58,9 @@ export const Command = {
         if (!player.playing && !player.paused) {
           player.play();
         }
-        await interaction.reply({
-          content: `Successfully imported ${validTracks.length} songs.`,
-          flags: 64,
-        });
+        await interaction.reply({ content: `Successfully imported ${validTracks.length} songs.`, flags: 64 });
       } else {
-        errorMessages.push("No valid tracks found after resolving URLs.");
-        await replyError(errorMessages.join('\n'));
+        return await replyError("No valid tracks found after resolving URLs.");
       }
     } catch (error) {
       console.error("Failed to import queue:", error);
