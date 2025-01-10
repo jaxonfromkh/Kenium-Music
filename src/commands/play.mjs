@@ -12,20 +12,16 @@ export const Command = {
       autocomplete: true,
     },
   ],
-
   async autocomplete(client, interaction) {
     try {
       const focused = interaction.options.getFocused() || '';
       if (focused.length < 2) return interaction.respond([]);
-
       const now = Date.now();
-      if ((this.lastAutocomplete || 0) + 450 > now) return interaction.respond([]);
-
+      if ((this.lastAutocomplete || 0) + 300 > now) return interaction.respond([]); // Reduced delay
       this.lastAutocomplete = now;
 
       const { tracks } = await client.aqua.resolve({ query: focused, requester: interaction.user }) || {};
       if (!tracks?.length) return interaction.respond([]);
-
       return interaction.respond(tracks.slice(0, 9).map(({ info: { title, uri } }) => ({
         name: title.slice(0, 100),
         value: uri
@@ -35,31 +31,29 @@ export const Command = {
       return interaction.respond([]);
     }
   },
-
   async run(client, interaction) {
     try {
       const { guild, member, channel } = interaction;
       const voiceChannel = member?.voice?.channel;
-
       if (!voiceChannel) {
         return interaction.reply({
           content: 'You must be in a voice channel to use this command.',
-          flags: 64
+          flags: MessageFlags.Ephemeral
         });
       }
 
       const currentVoiceChannel = guild.channels.cache.find(
-        channel => channel.type === 2 && channel.members.has(client.user.id)
+        ch => ch.type === 2 && ch.members.has(client.user.id)
       );
 
       if (currentVoiceChannel && voiceChannel.id !== currentVoiceChannel.id) {
         return interaction.reply({
           content: `I'm already in <#${currentVoiceChannel.id}>`,
-          flags: 64
+          flags: MessageFlags.Ephemeral
         });
       }
 
-      await interaction.deferReply({ flags: 64 });
+      interaction.deferReply({ flags: MessageFlags.Ephemeral }); // Removed await
 
       const player = client.aqua.createConnection({
         guildId: guild.id,
@@ -69,7 +63,6 @@ export const Command = {
       });
 
       const query = interaction.options.getString('query');
-
       const result = await client.aqua.resolve({ query, requester: interaction.user });
 
       if (!result?.tracks?.length) {
@@ -90,11 +83,7 @@ export const Command = {
         }
         case "playlist": {
           const { tracks } = result;
-        
-            for (const track of tracks) {
-              player.queue.add(track);
-            }
-          
+          player.queue.add(tracks);
           embed.setDescription(`Added ${result.playlistInfo.name} playlist (${tracks.length} tracks) to the queue.`);
           break;
         }
@@ -103,21 +92,18 @@ export const Command = {
       }
 
       await interaction.editReply({ embeds: [embed] });
-
       if (!player.playing && !player.paused && player.queue.size > 0) {
         player.play();
       }
-
     } catch (error) {
       console.error('Play command error:', error);
       const errorMessage = error.message === 'Query timeout' 
         ? 'The request timed out. Please try again.'
         : 'An error occurred while processing your request. Please try again later.';
-      
       if (interaction.deferred) {
         await interaction.editReply({ content: errorMessage });
       } else {
-        await interaction.reply({ content: errorMessage, flags: 64 });
+        await interaction.reply({ content: errorMessage, flags: MessageFlags.Ephemeral });
       }
     }
   },
