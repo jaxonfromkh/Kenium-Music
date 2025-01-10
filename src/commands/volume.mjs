@@ -20,7 +20,7 @@ export const Command = {
         embeds: [
           new EmbedBuilder()
             .setColor("Red")
-            .setDescription(`Use an number between \`0 - 150\`.`),
+            .setDescription(`Use an number between \`0 - 200\`.`),
         ],
       });
     }
