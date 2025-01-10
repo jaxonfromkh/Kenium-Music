@@ -1,4 +1,4 @@
-import { EmbedBuilder } from "discord.js";
+import { EmbedBuilder, MessageFlags } from "discord.js";
 
 export const Command = {
   name: "play",
@@ -12,16 +12,20 @@ export const Command = {
       autocomplete: true,
     },
   ],
+
   async autocomplete(client, interaction) {
     try {
       const focused = interaction.options.getFocused() || '';
       if (focused.length < 2) return interaction.respond([]);
+
       const now = Date.now();
-      if ((this.lastAutocomplete || 0) + 300 > now) return interaction.respond([]); // Reduced delay
+      if ((this.lastAutocomplete || 0) + 450 > now) return interaction.respond([]);
+
       this.lastAutocomplete = now;
 
       const { tracks } = await client.aqua.resolve({ query: focused, requester: interaction.user }) || {};
       if (!tracks?.length) return interaction.respond([]);
+
       return interaction.respond(tracks.slice(0, 9).map(({ info: { title, uri } }) => ({
         name: title.slice(0, 100),
         value: uri
@@ -31,10 +35,14 @@ export const Command = {
       return interaction.respond([]);
     }
   },
+
   async run(client, interaction) {
     try {
+      // Destructure needed properties immediately
       const { guild, member, channel } = interaction;
       const voiceChannel = member?.voice?.channel;
+
+      // Early validation with specific error messages
       if (!voiceChannel) {
         return interaction.reply({
           content: 'You must be in a voice channel to use this command.',
@@ -42,8 +50,9 @@ export const Command = {
         });
       }
 
+      // Check if bot is already in another channel
       const currentVoiceChannel = guild.channels.cache.find(
-        ch => ch.type === 2 && ch.members.has(client.user.id)
+        channel => channel.type === 2 && channel.members.has(client.user.id)
       );
 
       if (currentVoiceChannel && voiceChannel.id !== currentVoiceChannel.id) {
@@ -53,7 +62,7 @@ export const Command = {
         });
       }
 
-      interaction.deferReply({ flags: 64 });
+      await interaction.deferReply({ flags: 64 });
 
       const player = client.aqua.createConnection({
         guildId: guild.id,
@@ -62,8 +71,18 @@ export const Command = {
         deaf: true,
       });
 
+      // Fetch track with timeout
       const query = interaction.options.getString('query');
-      const result = await client.aqua.resolve({ query, requester: interaction.user });
+      const result = await Promise.race([
+        client.aqua.resolve({ 
+          query, 
+          requester: member,
+          searchLimit: 1 
+        }),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Query timeout')), 10000)
+        )
+      ]);
 
       if (!result?.tracks?.length) {
         return interaction.editReply('No tracks found for the given query.');
@@ -83,8 +102,12 @@ export const Command = {
         }
         case "playlist": {
           const { tracks } = result;
-          player.queue.add(tracks);
-          embed.setDescription(`Added ${result.playlistInfo.name} playlist (${tracks.length} tracks) to the queue.`);
+        
+            for (const track of tracks) {
+              player.queue.add(track);
+            }
+
+          embed.setDescription(`Added [${result.playlistInfo.name}](${query}) playlist (${tracks.length} tracks) to the queue.`);
           break;
         }
         default:
@@ -92,14 +115,17 @@ export const Command = {
       }
 
       await interaction.editReply({ embeds: [embed] });
+
       if (!player.playing && !player.paused && player.queue.size > 0) {
         player.play();
       }
+
     } catch (error) {
       console.error('Play command error:', error);
-      const errorMessage = error.message === 'Query timeout'
+      const errorMessage = error.message === 'Query timeout' 
         ? 'The request timed out. Please try again.'
         : 'An error occurred while processing your request. Please try again later.';
+      
       if (interaction.deferred) {
         await interaction.editReply({ content: errorMessage });
       } else {
