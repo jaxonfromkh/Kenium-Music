@@ -23,17 +23,18 @@ export const Command = {
 
         const tracks = player.queue.map(track => track.info.uri);
         let fileName = 'Kenium_2.5.0';
-        const platforms = new Set();
+
+        let hasYouTube = false, hasSoundCloud = false, hasSpotify = false;
 
         for (const uri of tracks) {
-            if (uri.includes(PLATFORMS.YOUTUBE)) platforms.add(PLATFORMS.YOUTUBE);
-            if (uri.includes(PLATFORMS.SOUNDCLOUD)) platforms.add(PLATFORMS.SOUNDCLOUD);
-            if (uri.includes(PLATFORMS.SPOTIFY)) platforms.add(PLATFORMS.SPOTIFY);
+            if (uri.includes(PLATFORMS.YOUTUBE)) hasYouTube = true;
+            if (uri.includes(PLATFORMS.SOUNDCLOUD)) hasSoundCloud = true;
+            if (uri.includes(PLATFORMS.SPOTIFY)) hasSpotify = true;
         }
 
-        if (platforms.has(PLATFORMS.YOUTUBE)) fileName += '_youtube';
-        if (platforms.has(PLATFORMS.SOUNDCLOUD)) fileName += '_soundcloud';
-        if (platforms.has(PLATFORMS.SPOTIFY)) fileName += '_spotify';
+        if (hasYouTube) fileName += '_youtube';
+        if (hasSoundCloud) fileName += '_soundcloud';
+        if (hasSpotify) fileName += '_spotify';
         fileName += '.txt';
 
         const attachment = new AttachmentBuilder(Buffer.from(tracks.join('\n')), { name: fileName });
