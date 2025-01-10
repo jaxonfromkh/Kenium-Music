@@ -1,4 +1,4 @@
-import { EmbedBuilder, MessageFlags } from "discord.js";
+import { EmbedBuilder } from "discord.js";
 
 export const Command = {
   name: "play",
@@ -38,7 +38,7 @@ export const Command = {
       if (!voiceChannel) {
         return interaction.reply({
           content: 'You must be in a voice channel to use this command.',
-          flags: MessageFlags.Ephemeral
+          flags: 64
         });
       }
 
@@ -49,11 +49,11 @@ export const Command = {
       if (currentVoiceChannel && voiceChannel.id !== currentVoiceChannel.id) {
         return interaction.reply({
           content: `I'm already in <#${currentVoiceChannel.id}>`,
-          flags: MessageFlags.Ephemeral
+          flags: 64
         });
       }
 
-      interaction.deferReply({ flags: MessageFlags.Ephemeral }); // Removed await
+      interaction.deferReply({ flags: 64 });
 
       const player = client.aqua.createConnection({
         guildId: guild.id,
@@ -97,13 +97,13 @@ export const Command = {
       }
     } catch (error) {
       console.error('Play command error:', error);
-      const errorMessage = error.message === 'Query timeout' 
+      const errorMessage = error.message === 'Query timeout'
         ? 'The request timed out. Please try again.'
         : 'An error occurred while processing your request. Please try again later.';
       if (interaction.deferred) {
         await interaction.editReply({ content: errorMessage });
       } else {
-        await interaction.reply({ content: errorMessage, flags: MessageFlags.Ephemeral });
+        await interaction.reply({ content: errorMessage, flags: 64 });
       }
     }
   },
