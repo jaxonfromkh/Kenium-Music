@@ -1,6 +1,5 @@
 import { ActionRowBuilder, EmbedBuilder, ButtonBuilder, ButtonStyle } from "discord.js";
 
-// Move constants outside to avoid recreation
 const CONSTANTS = {
     COLLECTOR_TIMEOUT: 15000,
     MAX_TRACKS: 5,
@@ -15,37 +14,17 @@ const CONSTANTS = {
         spotify: '<:spotify:1326702792269893752>'
     },
     PLATFORMS: {
-        YOUTUBE: {
-            name: 'YouTube',
-            source: 'ytsearch',
-            color: 0xFF0000,
-            emoji: '<:youtube:1326295615017058304>',
-            icon: '📺'
-        },
-        SOUNDCLOUD: {
-            name: 'SoundCloud',
-            source: 'scsearch',
-            color: 0xFF5500,
-            emoji: '<:soundcloud:1326295646818406486>',
-            icon: '🎵'
-        },
-        SPOTIFY: {
-            name: 'Spotify',
-            source: 'spsearch',
-            color: 0x1DB954,
-            emoji: '<:spotify:1326702792269893752>',
-            icon: '🎧'
-        }
+        YOUTUBE: { name: 'YouTube', source: 'ytsearch', color: 0xFF0000, emoji: '<:youtube:1326295615017058304>', icon: '📺' },
+        SOUNDCLOUD: { name: 'SoundCloud', source: 'scsearch', color: 0xFF5500, emoji: '<:soundcloud:1326295646818406486>', icon: '🎵' },
+        SPOTIFY: { name: 'Spotify', source: 'spsearch', color: 0x1DB954, emoji: '<:spotify:1326702792269893752>', icon: '🎧' }
     }
 };
 
-// Pre-build button styles to avoid recreation
 const BUTTON_STYLES = {
     platform: ButtonStyle.Primary,
     selection: ButtonStyle.Secondary
 };
 
-// Cache frequently used button builders
 const platformButtons = new ActionRowBuilder().addComponents(
     Object.entries(CONSTANTS.PLATFORMS).map(([platform, data]) => 
         new ButtonBuilder()
@@ -65,21 +44,19 @@ export const Command = {
         required: true
     }],
     async run(client, interaction) {
-        // Quick validation checks
         const vc = interaction.member?.voice?.channel;
         if (!vc) {
             return interaction.reply({ content: 'You must be in a voice channel!', flags: 64 });
         }
 
         const existingConnection = client.aqua.connections?.get(interaction.guildId);
-        if (existingConnection?.channelId && vc.id !== existingConnection.channelId) {
+        if (existingConnection && vc.id !== existingConnection.channelId) {
             return interaction.reply({
                 content: `I'm already in <#${existingConnection.channelId}>`,
                 flags: 64
             });
         }
 
-        // Initialize player and search
         const player = existingConnection || await client.aqua.createConnection({
             guildId: interaction.guildId,
             voiceChannel: vc.id,
@@ -94,25 +71,17 @@ export const Command = {
         };
 
         try {
-            // Perform initial search
             const tracks = await searchTracks(client, query, searchState.currentPlatform.source, interaction.member);
             if (!tracks.length) {
-                return interaction.reply({
-                    content: `No results found on ${searchState.currentPlatform.name}.`,
-                    flags: 64
-                });
+                return interaction.reply({ content: `No results found on ${searchState.currentPlatform.name}.`, flags: 64 });
             }
 
             searchState.tracks = tracks;
             const message = await createSearchMessage(client, interaction, query, searchState);
             setupCollector(message, interaction, player, query, client, searchState);
-
         } catch (error) {
             console.error('Search error:', error);
-            return interaction.reply({
-                content: `Failed to search on ${searchState.currentPlatform.name}.`,
-                flags: 64
-            });
+            return interaction.reply({ content: `Failed to search on ${searchState.currentPlatform.name}.`, flags: 64 });
         }
     }
 };
@@ -123,22 +92,22 @@ async function searchTracks(client, query, source, requester) {
 }
 
 function createSelectionButtons(tracks, platform) {
-    return new ActionRowBuilder().addComponents(
-        Array.from({ length: tracks.length }, (_, i) => 
+    const buttons = new ActionRowBuilder();
+    for (let i = 0; i < tracks.length; i++) {
+        buttons.addComponents(
             new ButtonBuilder()
                 .setCustomId(`select_song_${i + 1}_${platform}`)
                 .setLabel(`${i + 1}`)
                 .setStyle(BUTTON_STYLES.selection)
-        )
-    );
+        );
+    }
+    return buttons;
 }
 
 function createEmbed(client, interaction, query, tracks, platform) {
-    const trackListMarkdown = tracks
-        .map((track, index) => 
-            `${index + 1}. ${platform.emoji} [\`${track.info.title}\`](${track.info.uri})`
-        )
-        .join('\n');
+    const trackListMarkdown = tracks.map((track, index) => 
+        `${index + 1}. ${platform.emoji} [\`${track.info.title}\`](${track.info.uri})`
+    ).join('\n');
 
     return new EmbedBuilder()
         .setColor(platform.color)
@@ -154,7 +123,6 @@ function createEmbed(client, interaction, query, tracks, platform) {
 async function createSearchMessage(client, interaction, query, searchState) {
     const embed = createEmbed(client, interaction, query, searchState.tracks, searchState.currentPlatform);
     const selectionButtons = createSelectionButtons(searchState.tracks, searchState.currentPlatform.name.toLowerCase());
-    
     return interaction.reply({
         embeds: [embed],
         components: [selectionButtons, platformButtons],
@@ -166,6 +134,7 @@ function setupCollector(message, interaction, player, query, client, searchState
         filter: i => i.user.id === interaction.user.id,
         time: CONSTANTS.COLLECTOR_TIMEOUT
     });
+
     collector.on('collect', async (i) => {
         await i.deferUpdate();
         if (i.customId.startsWith('select_song_')) {
@@ -175,7 +144,7 @@ function setupCollector(message, interaction, player, query, client, searchState
                 player.queue.add(track);
                 await i.followUp({
                     content: `Added **${track.info.title}** to the queue`,
-                    ephemeral: true // Only show to the user who selected
+                    ephemeral: true
                 });
                 if (!player.playing && !player.paused && player.queue.size > 0) {
                     player.play();
@@ -197,11 +166,12 @@ function setupCollector(message, interaction, player, query, client, searchState
                 console.error(`${platform.name} search error:`, err);
                 await i.followUp({
                     content: `Failed to search for tracks on ${platform.name}.`,
-                    ephemeral: true // Only show to the user who triggered the error
+                    ephemeral: true
                 });
             }
         }
     });
+
     collector.on('end', () => {
         if (!message.deleted) {
             message.delete().catch(() => {});
