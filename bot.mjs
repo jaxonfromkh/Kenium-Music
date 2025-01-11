@@ -5,17 +5,18 @@ import {
   EmbedBuilder,
   GatewayDispatchEvents
 } from "discord.js";
-import { token } from "./config.mjs";
+import { token, mongourl } from "./config.mjs";
 import { dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createRequire } from 'module';
+
 const require = createRequire(import.meta.url);
 const { Aqua } = require('aqualink');
 
 const nodes = [{
   host: "",
   password: "",
-  port: 133,
+  port: 433,
   secure: false,
   name: "toddy's"
 }];
@@ -64,7 +65,7 @@ function createTrackEmbed(player, track) {
       { name: "> 🔁 Loop", value: `> ${player.loop ? 'Off' : 'On'}`, inline: true }
     )
     .setThumbnail(track.info.artworkUrl || client.user.avatarURL())
-    .setAuthor({ name: "Kenium v2.5.0 | by mushroom0162", iconURL: client.user.avatarURL() })
+    .setAuthor({ name: "Kenium v2.6.0 | by mushroom0162", iconURL: client.user.avatarURL() })
     .setTimestamp();
 }
 aqua.on('debug', (message) => console.log(message));
@@ -112,7 +113,7 @@ aqua.on('trackError', async (player, track, payload) => {
       .setColor(0xff0000)
       .setTitle("❌ Error Playing Track")
       .setDescription(`Error playing track: \`${track.info.title}\`\nMessage: \`${payload.exception.message}\``)
-      .setFooter({ text: "Kenium v2.5.0 | by mushroom0162" })
+      .setFooter({ text: "Kenium v2.6.0 | by mushroom0162" })
       .setTimestamp();
     try {
       const message = await channel.send({ embeds: [embed] });
