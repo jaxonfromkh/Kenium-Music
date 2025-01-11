@@ -7,7 +7,7 @@ export const Command = {
         {
             name: "show",
             description: "Show the current queue",
-            type: 1, 
+            type: 1,
         },
         {
             name: "remove",
@@ -17,7 +17,7 @@ export const Command = {
                 {
                     name: "track_number",
                     description: "The number of the track to remove",
-                    type: 4, 
+                    type: 4,
                     required: true,
                     autocomplete: true,
                 },
@@ -34,17 +34,19 @@ export const Command = {
         if (!player || player.queue.length === 0) {
             return interaction.respond([]);
         }
-        const focusedValue = interaction.options.getFocused();
-        const choices = player.queue.map((track, index) => {
-            const choiceName = `${index + 1}: ${track.info.title}`;
-            return {
-                name: choiceName.length <= 100 ? choiceName : choiceName.substring(0, 100),
-                value: index + 1,
-            };
-        });
+        
+        const focusedValue = interaction.options.getFocused().toLowerCase();
+        const choices = player.queue
+            .map((track, index) => {
+                const choiceName = `${index + 1}: ${track.info.title}`;
+                return {
+                    name: choiceName.length <= 100 ? choiceName : choiceName.substring(0, 100),
+                    value: index + 1,
+                };
+            })
+            .filter(choice => choice.name.toLowerCase().includes(focusedValue));
 
-        const filtered = choices.filter(choice => choice.name.toLowerCase().includes(focusedValue.toLowerCase()));
-        return interaction.respond(filtered);
+        return interaction.respond(choices);
     },
     run: async (client, interaction) => {
         const guildId = interaction.guildId;
@@ -52,7 +54,10 @@ export const Command = {
         if (!player) {
             return interaction.reply({ content: "Nothing is playing", flags: 64 });
         }
-        if (interaction.guild.members.me.voice.channelId !== interaction.member.voice.channelId) {
+        
+        const userVoiceChannelId = interaction.member.voice.channelId;
+        const botVoiceChannelId = interaction.guild.members.me.voice.channelId;
+        if (botVoiceChannelId !== userVoiceChannelId) {
             return interaction.reply({ content: "You need to be in the same voice channel as the bot.", flags: 64 });
         }
 
@@ -64,12 +69,13 @@ export const Command = {
                 if (queueLength === 0) {
                     return interaction.reply({ content: "Queue is empty", flags: 64 });
                 }
+                
                 const queue = player.queue.slice(0, 5).map((track, i) => {
                     const minutes = Math.floor(track.info.length / 60000);
                     const seconds = Math.floor((track.info.length % 60000) / 1000);
                     return `**${i + 1}** - [\`${track.info.title}\`](${track.info.uri}) - \`${minutes}:${seconds.toString().padStart(2, '0')}\``;
                 }).join('\n');
-
+                
                 const embed = new EmbedBuilder()
                     .setTitle('🎵  | Queue')
                     .setDescription(queue)
@@ -84,11 +90,12 @@ export const Command = {
                 if (trackNumber < 1 || trackNumber > queueLength) {
                     return interaction.reply({ content: "Invalid track number.", flags: 64 });
                 }
+
                 const removedTrack = player.queue.splice(trackNumber - 1, 1); 
                 return interaction.reply({ content: `Removed track: \`${removedTrack[0].info.title}\``, flags: 64 });
 
             case "clear":
-                player.queue.clear();
+                player.queue.length = 0; 
                 return interaction.reply({ content: "Cleared the queue.", flags: 64 });
 
             default:
