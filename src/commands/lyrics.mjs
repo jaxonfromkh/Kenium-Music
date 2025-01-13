@@ -27,7 +27,7 @@ export const Command = {
         try {
             if (searchQuery) {
                 lyricsResult = await player.searchLyrics(searchQuery);
-                currentTitle = searchQuery;
+                currentTitle = lyricsResult.track?.title + ' - ' + lyricsResult.track?.author
             } else {
                 lyricsResult = await player.lyrics();
             }
@@ -68,7 +68,7 @@ export const Command = {
                 );
             let page = 0;
             const filter = (i) => i.customId === 'lyrics_back' || i.customId === 'lyrics_next';
-            const collector = interaction.channel.createMessageComponentCollector({ filter, time: 30000 });
+            const collector = interaction.channel.createMessageComponentCollector({ filter, time: 60000 });
             collector.on('collect', async (i) => {
                 if (i.customId === 'lyrics_back') {
                     page = Math.max(page - 1, 0);
