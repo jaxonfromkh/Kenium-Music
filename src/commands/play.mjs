@@ -19,7 +19,6 @@ export const Command = {
       const now = Date.now();
       if ((this.lastAutocomplete || 0) + 300 > now) return interaction.respond([]);
       this.lastAutocomplete = now;
-
       const { tracks } = await client.aqua.resolve({ query: focused, requester: interaction.user }) || {};
       if (!tracks?.length) return interaction.respond([]);
       return interaction.respond(tracks.slice(0, 9).map(({ info: { title, uri } }) => ({
@@ -35,6 +34,7 @@ export const Command = {
     try {
       const { guild, member, channel } = interaction;
       const voiceChannel = member?.voice?.channel;
+
       if (!voiceChannel) {
         return interaction.reply({
           content: 'You must be in a voice channel to use this command.',
@@ -53,8 +53,7 @@ export const Command = {
         });
       }
 
-      interaction.deferReply({ flags: 64 });
-
+      await interaction.deferReply({ flags: 64 });
       const player = client.aqua.createConnection({
         guildId: guild.id,
         voiceChannel: voiceChannel.id,
@@ -83,7 +82,6 @@ export const Command = {
         }
         case "playlist": {
           const { tracks } = result;
-        
           for (const track of tracks) {
             player.queue.add(track);
           }
@@ -95,6 +93,7 @@ export const Command = {
       }
 
       await interaction.editReply({ embeds: [embed] });
+
       if (!player.playing && !player.paused && player.queue.size > 0) {
         player.play();
       }
@@ -103,6 +102,7 @@ export const Command = {
       const errorMessage = error.message === 'Query timeout'
         ? 'The request timed out. Please try again.'
         : 'An error occurred while processing your request. Please try again later.';
+
       if (interaction.deferred) {
         await interaction.editReply({ content: errorMessage });
       } else {
