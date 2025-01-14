@@ -1,6 +1,6 @@
 // This will not be continued + Not public 
 // This system is unstable, not synced, and not properly tested + made
-// That shit was hard for me tho, its impossible to sync, make i try spotify system
+// That shit was hard for me tho, its impossible to sync, may i try like spotify system
 
 
 export const Command = {
