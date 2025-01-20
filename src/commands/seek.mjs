@@ -4,7 +4,7 @@ export const Command = {
     options: [
         {
             name: "position",
-            description: "The position in seconds to seek to",
+            description: "The position in seconds to seek to (can be positive and negative)",
             type: 4,
             required: true,
         },
