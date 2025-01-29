@@ -55,20 +55,48 @@ function formatTime(time) {
 
 function createTrackEmbed(player, track) {
   return new EmbedBuilder()
-    .setColor(0x000000)
-    .setDescription(`> [\`${track.info.title}\`](${track.info.uri})`)
+    .setColor(0x000000) // Bright green for a music vibe, consistent with tools like Spotify
+    .setDescription(
+      `**🎶 Now Playing**\n> [\`${track.info.title}\`](<${track.info.uri}>)`
+    )
     .addFields(
-      { name: "> ⏱️ Duration", value: `> \`${formatTime(Math.round(track.info.length / 1000))}\``, inline: true },
-      { name: "> 👤 Author", value: `> \`${track.info.author}\``, inline: true },
-      { name: "> 💿 Album", value: `> \`${track.info.album || 'N/A'}\``, inline: true },
-      { name: "> 🔊 Volume", value: `> \`${player.volume}%\``, inline: true },
-      { name: "> 🔁 Loop", value: `> ${player.loop ? 'Off' : 'On'}`, inline: true }
+      { 
+        name: "⏱️ **Duration**", 
+        value: `\`${formatTime(Math.round(track.info.length / 1000))}\``, 
+        inline: true 
+      },
+      { 
+        name: "👤 **Author**", 
+        value: `\`${track.info.author}\``, 
+        inline: true 
+      },
+      { 
+        name: "💿 **Album**", 
+        value: `\`${track.info.album || "N/A"}\``, 
+        inline: true 
+      },
+      { 
+        name: "🔊 **Volume**", 
+        value: `\`${player.volume}%\``, 
+        inline: true 
+      },
+      { 
+        name: "🔁 **Loop**", 
+        value: `${player.loop ? "🔴 \`Off\`" : "🟢 \`On\`"}`, 
+        inline: true 
+      }
     )
     .setThumbnail(track.info.artworkUrl || client.user.avatarURL())
-    .setAuthor({ name: "Kenium v2.6.0 | by mushroom0162", iconURL: client.user.avatarURL() })
-    .setTimestamp();
+    .setAuthor({
+      name: "Kenium v2.6.0 • Powered by mushroom0162",
+      iconURL: client.user.avatarURL(),
+    })
+    .setFooter({
+      text: "Kenium - Your Open Source Bot",
+      iconURL: client.user.avatarURL(),
+    })
+    .setTimestamp()
 }
-aqua.on('debug', (message) => console.log(message));
 const channelCache = new WeakMap();
 
 const getChannelFromCache = (channelId) => {
