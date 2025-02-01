@@ -108,13 +108,40 @@ const getChannelFromCache = (channelId) => {
   return channel;
 };
 
+let lastUpdate = 0;
+async function updateVoiceChannelStatus(channelId, status, token) {
+  const now = Date.now();
+  if (now - lastUpdate < 30000) return;
+  lastUpdate = now;
+  try {
+    const response = await fetch(
+      `https://discord.com/api/v10/channels/${channelId}/voice-status`,
+      {
+        method: 'PUT',
+        headers: {
+          Authorization: `Bot ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ status: status || 'Kenium 2.7.0' }),
+      }
+    );
+    if (!response.ok) {
+      console.error('Failed to update voice channel status:', response.statusText);
+    }
+  } catch (error) {
+    console.error('Error updating voice channel status:', error);
+  }
+}
+
 aqua.on('trackStart', async (player, track) => {
   const channel = getChannelFromCache(player.textChannel);
   if (channel) {
-    player.nowPlayingMessage = await channel.send({ embeds: [createTrackEmbed(player, track)] });
+    const status = `⭐ ${track.info.title} - Kenium 2.7.0 - ${player.queue.size} tracks`;
+    const updateStatusPromise = updateVoiceChannelStatus(player.voiceChannel, status, client.token);
+    const nowPlayingPromise = channel.send({ embeds: [createTrackEmbed(player, track)] });
+    [player.nowPlayingMessage] = await Promise.all([nowPlayingPromise, updateStatusPromise]);
   }
 });
-
 aqua.on('trackChange', async (player, newTrack) => {
   if (player.nowPlayingMessage && !player.shouldDeleteMessage) {
     await player.nowPlayingMessage.edit({ embeds: [createTrackEmbed(player, newTrack)] });
@@ -176,3 +203,4 @@ await import("./src/handlers/Command.mjs").then(({ CommandHandler }) => CommandH
 await import("./src/handlers/Events.mjs").then(({ EventHandler }) => EventHandler(client, rootPath));
 
 client.login(token);
+
