@@ -136,12 +136,9 @@ async function updateVoiceChannelStatus(channelId, status, token) {
 aqua.on('trackStart', async (player, track) => {
   const channel = getChannelFromCache(player.textChannel);
   if (channel) {
-    let status;
-    if (player.queue.size > 2) {
-      status = `Playlist (${player.queue.size} tracks) - Kenium 2.7.0 `;
-    } else {
-      status = `⭐ ${track.info.title} - Kenium 2.7.0`;
-    }
+    const trackCount = player.queue.size;
+    const status = trackCount > 2 ? `⭐ Playlist (${trackCount} tracks) - Kenium 2.7.0 ` : `⭐ ${track.info.title} - Kenium 2.7.0`;
+
     const updateStatusPromise = updateVoiceChannelStatus(player.voiceChannel, status, client.token);
     const nowPlayingPromise = channel.send({ embeds: [createTrackEmbed(player, track)] });
     [player.nowPlayingMessage] = await Promise.all([nowPlayingPromise, updateStatusPromise]);
