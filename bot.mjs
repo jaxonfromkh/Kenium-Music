@@ -88,7 +88,7 @@ function createTrackEmbed(player, track) {
     )
     .setThumbnail(track.info.artworkUrl || client.user.avatarURL())
     .setAuthor({
-      name: "Kenium v2.6.0 • Powered by mushroom0162",
+      name: "Kenium v2.7.0 • Powered by mushroom0162",
       iconURL: client.user.avatarURL(),
     })
     .setFooter({
@@ -171,7 +171,7 @@ aqua.on('trackError', async (player, track, payload) => {
       .setColor(0xff0000)
       .setTitle("❌ Error Playing Track")
       .setDescription(`Error playing track: \`${track.info.title}\`\nMessage: \`${payload.exception.message}\``)
-      .setFooter({ text: "Kenium v2.6.0 | by mushroom0162" })
+      .setFooter({ text: "Kenium v2.7.0 | by mushroom0162" })
       .setTimestamp();
     try {
       const message = await channel.send({ embeds: [embed] });
