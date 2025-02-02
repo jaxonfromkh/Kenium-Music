@@ -22,7 +22,7 @@ export const Command = {
         }
 
         const tracks = player.queue.map(track => track.info.uri);
-        let fileName = 'Kenium_2.5.0';
+        let fileName = 'Kenium_2.7.0';
 
         let hasYouTube = false, hasSoundCloud = false, hasSpotify = false;
 
