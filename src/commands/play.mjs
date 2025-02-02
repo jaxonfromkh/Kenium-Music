@@ -59,6 +59,8 @@ export const Command = {
         voiceChannel: voiceChannel.id,
         textChannel: channel.id,
         deaf: true,
+        leaveOnEnd: true, // Optional
+        shouldDeleteMessage: true // Optional
       });
 
       const query = interaction.options.getString('query');
