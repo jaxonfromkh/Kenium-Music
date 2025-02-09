@@ -1,20 +1,19 @@
 import { REST, Routes } from "discord.js";
 import { token, id } from "../../config.mjs";
-import { Filereader } from "./filereader.mjs";
+import { FilereaderGenerator } from "./filereader.mjs";
 
 export const CommandHandler = async (client, rootPath) => {
     const rest = new REST({ version: "10" }).setToken(token);
     
     try {
-        const allFiles = await Filereader(`${rootPath}/src/commands`);
         const commandsArray = [];
-
-        for (const commandFile of allFiles) {
+        const commandsDir = `${rootPath}/src/commands`;
+        
+        for await (const commandFile of FilereaderGenerator(commandsDir)) {
             try {
                 const { Command } = await import(`file://${commandFile}`);
-
                 if (!Command?.name || !Command?.description || Command?.ignore) continue;
-
+                
                 commandsArray.push({
                     name: Command.name,
                     description: Command.description,
