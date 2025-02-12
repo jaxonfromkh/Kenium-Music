@@ -1,4 +1,4 @@
-import { opendir } from "fs/promises";
+import { readdir } from "fs/promises";
 import path from "path";
 
 export const EventHandler = async (client, rootPath) => {
@@ -9,35 +9,37 @@ export const EventHandler = async (client, rootPath) => {
     const eventsDir = path.join(rootPath, "src", "events");
 
     try {
-        const dirHandle = await opendir(eventsDir);
-        for await (const dirent of dirHandle) {
-            if (!dirent.isFile() || !/\.(js|mjs)$/.test(dirent.name)) continue;
-            
-            const eventPath = path.join(eventsDir, dirent.name);
-            try {
-                const { Event } = await import(new URL(`file://${eventPath}`, import.meta.url));
-                if (!Event || Event.ignore) continue;
+        const files = await readdir(eventsDir);
+        const eventLoadPromises = files
+            .filter((file) => /\.(js|mjs)$/.test(file))
+            .map(async (filename) => {
+                const eventPath = path.join(eventsDir, filename);
+                try {
+                    const { Event } = await import(`file://${eventPath}`);
+                    if (!Event || Event.ignore) return;
+                    
+                    const eventFunction = (...args) => {
+                        try {
+                            return Event.run(client, ...args);
+                        } catch (error) {
+                            console.error(`Error in event ${Event.name}:`, error);
+                            client.removeListener(Event.name, eventFunction);
+                        }
+                    };
 
-                const eventFunction = (...args) => {
-                    try {
-                        return Event.run(client, ...args);
-                    } catch (error) {
-                        console.error(`Error in event ${Event.name}:`, error);
-                        client.removeListener(Event.name, eventFunction);
+                    if (Event.runOnce) {
+                        client.once(Event.name, eventFunction);
+                    } else {
+                        client.on(Event.name, eventFunction);
                     }
-                };
-
-                if (Event.runOnce) {
-                    client.once(Event.name, eventFunction);
-                } else {
-                    client.on(Event.name, eventFunction);
+                } catch (error) {
+                    console.error(`Failed to load event from file: ${eventPath}`, error);
                 }
-            } catch (error) {
-                console.error(`Failed to load event from file: ${eventPath}`, error);
-            }
-        }
+            });
+
+        await Promise.all(eventLoadPromises);
     } catch (error) {
         console.error("Failed to open events directory:", error);
-        throw error; 
+        throw error;
     }
 };
