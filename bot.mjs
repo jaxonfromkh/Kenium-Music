@@ -71,7 +71,7 @@ class ChannelManager {
             Authorization: `Bot ${token}`,
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ status: status || "Kenium 2.7.0" }),
+          body: JSON.stringify({ status: status || "Kenium 2.8.0" }),
         }
       );
       
@@ -91,44 +91,57 @@ class ChannelManager {
 
 class EmbedFactory {
   static createTrackEmbed(client, player, track) {
+    const progressBar = this.createProgressBar(track.info.length, player.position);
+    
     return new EmbedBuilder()
-      .setColor(DEFAULT_COLOR)
-      .setDescription(`**🎶 Now Playing**\n> [\`${track.info.title}\`](<${track.info.uri}>)`)
-      .addFields([
-        {
-          name: "⏱️ **Duration**",
-          value: `\`${TimeFormatter.format(track.info.length)}\``,
-          inline: true
-        },
-        {
-          name: "👤 **Author**",
-          value: `\`${track.info.author}\``,
-          inline: true
-        },
-        {
-          name: "💿 **Album**",
-          value: `\`${track.info.album || "N/A"}\``,
-          inline: true
-        },
-        {
-          name: "🔊 **Volume**",
-          value: `\`${player.volume}%\``,
-          inline: true
-        },
-        {
-          name: "🔁 **Loop**",
-          value: `${player.loop ? "🔴 \`Off\`" : "🟢 \`On\`"}`,
-          inline: true
-        }
-      ])
-      .setThumbnail(track.info.artworkUrl || client.user.displayAvatarURL())
+      .setColor('#0A0A0A')
       .setAuthor({
-        name: "Kenium v2.7.0 • Powered by mushroom0162",
+        name: '🎵Kenium 2.8.0 - Open Source Music Bot',
         iconURL: client.user.displayAvatarURL(),
+        url: 'https://github.com/ToddyTheNoobDud/Kenium-Music'
       })
+      .setDescription([
+        `### [\`${track.info.title}\`](<${track.info.uri}>)`,
+        `> by **${track.info.author}** • ${track.info.album || 'Single'} • ${track.info.isStream ? '🔴 LIVE' : '320kbps'}`,
+        '',
+        `\`${TimeFormatter.format(player.position)}\` ${progressBar} \`${TimeFormatter.format(track.info.length)}\``,
+        '',
+        `${player.volume > 50 ? '🔊' : '🔈'} \`${player.volume}%\` • ${player.loop ? '🔁' : '▶️'} \`${player.loop ? 'Loop' : 'Normal'}\` • 👤 <@${track.requester.id}>`
+      ].join('\n'))
+      .setThumbnail(track.info.artworkUrl || client.user.displayAvatarURL())
       .setFooter({
-        text: "Kenium - Your Open Source Bot",
-        iconURL: "https://cdn.discordapp.com/attachments/1296093808236302380/1335389585395683419/a62c2f3218798e7eca7a35d0ce0a50d1_1.png?ex=679ffdf7&is=679eac77&hm=1ad5956e1f69306e10731a9660a964b530f5be55c22e897c636f136fceb3cacf&"
+        text: 'v2.8.0 • mushroom0162',
+        iconURL: 'https://cdn.discordapp.com/attachments/1296093808236302380/1335389585395683419/a62c2f3218798e7eca7a35d0ce0a50d1_1.png'
+      });
+  }
+  static createProgressBar(total, current, length = 12) {
+    const progress = Math.round((current / total) * length);
+    const emptyProgress = length - progress;
+    
+    const progressText = '━'.repeat(progress);
+    const emptyProgressText = '─'.repeat(emptyProgress);
+    const circle = current > 0 ? '⚪' : '⭕';
+    
+    return `${progressText}${circle}${emptyProgressText}`;
+  }
+
+  static createErrorEmbed(track, payload) {
+    return new EmbedBuilder()
+      .setColor('#FF3333')
+      .setAuthor({
+        name: 'Playback Error'
+      })
+      .setDescription([
+        '### Something went wrong while playing:',
+        `\`\`\`diff`,
+        `- Track: ${track.info.title}`,
+        `- Error: ${payload.exception.message}`,
+        `\`\`\``,
+        '*Try playing the track again or check if the URL is valid.*'
+      ].join('\n'))
+      .setFooter({
+        text: 'Kenium v2.8.0 • Report bugs on GitHub',
+        iconURL: 'https://cdn.discordapp.com/attachments/1296093808236302380/1335389585395683419/a62c2f3218798e7eca7a35d0ce0a50d1_1.png'
       })
       .setTimestamp();
   }
@@ -138,9 +151,9 @@ class EmbedFactory {
       .setColor(ERROR_COLOR)
       .setTitle("❌ Error Playing Track")
       .setDescription(
-        `Error playing track: \`${track.info.title}\`\nMessage: \`${payload.exception.message}\``
+        `**Error:** \`${track.info.title}\`\n**Message:** \`${payload.exception.message}\``
       )
-      .setFooter({ text: "Kenium v2.7.0 | by mushroom0162" })
+      .setFooter({ text: "Kenium v2.8.0 | by mushroom0162" })
       .setTimestamp();
   }
 }
@@ -172,8 +185,8 @@ aqua.on("trackStart", async (player, track) => {
   try {
     const trackCount = player.queue.size;
     const status = trackCount > 2
-      ? `⭐ Playlist (${trackCount} tracks) - Kenium 2.7.0`
-      : `⭐ ${track.info.title} - Kenium 2.7.0`;
+      ? `⭐ Playlist (${trackCount} tracks) - Kenium 2.8.0`
+      : `⭐ ${track.info.title} - Kenium 2.8.0`;
 
     const nowPlayingMessage = await channel.send({
       embeds: [EmbedFactory.createTrackEmbed(client, player, track)]
