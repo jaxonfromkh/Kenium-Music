@@ -12,7 +12,7 @@ export const Command = {
             const seconds = Math.floor((duration % (1000 * 60)) / 1000); 
             return `${days}d ${hours}h ${minutes}m ${seconds}s`; 
         }; 
-        
+
         const nodes = [...client.aqua.nodeMap.values()]; 
         const connected = nodes.some(node => node.connected); 
         const botUptime = msToTime(process.uptime() * 1000); 
@@ -21,78 +21,26 @@ export const Command = {
         const freeMemoryMB = (os.freemem() / 1024 / 1024).toFixed(2); 
         const cpuStats = os.cpus(); 
         const cpuCores = cpuStats.length; 
-        const { model: cpuModel, speed: cpuSpeed } = cpuStats[0]; 
-        const cpuSpeedGHz = (cpuSpeed / 1000).toFixed(2); 
-        const cpuLoad = os.loadavg()[1].toFixed(2); 
+        const cpuModel = cpuStats[0]?.model || 'Unknown'; 
+        const cpuSpeed = (cpuStats[0]?.speed / 1000).toFixed(2) || '0.00'; 
         const discordPing = client.ws.ping; 
-        const replyTime = Date.now() - interaction.createdTimestamp;
-
-
+        const replyTime = Date.now() - interaction.createdTimestamp; 
+        
         const embed = new EmbedBuilder() 
-            .setColor(0x000000) 
-            .setTitle('Lavalink Status') 
-            .setDescription(`\`Lavalink ${connected ? 'Connected' : 'Disconnected'}\``) 
+            .setColor(0x000000)
+            .setTitle('⚙️ System Status') 
+            .setDescription(`**Lavalink:** \`${connected ? 'Connected ✅' : 'Disconnected ❌'}\``) 
+            .addFields( 
+                { name: '📊 Bot Stats', value: `**Uptime:** \`${botUptime}\`\n**Memory:** \`Total: ${totalMemoryMB} MB\` | \`Used: ${usedMemoryMB} MB\` | \`Free: ${freeMemoryMB} MB\`\n**CPU:** \`Cores: ${cpuCores}\` | \`Speed: ${cpuSpeed} GHz\` | \`Load: ${os.loadavg()[1].toFixed(2)}%\`\n**Ping:** \`Discord: ${discordPing}ms\` | \`Bot: ${replyTime}ms\``, inline: false }, 
+                { name: '🌐 Node Stats', value: nodes.map(({ stats }) => { 
+                    const { memory, cpu, players, playingPlayers, uptime } = stats; 
+                    const uptimeFormatted = msToTime(uptime); 
+                    const cpuLavalinkLoadPercentage = (cpu.lavalinkLoadPercentage * 100).toFixed(2); 
+                    return `**Players:** \`${players}\` | **Active:** \`${playingPlayers}\`\n**Uptime:** \`${uptimeFormatted}\`\n**Memory:** \`Allocated: ${(memory.allocated / 1024 / 1024).toFixed(2)} MB\` | \`Used: ${(memory.used / 1024 / 1024).toFixed(2)} MB\` | \`Free: ${(memory.free / 1024 / 1024).toFixed(2)} MB\`\n**CPU:** \`Cores: ${cpu.cores}\` | \`Load: ${cpuLavalinkLoadPercentage}%\``; 
+                }).join('\n\n'), inline: false } 
+            ) 
+            .setFooter({ text: 'Powered by mushroom0162', iconURL: 'https://cdn.discordapp.com/attachments/1296093808236302380/1335389585395683419/a62c2f3218798e7eca7a35d0ce0a50d1_1.png' }) 
             .setTimestamp(); 
-
-        const formatMemory = (memory) => ({
-            allocatedMB: (memory.allocated / 1024 / 1024).toFixed(2),
-            usedMB: (memory.used / 1024 / 1024).toFixed(2),
-            freeMB: (memory.free / 1024 / 1024).toFixed(2),
-            reservedMB: (memory.reservable / 1024 / 1024).toFixed(2),
-            freePercentage: ((memory.free / memory.allocated) * 100).toFixed(2),
-            usedPercentage: ((memory.used / memory.allocated) * 100).toFixed(2),
-        }); 
-
-        const nodeFields = nodes.map(({ stats, aqua }) => { 
-            const { memory, cpu, players, playingPlayers, uptime } = stats; 
-            const { allocatedMB, usedMB, freeMB, reservedMB, freePercentage, usedPercentage } = formatMemory(memory); 
-            const uptimeFormatted = msToTime(uptime); 
-            const { cores: cpuCoresNode, systemLoad: cpuSystemLoad, lavalinkLoad, lavalinkLoadPercentage } = cpu; 
-            const cpuLavalinkLoadPercentage = (lavalinkLoadPercentage * 100).toFixed(2); 
-
-            return ` 
-\`\`\`ini
-[Powered by: mushroom0162] 
-============================ 
-[Players]: ${players} 
-[Active Players]: ${playingPlayers} 
-[Lavalink Uptime]: ${uptimeFormatted} 
-[Ping (Discord)]: ${discordPing} ms 
-[Ping (Bot)]: ${replyTime} ms 
-[Aqualink Version]: ${aqua.version} 
-[Memory]: 
-    Allocated: ${allocatedMB} MB 
-    Used: ${usedMB} MB 
-    Free: ${freeMB} MB 
-    Reserved: ${reservedMB} MB 
-    Free Percentage: ${freePercentage}% 
-    Used Percentage: ${usedPercentage}% 
-[CPU]: 
-    Cores: ${cpuCoresNode} 
-    System Load: ${cpuSystemLoad}% 
-    Lavalink Load: ${lavalinkLoad.toFixed(2)}% 
-    Lavalink Load Percentage: ${cpuLavalinkLoadPercentage}% 
-============================ 
-[BOT SECTION]: 
-[Bot Uptime]: ${botUptime} 
-[Bot Memory]: 
-    Allocated: ${totalMemoryMB} MB 
-    Used: ${usedMemoryMB} MB 
-    Free: ${freeMemoryMB} MB 
-[CPU]: 
-    Cores: ${cpuCores} 
-    CPU Load: ${cpuLoad}% 
-    Model: ${cpuModel} 
-    Speed: ${cpuSpeedGHz} GHz 
-\`\`\` 
-            `; 
-        }).join('\n'); 
-
-        embed.addFields({ 
-            name: 'Nodes', 
-            value: nodeFields, 
-            inline: true 
-        }); 
 
         await interaction.reply({ embeds: [embed] }); 
     } 
