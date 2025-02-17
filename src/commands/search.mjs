@@ -50,12 +50,12 @@ class SearchCommandHandler {
 
     validateVoiceState(interaction, voiceChannel) {
         if (!voiceChannel) {
-            interaction.reply({ content: Config.MESSAGES.NO_VOICE_CHANNEL, ephemeral: true });
+            interaction.reply({ content: Config.MESSAGES.NO_VOICE_CHANNEL, flags: 64 });
             return false;
         }
         const existingConnection = this.client.aqua.connections?.get(interaction.guildId);
         if (existingConnection && voiceChannel.id !== existingConnection.channelId) {
-            interaction.reply({ content: Config.MESSAGES.ALREADY_CONNECTED(`<#${existingConnection.channelId}>`), ephemeral: true });
+            interaction.reply({ content: Config.MESSAGES.ALREADY_CONNECTED(`<#${existingConnection.channelId}>`), flags: 64 });
             return false;
         }
         return true;
@@ -74,7 +74,7 @@ class SearchCommandHandler {
             });
         } catch (error) {
             console.error('Failed to create player:', error);
-            interaction.reply({ content: '❌ Failed to join voice channel. Please try again.', ephemeral: true });
+            interaction.reply({ content: '❌ Failed to join voice channel. Please try again.', flags: 64  });
             return null;
         }
     }
@@ -83,14 +83,14 @@ class SearchCommandHandler {
         try {
             searchState.tracks = await this.searchTracks(searchState.query, searchState.currentPlatform.source, member);
             if (!searchState.tracks.length) {
-                interaction.reply({ content: Config.MESSAGES.NO_RESULTS(searchState.currentPlatform.name), ephemeral: true });
+                interaction.reply({ content: Config.MESSAGES.NO_RESULTS(searchState.currentPlatform.name), flags: 64 });
                 return;
             }
             const message = await this.createSearchMessage(interaction, searchState);
             this.setupInteractionCollector(message, interaction, player, searchState);
         } catch (error) {
             console.error('Search error:', error);
-            interaction.reply({ content: Config.MESSAGES.SEARCH_ERROR(searchState.currentPlatform.name), ephemeral: true });
+            interaction.reply({ content: Config.MESSAGES.SEARCH_ERROR(searchState.currentPlatform.name), flags: 64  });
         }
     }
 
@@ -171,7 +171,7 @@ class SearchCommandHandler {
         const track = searchState.tracks[trackIndex];
         if (track) {
             player.queue.add(track);
-            await interaction.followUp({ content: Config.MESSAGES.TRACK_ADDED(track.info.title), ephemeral: true });
+            await interaction.followUp({ content: Config.MESSAGES.TRACK_ADDED(track.info.title), flags: 64  });
             if (!player.playing && !player.paused && player.queue.size > 0) {
                 player.play();
             }
@@ -192,11 +192,11 @@ class SearchCommandHandler {
                 const platformButtons = this.createPlatformButtons();
                 await message.edit({ embeds: [embed], components: [selectionButtons, platformButtons] });
             } else {
-                await interaction.followUp({ content: Config.MESSAGES.NO_RESULTS(newPlatform.name), ephemeral: true });
+                await interaction.followUp({ content: Config.MESSAGES.NO_RESULTS(newPlatform.name), flags: 64  });
             }
         } catch (error) {
             console.error(`${newPlatform.name} search error:`, error);
-            await interaction.followUp({ content: newPlatform.searchErrorMessage, ephemeral: true });
+            await interaction.followUp({ content: newPlatform.searchErrorMessage, flags: 64  });
         }
     }
 }
