@@ -14,7 +14,6 @@ const { Aqua } = require('aqualink');
 
 const UPDATE_INTERVAL = 30000;
 const ERROR_MESSAGE_DURATION = 5000;
-const DEFAULT_COLOR = 0x000000;
 const ERROR_COLOR = 0xff0000;
 
 const nodes = [{
@@ -25,21 +24,18 @@ const nodes = [{
   name: "toddy's"
 }];
 
+
 const __dirname = dirname(fileURLToPath(import.meta.url));
 export const rootPath = __dirname;
 
-
 class TimeFormatter {
   static format(milliseconds) {
-    const seconds = Math.floor(milliseconds / 1000);
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    const remainingSeconds = seconds % 60;
+    const totalSeconds = Math.floor(milliseconds / 1000);
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
     
-    return [hours, minutes, remainingSeconds]
-      .map(v => v < 10 ? `0${v}` : String(v))
-      .filter((v, i) => v !== '00' || i === 2)
-      .join(':');
+    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
   }
 }
 
@@ -48,17 +44,18 @@ class ChannelManager {
   static #updateTimestamps = new Map();
 
   static getChannel(client, channelId) {
-    if (!this.#cache.has(channelId)) {
-      const channel = client.channels.cache.get(channelId);
+    let channel = this.#cache.get(channelId);
+    if (!channel) {
+      channel = client.channels.cache.get(channelId);
       if (channel) this.#cache.set(channelId, channel);
     }
-    return this.#cache.get(channelId);
+    return channel;
   }
 
   static async updateVoiceStatus(channelId, status, token) {
     const now = Date.now();
     const lastUpdate = this.#updateTimestamps.get(channelId) || 0;
-    
+
     if (now - lastUpdate < UPDATE_INTERVAL) return;
     this.#updateTimestamps.set(channelId, now);
 
@@ -71,7 +68,7 @@ class ChannelManager {
             Authorization: `Bot ${token}`,
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ status: status || "Kenium 2.8.0" }),
+          body: JSON.stringify({ status }),
         }
       );
       
@@ -82,17 +79,13 @@ class ChannelManager {
       console.error("Voice status update error:", error);
     }
   }
-
-  static clearCaches() {
-    this.#cache.clear();
-    this.#updateTimestamps.clear();
-  }
 }
 
 class EmbedFactory {
   static createTrackEmbed(client, player, track) {
     const progressBar = this.createProgressBar(track.info.length, player.position);
-    
+    const isLive = track.info.isStream ? '🔴 LIVE' : '320kbps';
+
     return new EmbedBuilder()
       .setColor('#0A0A0A')
       .setAuthor({
@@ -100,50 +93,17 @@ class EmbedFactory {
         iconURL: client.user.displayAvatarURL(),
         url: 'https://github.com/ToddyTheNoobDud/Kenium-Music'
       })
-      .setDescription([
-        `### [\`${track.info.title}\`](<${track.info.uri}>)`,
-        `> by **${track.info.author}** • ${track.info.album || 'Single'} • ${track.info.isStream ? '🔴 LIVE' : '320kbps'}`,
-        '',
-        `\`${TimeFormatter.format(player.position)}\` ${progressBar} \`${TimeFormatter.format(track.info.length)}\``,
-        '',
-        `${player.volume > 50 ? '🔊' : '🔈'} \`${player.volume}%\` • ${player.loop ? '🔁' : '▶️'} \`${player.loop ? 'Loop' : 'Normal'}\` • 👤 <@${track.requester.id}>`
-      ].join('\n'))
+      .setDescription(`### [\`${track.info.title}\`](<${track.info.uri}>)\n> by **${track.info.author}** • ${track.info.album || 'Single'} • ${isLive}\n\n\`${TimeFormatter.format(player.position)}\` ${progressBar} \`${TimeFormatter.format(track.info.length)}\`\n\n${player.volume > 50 ? '🔊' : '🔈'} \`${player.volume}%\` • ${player.loop ? '🔁' : '▶️'} \`${player.loop ? 'Loop' : 'Normal'}\` • 👤 <@${track.requester.id}>`) // Simplified template literal
       .setThumbnail(track.info.artworkUrl || client.user.displayAvatarURL())
       .setFooter({
         text: 'v2.8.0 • mushroom0162',
         iconURL: 'https://cdn.discordapp.com/attachments/1296093808236302380/1335389585395683419/a62c2f3218798e7eca7a35d0ce0a50d1_1.png'
       });
   }
+
   static createProgressBar(total, current, length = 12) {
     const progress = Math.round((current / total) * length);
-    const emptyProgress = length - progress;
-    
-    const progressText = '━'.repeat(progress);
-    const emptyProgressText = '─'.repeat(emptyProgress);
-    const circle = current > 0 ? '⚪' : '⭕';
-    
-    return `${progressText}${circle}${emptyProgressText}`;
-  }
-
-  static createErrorEmbed(track, payload) {
-    return new EmbedBuilder()
-      .setColor('#FF3333')
-      .setAuthor({
-        name: 'Playback Error'
-      })
-      .setDescription([
-        '### Something went wrong while playing:',
-        `\`\`\`diff`,
-        `- Track: ${track.info.title}`,
-        `- Error: ${payload.exception.message}`,
-        `\`\`\``,
-        '*Try playing the track again or check if the URL is valid.*'
-      ].join('\n'))
-      .setFooter({
-        text: 'Kenium v2.8.0 • Report bugs on GitHub',
-        iconURL: 'https://cdn.discordapp.com/attachments/1296093808236302380/1335389585395683419/a62c2f3218798e7eca7a35d0ce0a50d1_1.png'
-      })
-      .setTimestamp();
+    return '━'.repeat(progress) + (current > 0 ? '⚪' : '⭕') + '─'.repeat(length - progress); 
   }
 
   static createErrorEmbed(track, payload) {
@@ -151,7 +111,7 @@ class EmbedFactory {
       .setColor(ERROR_COLOR)
       .setTitle("❌ Error Playing Track")
       .setDescription(
-        `**Error:** \`${track.info.title}\`\n**Message:** \`${payload.exception.message}\``
+        `**Error:** \`${track.info.title}\`\n**Message:** \`${payload.exception?.message}\``
       )
       .setFooter({ text: "Kenium v2.8.0 | by mushroom0162" })
       .setTimestamp();
