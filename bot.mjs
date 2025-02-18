@@ -89,14 +89,14 @@ class EmbedFactory {
     return new EmbedBuilder()
       .setColor('#0A0A0A')
       .setAuthor({
-        name: '🎵Kenium 2.8.0 - Open Source Music Bot',
+        name: '🎵  Kenium 2.8.0',
         iconURL: client.user.displayAvatarURL(),
         url: 'https://github.com/ToddyTheNoobDud/Kenium-Music'
       })
-      .setDescription(`### [\`${track.info.title}\`](<${track.info.uri}>)\n> by **${track.info.author}** • ${track.info.album || 'Single'} • ${isLive}\n\n\`${TimeFormatter.format(player.position)}\` ${progressBar} \`${TimeFormatter.format(track.info.length)}\`\n\n${player.volume > 50 ? '🔊' : '🔈'} \`${player.volume}%\` • ${player.loop ? '🔁' : '▶️'} \`${player.loop ? 'Loop' : 'Normal'}\` • 👤 <@${track.requester.id}>`) // Simplified template literal
+      .setDescription(`### [\`${track.info.title}\`](<${track.info.uri}>)\n> by **${track.info.author}** • ${track.info.album || 'Single'} • ${isLive}\n\n\`${TimeFormatter.format(player.position)}\` ${progressBar} \`${TimeFormatter.format(track.info.length)}\`\n\n${player.volume > 50 ? '🔊' : '🔈'} \`${player.volume}%\` • ${player.loop ? '🔁' : '▶️'} \`${player.loop ? 'Loop' : 'Normal'}\` • 👤 <@${track.requester.id}>`)
       .setThumbnail(track.info.artworkUrl || client.user.displayAvatarURL())
       .setFooter({
-        text: 'v2.8.0 • mushroom0162',
+        text: 'An Open Source Bot',
         iconURL: 'https://cdn.discordapp.com/attachments/1296093808236302380/1335389585395683419/a62c2f3218798e7eca7a35d0ce0a50d1_1.png'
       });
   }
@@ -117,7 +117,6 @@ class EmbedFactory {
       .setTimestamp();
   }
 }
-
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
