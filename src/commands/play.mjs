@@ -15,36 +15,38 @@ export const Command = {
     autocomplete: true,
   }],
 
-  async autocomplete(client, interaction) {
+async autocomplete(client, interaction) {
     const focused = interaction.options.getFocused()?.trim() || '';
+    
     if (focused.length < 2) return interaction.respond([]);
-
     const now = Date.now();
     if ((this.lastAutocomplete || 0) + AUTOCOMPLETE_DELAY > now) {
-      return interaction.respond([]);
+        return interaction.respond([]);
     }
     this.lastAutocomplete = now;
-
+    if (this.isRequestInProgress) {
+        return interaction.respond([]);
+    }
+    this.isRequestInProgress = true;
     try {
-      const { tracks = [] } = await client.aqua.resolve({
-        query: focused,
-        requester: interaction.user
-      }) || {};
-
-      const suggestions = tracks
-        .slice(0, MAX_AUTOCOMPLETE_RESULTS)
-        .map(({ info: { title, uri } }) => ({
-          name: title.slice(0, 100),
-          value: uri
-        }));
-
-      return interaction.respond(suggestions);
+        const { tracks = [] } = await client.aqua.resolve({
+            query: focused,
+            requester: interaction.user
+        }) || {};
+        const suggestions = tracks
+            .slice(0, MAX_AUTOCOMPLETE_RESULTS)
+            .map(({ info: { title, uri } }) => ({
+                name: title.slice(0, 100),
+                value: uri
+            }));
+        return interaction.respond(suggestions);
     } catch (error) {
-      console.error('Autocomplete error:', error);
-      return interaction.respond([]);
+        console.error('Autocomplete error:', error);
+        return interaction.respond([]);
+    } finally {
+        this.isRequestInProgress = false;
     }
   },
-
   async run(client, interaction) {
     const { guild, member, channel } = interaction;
     const voiceChannel = member?.voice?.channel;
@@ -97,21 +99,26 @@ export const Command = {
       .setColor(EMBED_COLOR)
       .setTimestamp();
 
-    if (result.loadType === "track" || result.loadType === "search") {
-      const track = result.tracks[0];
-      player.queue.add(track);
-      embed.setDescription(`Added [${track.info.title}](${track.info.uri}) to the queue.`);
-    } else if (result.loadType === "playlist") {
-      result.tracks.forEach(track => player.queue.add(track));
-      embed.setDescription(
-        `Added [${result.playlistInfo.name}](${interaction.options.getString('query')}) playlist (${result.tracks.length} tracks) to the queue.`
-      );
-    } else {
-      throw new Error('Unsupported content type.');
+    switch (result.loadType) {
+      case "track":
+      case "search": {
+        const track = result.tracks[0];
+        player.queue.add(track);
+        embed.setDescription(`Added [${track.info.title}](${track.info.uri}) to the queue.`);
+        break;
+      }
+      case "playlist": {
+        player.queue.add(...result.tracks);
+        embed.setDescription(
+          `Added [${result.playlistInfo.name}](${interaction.options.getString('query')}) playlist (${result.tracks.length} tracks) to the queue.`
+        );
+        break;
+      }
+      default:
+        throw new Error('Unsupported content type.');
     }
     return embed;
   },
-
   sendError(interaction, content) {
     return interaction.reply({ content, flags: 64 });
   },
