@@ -214,9 +214,11 @@ client.slashCommands = new Map();
 client.events = new Map();
 client.selectMenus = new Map();
 
-await Promise.all([
-  import("./src/handlers/Command.mjs").then(({ CommandHandler }) => CommandHandler(client, rootPath)),
+const [commandsPromise, eventsPromise] = [
+  import("./src/handlers/Command.mjs").then(({ CommandHandler }) => new CommandHandler(client, rootPath).refreshCommands()),
   import("./src/handlers/Events.mjs").then(({ EventHandler }) => EventHandler(client, rootPath))
-]);
+];
+await Promise.all([commandsPromise, eventsPromise]);
+
 
 client.login(token);
