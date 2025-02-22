@@ -20,13 +20,10 @@ export const Command = {
 
         const nodes = [...client.aqua.nodeMap.values()]; 
         const totalMemory = os.totalmem() / 1073741824; 
-        const usedMemory = process.memoryUsage().heapTotal / 1073741824; 
-        const freeMemory = os.freemem() / 1073741824; 
-
+        const usedMemory = process.memoryUsage().heapTotal / 1048576; 
         const memory = { 
             total: totalMemory.toFixed(2), 
             used: usedMemory.toFixed(2), 
-            free: freeMemory.toFixed(2) 
         }; 
 
         const cpuCores = os.cpus(); 
@@ -37,13 +34,13 @@ export const Command = {
         }; 
 
         const embed = new EmbedBuilder() 
-            .setColor(0x2B2D31) 
+            .setColor(0) 
             .setTitle('🚀 Kenium 2.8.0 - An Open Source Bot') 
             .setDescription([ 
                 `### 🔌 Status: ${nodes.some(node => node.connected) ? '🟢 Online' : '🔴 Offline'}`, 
                 '```', 
                 `⚡ CPU    : ${cpu.model} (${cpu.cores} cores @ ${cpu.load}% load)`, 
-                `💾 Memory : ${memory.used}GB / ${memory.total}GB`, 
+                `💾 Memory : ${memory.used}MB / ${memory.total}GB`, 
                 `🕒 Uptime : ${formatUptime(process.uptime() * 1000)}`, 
                 `📡 Ping   : ${client.ws.ping}ms WS | ${Date.now() - interaction.createdTimestamp}ms Bot`, 
                 '```', 
