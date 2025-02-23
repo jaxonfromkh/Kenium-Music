@@ -108,7 +108,9 @@ async autocomplete(client, interaction) {
         break;
       }
       case "playlist": {
-        player.queue.add(...result.tracks);
+        for (const track of result.tracks) {
+          player.queue.add(track);
+        }
         embed.setDescription(
           `Added [${result.playlistInfo.name}](${interaction.options.getString('query')}) playlist (${result.tracks.length} tracks) to the queue.`
         );
