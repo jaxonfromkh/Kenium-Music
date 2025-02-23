@@ -85,7 +85,7 @@ class EmbedFactory {
         `### [\`${track.info.title}\`](<${track.info.uri}>)\n` +
         `> by **${track.info.author}** • ${track.info.album || 'Single'} • ${quality}\n\n` +
         `\`${TimeFormatter.format(player.position)}\` ${progressBar} \`${TimeFormatter.format(track.info.length)}\`\n\n` +
-        `${player.volume > 50 ? '🔊' : '🔈'} \`${player.volume}%\` • ${player.loop ? '🔁' : '▶️'} \`${player.loop ? 'Loop' : 'Normal'}\` • 👤 <@${track.requester.id}>`
+        `${player.volume > 50 ? '🔊' : '🔈'} \`${player.volume}%\` • ${player.loop === 'track' ? '🔂 Track Loop' : player.loop === 'queue' ? '🔁 Queue Loop' : '▶️ No Loop'} • 👤 <@${track.requester.id}>`
       )
       .setThumbnail(track.info.artworkUrl || client.user.displayAvatarURL())
       .setFooter({
