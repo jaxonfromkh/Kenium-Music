@@ -17,18 +17,22 @@ export const Command = {
         }
 
         const focusedValue = interaction.options.getFocused().toLowerCase();
-        const filteredChoices = player.queue
-            .map((song, index) => ({
-                name: `Song ${index + 1} - ${song.info.title}`,
-                value: index + 1,
-            }))
-            .filter(choice => choice.name.toLowerCase().includes(focusedValue));
+        const results = [];
 
-        return interaction.respond(filteredChoices);
+        for (let i = 0; i < player.queue.length; i++) {
+            const title = player.queue[i].info.title;
+            const name = `Song ${i + 1} - ${title}`;
+            if (name.toLowerCase().includes(focusedValue)) {
+                results.push({ name, value: i + 1 });
+            }
+        }
+
+        return interaction.respond(results);
     },
     run: async (client, interaction) => {
         const position = interaction.options.getInteger("position");
         const player = client.aqua.players.get(interaction.guildId);
+
         if (!player || interaction.guild.members.me.voice.channelId !== interaction.member.voice.channelId) return;
 
         const queueLength = player.queue.length;
