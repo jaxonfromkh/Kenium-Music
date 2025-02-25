@@ -1,5 +1,7 @@
+import'dotenv/config';
 import { REST, Routes } from "discord.js";
-import { token, id } from "../../config.mjs";
+const token = process.env.token;
+const id = process.env.id;
 import { FilereaderGenerator } from "./filereader.mjs";
 
 class CommandHandler {
