@@ -1,8 +1,16 @@
+
+import 'dotenv/config';
 import { Client, GatewayIntentBits, EmbedBuilder, GatewayDispatchEvents } from "discord.js";
-import { token } from "./config.mjs";
 import { dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createRequire } from "node:module";
+
+const token = process.env.token;
+const NODE_HOST = process.env.NODE_HOST;
+const NODE_PASSWORD = process.env.NODE_PASSWORD; 
+const NODE_PORT = process.env.NODE_PORT;
+const NODE_NAME = process.env.NODE_NAME;
+
 const require = createRequire(import.meta.url);
 const { Aqua } = require('aqualink');
 
@@ -10,13 +18,16 @@ const UPDATE_INTERVAL = 30000;
 const ERROR_MESSAGE_DURATION = 5000;
 const ERROR_COLOR = 0xff0000;
 
-const nodes = [{
-  host: "",
-  password: "",
-  port: 433,
-  secure: false,
-  name: "toddy's"
-}];
+const nodes = [
+  {
+    host: NODE_HOST,
+    password: NODE_PASSWORD,
+    port: NODE_PORT,
+    secure: false,
+    name: NODE_NAME,
+  }
+];
+
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 export const rootPath = __dirname;
@@ -128,7 +139,6 @@ const aqua = new Aqua(client, nodes, {
   shouldDeleteMessage: true,
   autoResume: false,
   infiniteReconnects: true,
-  leaveOnEnd: true
 });
 
 aqua.on("trackStart", async (player, track) => {
