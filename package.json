@@ -2,6 +2,7 @@
 	"dependencies": {
 		"aqualink": "1.8.1-beta4",
 		"discord.js": "^14.18.0",
+		"dotenv": "^16.4.7",
 		"mongoose": "^8.10.0"
 	},
 	"main": "bot.mjs",
