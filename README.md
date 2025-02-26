@@ -34,7 +34,13 @@ Get yourself an lavalink first  (https://github.com/lavalink-devs/Lavalink)
 
 I recommend using nodeJS / node 20 (LTS) for running.
 
-do pnpm install or npm install then run node . or bot.mjs
+download this repo as an zip or git clone it (https://github.com/ToddyTheNoobDud/Kenium-Music.git)
+
+do pnpm install do install evertything
+
+create an .env file (look the .env.example so you can see what to put on it)
+
+node run bot.mjs to start
 
 # Contribuiting
 
