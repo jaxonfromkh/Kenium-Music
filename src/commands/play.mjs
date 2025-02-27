@@ -15,36 +15,51 @@ export const Command = {
     autocomplete: true,
   }],
 
-async autocomplete(client, interaction) {
+  // Prevent concurrent autocomplete requests
+  _state: {
+    lastAutocomplete: 0,
+    isRequestInProgress: false
+  },
+
+  async autocomplete(client, interaction) {
     const focused = interaction.options.getFocused()?.trim() || '';
     
-    if (focused.length < 2) return interaction.respond([]);
     const now = Date.now();
-    if ((this.lastAutocomplete || 0) + AUTOCOMPLETE_DELAY > now) {
-        return interaction.respond([]);
+    if ((this._state.lastAutocomplete || 0) + 300 > now) {
+      return interaction.respond([]);
     }
-    this.lastAutocomplete = now;
-    if (this.isRequestInProgress) {
-        return interaction.respond([]);
+    this._state.lastAutocomplete = now;
+
+    if (this._state.isRequestInProgress) {
+      return interaction.respond([]);
     }
-    this.isRequestInProgress = true;
+
+    this._state.isRequestInProgress = true;
     try {
-        const { tracks = [] } = await client.aqua.resolve({
-            query: focused,
-            requester: interaction.user
-        }) || {};
-        const suggestions = tracks
-            .slice(0, MAX_AUTOCOMPLETE_RESULTS)
-            .map(({ info: { title, uri } }) => ({
-                name: title.slice(0, 100),
-                value: uri
-            }));
-        return interaction.respond(suggestions);
+      const { tracks = [] } = await client.aqua.resolve({
+        query: focused,
+        requester: interaction.user
+      }) || {};
+
+      const suggestions = tracks
+        .slice(0, 6)
+        .map(({ info: { title, uri, author } }) => {
+          let name = `${title.slice(0, 80)}${author ? ` - ${author.slice(0, 20)}` : ''}`;
+          if (name.length > 100) {
+            name = name.substring(0, 97) + '...';
+          }
+          return {
+            name: name,
+            value: uri
+          };
+        });
+
+      return interaction.respond(suggestions);
     } catch (error) {
-        console.error('Autocomplete error:', error);
-        return interaction.respond([]);
+      console.error('Autocomplete error:', error);
+      return interaction.respond([]);
     } finally {
-        this.isRequestInProgress = false;
+      this._state.isRequestInProgress = false;
     }
   },
   async run(client, interaction) {
@@ -84,7 +99,6 @@ async autocomplete(client, interaction) {
       voiceChannel: voiceChannel.id,
       textChannel: channel.id,
       deaf: true,
-      leaveOnEnd: true,
       shouldDeleteMessage: true
     });
   },
