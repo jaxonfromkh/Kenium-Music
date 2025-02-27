@@ -88,7 +88,7 @@ class EmbedFactory {
     return new EmbedBuilder()
       .setColor('#0A0A0A')
       .setAuthor({
-        name: '🎵  Kenium 2.8.0',
+        name: '🎵  Kenium 2.9.0',
         iconURL: client.user.displayAvatarURL(),
         url: 'https://github.com/ToddyTheNoobDud/Kenium-Music'
       })
@@ -117,7 +117,7 @@ class EmbedFactory {
       .setDescription(
         `**Error:** \`${track.info.title}\`\n**Message:** \`${payload.exception?.message}\``
       )
-      .setFooter({ text: "Kenium v2.8.0 | by mushroom0162" })
+      .setFooter({ text: "Kenium v2.9.0 | by mushroom0162" })
       .setTimestamp();
   }
 }
@@ -147,8 +147,8 @@ aqua.on("trackStart", async (player, track) => {
   try {
     const trackCount = player.queue.size;
     const status = trackCount > 2
-      ? `⭐ Playlist (${trackCount} tracks) - Kenium 2.8.0`
-      : `⭐ ${track.info.title} - Kenium 2.8.0`;
+      ? `⭐ Playlist (${trackCount} tracks) - Kenium 2.9.0`
+      : `⭐ ${track.info.title} - Kenium 2.9.0`;
     const nowPlayingMessage = await channel.send({
       embeds: [EmbedFactory.createTrackEmbed(client, player, track)],
       flags: 4096
