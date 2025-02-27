@@ -150,7 +150,8 @@ aqua.on("trackStart", async (player, track) => {
       ? `⭐ Playlist (${trackCount} tracks) - Kenium 2.8.0`
       : `⭐ ${track.info.title} - Kenium 2.8.0`;
     const nowPlayingMessage = await channel.send({
-      embeds: [EmbedFactory.createTrackEmbed(client, player, track)]
+      embeds: [EmbedFactory.createTrackEmbed(client, player, track)],
+      flags: 4096
     });
     player.nowPlayingMessage = nowPlayingMessage;
     ChannelManager.updateVoiceStatus(player.voiceChannel, status, token);
@@ -163,7 +164,8 @@ aqua.on("trackChange", async (player, newTrack) => {
   if (!player.nowPlayingMessage || player.shouldDeleteMessage) return;
   try {
     await player.nowPlayingMessage.edit({
-      embeds: [EmbedFactory.createTrackEmbed(client, player, newTrack)]
+      embeds: [EmbedFactory.createTrackEmbed(client, player, newTrack)],
+      flags: 4096
     });
   } catch (error) {
     console.error("Track change error:", error);
