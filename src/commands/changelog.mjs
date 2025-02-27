@@ -42,9 +42,8 @@ async function fetchCommits(client, count) {
     }
 }
 function formatCommitMessage(message) {
-    const emoji = '🔄';
     const formattedMessage = message.replace(/^.+?:\s*/, '').charAt(0).toUpperCase() + message.slice(1);
-    return `${emoji} ${formattedMessage.length > 80 ? formattedMessage.substring(0, 77) + '...' : formattedMessage}`;
+    return `${formattedMessage.length > 80 ? formattedMessage.substring(0, 77) + '...' : formattedMessage}`;
 }
 async function sendChangelogEmbed(interaction, commits, count) {
     const limitedCommits = commits.slice(0, count);
@@ -58,10 +57,9 @@ async function sendChangelogEmbed(interaction, commits, count) {
     }).join('\n');
     const embed = new EmbedBuilder()
         .setColor(PRIMARY_COLOR)
-        .setTitle("📝 Kenium - Changelog")
         .setDescription(description)
         .setFooter({
-            text: `Kenium Music v${BOT_VERSION} • Made with ❤️ by ${dev}`,
+            text: `Kenium Music v${BOT_VERSION} • Made by ${dev}`,
             iconURL: interaction.guild?.iconURL()
         })
         .setTimestamp();
