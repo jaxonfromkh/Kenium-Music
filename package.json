@@ -1,13 +1,13 @@
 {
 	"dependencies": {
-		"aqualink": "1.8.1-beta4",
+		"aqualink": "1.8.1-beta5",
 		"discord.js": "^14.18.0",
 		"dotenv": "^16.4.7",
-		"mongoose": "^8.10.0"
+		"undici": "^7.4.0"
 	},
 	"main": "bot.mjs",
 	"name": "toddys-music",
-	"version": "2.8.0",
+	"version": "2.9.0",
 	"type": "module",
 	"scripts": {
 		"start": "node bot.mjs"
