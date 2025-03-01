@@ -16,6 +16,8 @@ const { Aqua } = require('aqualink');
 
 const UPDATE_INTERVAL = 30000;
 const ERROR_MESSAGE_DURATION = 5000;
+const ERROR_COLOR = 0xff0000;
+
 const nodes = [
   {
     host: NODE_HOST,
@@ -41,7 +43,16 @@ class TimeFormatter {
 }
 
 class ChannelManager {
+  static cache = new Map();
   static updateTimestamps = new Map();
+
+  static getChannel(client, channelId) {
+    if (this.cache.has(channelId)) return this.cache.get(channelId);
+    const channel = client.channels.cache.get(channelId);
+    if (channel) this.cache.set(channelId, channel);
+    return channel;
+  }
+
   static async updateVoiceStatus(channelId, status, botToken) {
     const now = Date.now();
     const last = this.updateTimestamps.get(channelId) || 0;
@@ -63,6 +74,7 @@ class ChannelManager {
       console.error("Voice status update error:", e);
     }
   }
+
   static clearCaches() {
     this.cache.clear();
     this.updateTimestamps.clear();
@@ -71,10 +83,13 @@ class ChannelManager {
 
 class EmbedFactory {
   static createTrackEmbed(client, player, track) {
-    const progressBar = this.createProgressBar(track.info.length, player.position);
-    const quality = track.info.isStream ? '🔴 LIVE' : '🎵 320kbps';
-    const loopStatus = this.getLoopStatus(player.loop);
-    const volumeIcon = player.volume > 50 ? '🔊' : '🔈';
+    const { position, volume, loop } = player;
+    const { title, uri, author, album, length, artworkUrl, isStream } = track.info;
+
+    const progressBar = this.createProgressBar(length, position);
+    const quality = isStream ? '🔴 LIVE' : '🎵 320kbps';
+    const loopStatus = this.getLoopStatus(loop);
+    const volumeIcon = volume > 50 ? '🔊' : '🔈';
 
     return new EmbedBuilder()
       .setColor(0)
@@ -84,12 +99,12 @@ class EmbedFactory {
         url: 'https://github.com/ToddyTheNoobDud/Kenium-Music'
       })
       .setDescription(
-        `**[${track.info.title}](${track.info.uri})**\n` +
-        `*by* **${track.info.author}** • *${track.info.album || 'Single'}* • *${quality}* \n\n` +
-        `\`${TimeFormatter.format(player.position)}\` ${progressBar} \`${TimeFormatter.format(track.info.length)}\`\n\n` +
-        `${volumeIcon} \`${player.volume}%\` • ${loopStatus} • 👤 <@${track.requester.id}>`
+        `**[${title}](${uri})**\n` +
+        `*by* **${author}** • *${album || 'Single'}* • *${quality}* \n\n` +
+        `\`${TimeFormatter.format(position)}\` ${progressBar} \`${TimeFormatter.format(length)}\`\n\n` +
+        `${volumeIcon} \`${volume}%\` • ${loopStatus} • 👤 <@${track.requester.id}>`
       )
-      .setThumbnail(track.info.artworkUrl || client.user.displayAvatarURL())
+      .setThumbnail(artworkUrl || client.user.displayAvatarURL())
       .setFooter({
         text: 'An Open Source Bot',
         iconURL: 'https://cdn.discordapp.com/attachments/1296093808236302380/1335389585395683419/a62c2f3218798e7eca7a35d0ce0a50d1_1.png'
@@ -98,33 +113,30 @@ class EmbedFactory {
 
   static createProgressBar(total, current, length = 12) {
     const progress = Math.round((current / total) * length);
-    const filled = '━'.repeat(progress);
-    const empty = '─'.repeat(length - progress);
-    return `${filled}${current > 0 ? '⚪' : '⭕'}${empty}`;
+    return '━'.repeat(progress) + (current > 0 ? '⚪' : '⭕') + '─'.repeat(length - progress);
+  }
+
+  static getLoopStatus(loop) {
+    const loopStatusMap = {
+      'track': '🔂 Track Loop',
+      'queue': '🔁 Queue Loop',
+      'none': '▶️ No Loop'
+    };
+    return loopStatusMap[loop] || loopStatusMap.none;
   }
 
   static createErrorEmbed(track, payload) {
     return new EmbedBuilder()
-      .setColor('#FF0000')
+      .setColor(ERROR_COLOR)
       .setTitle("❌ Error Playing Track")
       .setDescription(
-        `**Error:** \`${track.info.title}\`\n**Message:** \`${payload.exception?.message || 'Unknown error.'}\``
+        `**Error:** \`${track.info.title}\`\n**Message:** \`${payload.exception?.message}\``
       )
       .setFooter({ text: "Kenium v2.9.0 | by mushroom0162" })
       .setTimestamp();
   }
-
-  static getLoopStatus(loop) {
-    switch (loop) {
-      case 'track':
-        return '🔂 Track Loop';
-      case 'queue':
-        return '🔁 Queue Loop';
-      default:
-        return '▶️ No Loop';
-    }
-  }
 }
+
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
@@ -145,11 +157,8 @@ const aqua = new Aqua(client, nodes, {
 });
 
 aqua.on("trackStart", async (player, track) => {
-  const channel = client.channels.cache.get(player.textChannel);
-  if (!channel) {
-    console.warn(`Channel not found for ID: ${player.textChannel}`);
-    return;
-  }
+  const channel = ChannelManager.getChannel(client, player.textChannel);
+  if (!channel) return;
   try {
     const trackCount = player.queue.size;
     const status = trackCount > 2
@@ -165,14 +174,9 @@ aqua.on("trackStart", async (player, track) => {
     console.error("Track start error:", error);
   }
 });
+
 aqua.on("trackChange", async (player, newTrack) => {
   if (!player.nowPlayingMessage || player.shouldDeleteMessage) return;
-  
-  const channel = client.channels.cache.get(player.textChannel);
-  if (!channel) {
-    console.warn(`Channel not found for ID: ${player.textChannel}`);
-    return
-  }
   try {
     await player.nowPlayingMessage.edit({
       embeds: [EmbedFactory.createTrackEmbed(client, player, newTrack)],
@@ -182,16 +186,15 @@ aqua.on("trackChange", async (player, newTrack) => {
     console.error("Track change error:", error);
   }
 });
+
 aqua.on("trackEnd", (player) => {
-  if (player.queue.length === 0) {
-    ChannelManager.clearCaches();
-  }
+  if (player.queue.length === 0) ChannelManager.clearCaches();
   player.nowPlayingMessage = null;
 });
 
 aqua.on("trackError", async (player, track, payload) => {
   console.error(`Error ${payload.exception.code} / ${payload.exception.message}`);
-  const channel = client.channels.cache.get(player.textChannel);
+  const channel = ChannelManager.getChannel(client, player.textChannel);
   if (!channel) return;
   try {
     const errorMessage = await channel.send({
