@@ -16,7 +16,7 @@ const CONFIG = {
             "🌐 New WebSocket code (now uses an self-made WebSocket, way faster connections)",
             "🐛 Bug fixes (Fixing any bugs that i find, playlist errors fixed, autocomplete fixed)",
             "🔧 New UI Beign made (small changes at current)",
-            "📚 Current bugs: not sending embeds after 1 song (auto-queue)",
+            "📚 Current bugs: not sending embeds after 1 song (auto-queue) - Update: Fixed in aqualink",
         ]
     },
     COLORS: {
