@@ -1,8 +1,9 @@
-import'dotenv/config';
+import 'dotenv/config';
 import { REST, Routes } from "discord.js";
+import { FilereaderGenerator } from "./filereader.mjs";
+
 const token = process.env.token;
 const id = process.env.id;
-import { FilereaderGenerator } from "./filereader.mjs";
 
 class CommandHandler {
     constructor(client, rootPath) {
@@ -13,39 +14,26 @@ class CommandHandler {
     }
 
     async loadCommands() {
-        const commandFiles = [];
+        const commands = [];
         for await (const file of FilereaderGenerator(this.commandsDir)) {
-            commandFiles.push(file);
+            const command = await this.loadCommand(file);
+            if (command) commands.push(command);
         }
-        const commands = await Promise.all(
-            commandFiles.map(this.loadCommand.bind(this))
-        );
-        
-        return commands.filter(Boolean);
+        return commands;
     }
 
     async loadCommand(commandFile) {
         try {
             const { Command } = await import(`file://${commandFile}`);
+            if (!Command?.name || !Command?.description || Command?.ignore) return null;
             
-            const { 
-                name, 
-                description, 
-                ignore, 
-                options = [], 
-                autocomplete = false 
-            } = Command || {};
-            
-            if (!name || !description || ignore) return null;
-            
-            this.client.slashCommands.set(name, Command);
-            
+            this.client.slashCommands.set(Command.name, Command);
             return {
-                name,
-                description,
+                name: Command.name,
+                description: Command.description,
                 type: 1,
-                options,
-                autocomplete,
+                options: Command.options || [],
+                autocomplete: Command.autocomplete || false,
             };
         } catch (err) {
             console.error(`Error loading command from ${commandFile}:`, err);
@@ -56,14 +44,8 @@ class CommandHandler {
     async refreshCommands() {
         try {
             const commandsArray = await this.loadCommands();
-            
             console.log(`Refreshing ${commandsArray.length} application (/) commands...`);
-            
-            await this.rest.put(
-                Routes.applicationCommands(id), 
-                { body: commandsArray }
-            );
-            
+            await this.rest.put(Routes.applicationCommands(id), { body: commandsArray });
             console.log(`Successfully reloaded ${commandsArray.length} application (/) commands.`);
         } catch (error) {
             console.error("Failed to refresh application commands:", error);
