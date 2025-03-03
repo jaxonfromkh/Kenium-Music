@@ -8,6 +8,14 @@ export const Command = {
             name: "show",
             description: "Show the current queue",
             type: 1,
+            options: [
+                {
+                    name: "page",
+                    description: "Page number to display (5 tracks per page)",
+                    type: 4,
+                    required: false,
+                }
+            ]
         },
         {
             name: "remove",
@@ -29,77 +37,178 @@ export const Command = {
             type: 1,
         },
     ],
+    
     async autocomplete(client, interaction) {
         const player = client.aqua.players.get(interaction.guildId);
-        if (!player || player.queue.length === 0) {
+        if (!player?.queue?.length) {
             return interaction.respond([]);
         }
         
-        const focusedValue = interaction.options.getFocused().toLowerCase();
+        const focusedValue = interaction.options.getFocused().toString().toLowerCase();
+        
         const choices = player.queue
-            .map((track, index) => {
-                const choiceName = `${index + 1}: ${track.info.title}`;
-                return {
-                    name: choiceName.length <= 100 ? choiceName : choiceName.substring(0, 100),
-                    value: index + 1,
-                };
-            })
-            .filter(choice => choice.name.toLowerCase().includes(focusedValue));
+            .slice(0, 25)
+            .map((track, index) => ({
+                name: formatTrackName(`${index + 1}: ${track.info.title}`),
+                value: index + 1,
+            }))
+            .filter(choice => !focusedValue || choice.name.toLowerCase().includes(focusedValue));
 
-        return interaction.respond(choices);
+        return interaction.respond(choices.slice(0, 25));
     },
+    
     run: async (client, interaction) => {
-        const guildId = interaction.guildId;
-        const player = client.aqua.players.get(guildId);
+        await interaction.deferReply({ flags: 64 });
+        
+        const player = client.aqua.players.get(interaction.guildId);
         if (!player) {
-            return interaction.reply({ content: "Nothing is playing", flags: 64 });
+            return interaction.editReply("🔇 Nothing is currently playing.");
         }
         
         const userVoiceChannelId = interaction.member.voice.channelId;
-        const botVoiceChannelId = interaction.guild.members.me.voice.channelId;
-        if (botVoiceChannelId !== userVoiceChannelId) {
-            return interaction.reply({ content: "You need to be in the same voice channel as the bot.", flags: 64 });
+        const botVoiceChannelId = interaction.guild.members.me?.voice.channelId;
+        
+        if (!userVoiceChannelId) {
+            return interaction.editReply("❌ You need to join a voice channel first.");
+        }
+        
+        if (botVoiceChannelId && botVoiceChannelId !== userVoiceChannelId) {
+            return interaction.editReply("❌ You need to be in the same voice channel as the bot.");
         }
 
         const subcommand = interaction.options.getSubcommand();
-        const queueLength = player.queue.length;
-
-        switch (subcommand) {
-            case "show":
-                if (queueLength === 0) {
-                    return interaction.reply({ content: "Queue is empty", flags: 64 });
-                }
+        
+        try {
+            switch (subcommand) {
+                case "show":
+                    return await handleShowQueue(client, interaction, player);
                 
-                const queue = player.queue.slice(0, 5).map((track, i) => {
-                    const minutes = Math.floor(track.info.length / 60000);
-                    const seconds = Math.floor((track.info.length % 60000) / 1000);
-                    return `**${i + 1}** - [\`${track.info.title}\`](${track.info.uri}) - \`${minutes}:${seconds.toString().padStart(2, '0')}\``;
-                }).join('\n');
+                case "remove":
+                    return await handleRemoveTrack(interaction, player);
                 
-                const embed = new EmbedBuilder()
-                    .setTitle('🎵  | Queue')
-                    .setDescription(queue)
-                    .setColor(0x000000)
-                    .setThumbnail(client.user.displayAvatarURL())
-                    .setFooter({ text: 'Kenium v2.5.0 | by mushroom0162', iconURL: interaction.user.displayAvatarURL() });
-
-                return interaction.reply({ embeds: [embed] });
-
-            case "remove":
-                const trackNumber = interaction.options.getInteger("track_number");
-                if (trackNumber < 1 || trackNumber > queueLength) {
-                    return interaction.reply({ content: "Invalid track number.", flags: 64 });
-                }
-
-                const removedTrack = player.queue.splice(trackNumber - 1, 1); 
-                return interaction.reply({ content: `Removed track: \`${removedTrack[0].info.title}\``, flags: 64 });
-
-            case "clear":
-                player.queue.length = 0; 
-                return interaction.reply({ content: "Cleared the queue.", flags: 64 });
-
-            default:
-                return interaction.reply({ content: "Unknown command.", flags: 64 });
+                case "clear":
+                    return await handleClearQueue(interaction, player);
+                
+                default:
+                    return interaction.editReply("❓ Unknown command.");
+            }
+        } catch (error) {
+            console.error("Queue command error:", error);
+            return interaction.editReply("⚠️ An error occurred while processing your request.");
         }
     }
 };
+
+function formatTrackName(name) {
+    return name.length <= 100 ? name : `${name.substring(0, 97)}...`;
+}
+
+function formatDuration(ms) {
+    const minutes = Math.floor(ms / 60000);
+    const seconds = Math.floor((ms % 60000) / 1000);
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+}
+
+async function handleShowQueue(client, interaction, player) {
+    const queueLength = player.queue.length;
+    
+    if (queueLength === 0) {
+        return interaction.editReply("📭 Queue is empty.");
+    }
+    
+    const page = interaction.options.getInteger("page") || 1;
+    const tracksPerPage = 10;
+    const maxPages = Math.ceil(queueLength / tracksPerPage);
+    
+    if (page < 1 || page > maxPages) {
+        return interaction.editReply(`❌ Invalid page number. Please choose a page between 1 and ${maxPages}.`);
+    }
+    
+    const startIndex = (page - 1) * tracksPerPage;
+    const endIndex = Math.min(startIndex + tracksPerPage, queueLength);
+    
+    const currentTrack = player.current;
+    let queueList = "";
+    
+    if (currentTrack) {
+        queueList += `**▶️ Now Playing:** [${currentTrack.info.title}](${currentTrack.info.uri}) - \`${formatDuration(currentTrack.info.length)}\`\n\n`;
+    }
+    
+    if (queueLength > 0) {
+        queueList += player.queue.slice(startIndex, endIndex).map((track, i) => 
+            `**${startIndex + i + 1}.** [${track.info.title}](${track.info.uri}) - \`${formatDuration(track.info.length)}\``
+        ).join('\n');
+        
+        queueList += `\n\n**Total:** ${queueLength} tracks`;
+        
+        if (queueLength > tracksPerPage) {
+            queueList += ` • Page ${page}/${maxPages}`;
+        }
+    }
+    
+    const totalDuration = player.queue.reduce((total, track) => total + track.info.length, 0);
+    queueList += ` • Duration: \`${formatDuration(totalDuration)}\``;
+    
+    const embed = new EmbedBuilder()
+        .setTitle('🎵 Music Queue')
+        .setDescription(queueList)
+        .setColor(0)
+        .setThumbnail(client.user.displayAvatarURL({ dynamic: true, size: 64 }))
+        .setTimestamp()
+        .setFooter({ 
+            text: `Kenium v3.0.0 • Requested by ${interaction.user.tag}`, 
+            iconURL: interaction.user.displayAvatarURL({ dynamic: true }) 
+        });
+
+    return interaction.editReply({ embeds: [embed] });
+}
+
+async function handleRemoveTrack(interaction, player) {
+    const queueLength = player.queue.length;
+    
+    if (queueLength === 0) {
+        return interaction.editReply("📭 Queue is empty.");
+    }
+    
+    const trackNumber = interaction.options.getInteger("track_number");
+    
+    if (trackNumber < 1 || trackNumber > queueLength) {
+        return interaction.editReply(`❌ Invalid track number. Please choose a number between 1 and ${queueLength}.`);
+    }
+
+    const trackIndex = trackNumber - 1;
+    const removedTrack = player.queue[trackIndex];
+    
+    if (!removedTrack) {
+        return interaction.editReply("❌ Could not find the specified track.");
+    }
+    
+    player.queue.splice(trackIndex, 1);
+    
+    const embed = new EmbedBuilder()
+        .setTitle('🗑️ Track Removed')
+        .setDescription(`Removed [${removedTrack.info.title}](${removedTrack.info.uri}) from the queue.`)
+        .setColor(15548997)
+        .setTimestamp();
+    
+    return interaction.editReply({ embeds: [embed] });
+}
+
+async function handleClearQueue(interaction, player) {
+    const queueLength = player.queue.length;
+    
+    if (queueLength === 0) {
+        return interaction.editReply("📭 Queue is already empty.");
+    }
+    
+    const clearedCount = player.queue.length;
+    player.queue.length = 0;
+    
+    const embed = new EmbedBuilder()
+        .setTitle('🧹 Queue Cleared')
+        .setDescription(`Cleared ${clearedCount} tracks from the queue.`)
+        .setColor(15105570)
+        .setTimestamp();
+    
+    return interaction.editReply({ embeds: [embed] });
+}
