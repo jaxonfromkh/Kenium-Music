@@ -34,10 +34,12 @@ export const Command = {
         }; 
 
         const embed = new EmbedBuilder() 
-            .setColor(0) 
-            .setTitle('🚀 Kenium 2.8.0 - An Open Source Bot') 
+            .setColor(0)
+            .setAuthor({
+                name:  `🔌 Status: ${nodes.some(node => node.connected) ? '🟢 Online' : '🔴 Offline'}`, 
+                iconURL: client.user.displayAvatarURL(),
+            })
             .setDescription([ 
-                `### 🔌 Status: ${nodes.some(node => node.connected) ? '🟢 Online' : '🔴 Offline'}`, 
                 '```', 
                 `⚡ CPU    : ${cpu.model} (${cpu.cores} cores @ ${cpu.load}% load)`, 
                 `💾 Memory : ${memory.used}MB / ${memory.total}GB`, 
@@ -52,7 +54,7 @@ export const Command = {
                     return [ 
                         '```', 
                         `🎮 Players : ${players} (${playingPlayers} active)`, 
-                        `💾 Memory  : ${(memory.used / 1073741824).toFixed(2)}GB / ${(memory.allocated / 1073741824).toFixed(2)}GB`, 
+                        `💾 Memory  : ${(memory.used / 1073741824).toFixed(2)}GB / ${(memory.reservable / 1073741824).toFixed(2)}GB`, 
                         `⚡ CPU     : ${(cpu.lavalinkLoadPercentage ? (cpu.lavalinkLoadPercentage * 100).toFixed(1) : 'N/A')}% | ⏰ Uptime: ${formatUptime(uptime)}`, 
                         `🌊 Aqualink: ${aqua.version}`,
                         '```' 
@@ -61,7 +63,6 @@ export const Command = {
             }) 
             .setFooter({ 
                 text: '🔄 by mushroom0162', 
-                iconURL: 'https://cdn.discordapp.com/attachments/1296093808236302380/1335389585395683419/a62c2f3218798e7eca7a35d0ce0a50d1_1.png' 
             }) 
             .setTimestamp(); 
 
