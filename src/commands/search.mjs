@@ -70,6 +70,7 @@ class SearchCommandHandler {
                 voiceChannel: voiceChannel.id,
                 textChannel: interaction.channel.id,
                 deaf: true,
+                shouldDeleteMessage: true
             });
         } catch (error) {
             console.error('Failed to create player:', error);
