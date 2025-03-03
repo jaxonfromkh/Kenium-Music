@@ -3,7 +3,6 @@ import {
     EmbedBuilder, 
     ButtonBuilder, 
     ButtonStyle, 
-    Colors 
 } from "discord.js";
 
 const MusicPlatform = {
@@ -141,6 +140,7 @@ class SearchCommandHandler {
         return interaction.reply({
             embeds: [embed],
             components: [selectionButtons, platformButtons],
+            flags: 64
         });
     }
 
@@ -162,6 +162,8 @@ class SearchCommandHandler {
         collector.on('end', () => {
             if (!message.deleted) {
                 message.delete().catch(() => {});
+            } else {
+                message.edit({ components: [] }).catch(() => {});
             }
         });
     }
