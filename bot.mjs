@@ -79,11 +79,10 @@ class EmbedFactory {
       .setFooter({ text: 'An Open Source Bot', iconURL: 'https://cdn.discordapp.com/attachments/1296093808236302380/1335389585395683419/a62c2f3218798e7eca7a35d0ce0a50d1_1.png' });
   }
 
-  static createProgressBar(total, current, length = 12) {
+  static createProgressBar(total, current, length = 15) {
     const progress = Math.round((current / total) * length);
-    return '━'.repeat(progress) + '⚪' + '─'.repeat(length - progress);
+    return `\`[${'━'.repeat(progress)}⚪${'─'.repeat(length - progress)}]\``;
   }
-
   static getLoopStatus(loop) {
     return { track: '🔂 Track Loop', queue: '🔁 Queue Loop', none: '▶️ No Loop' }[loop] || '▶️ No Loop';
   }
