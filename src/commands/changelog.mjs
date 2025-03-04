@@ -8,15 +8,21 @@ const CONFIG = {
         get ISSUES_LINK() { return `${this.REPO_LINK}/issues/new`; },
     },
     BOT: {
-        VERSION: '2.9.0',
+        VERSION: '3.0.0',
         DEVELOPER: "mushroom0162",
         CHANGELOG: [
-            "✨ /changelog command added (shows recent changes and updates to the bot, github changes based)",
-            "🔧 Remade some bot internal codes (Mainly the command handler, bot handler and events)",
-            "🌐 New WebSocket code (now uses an self-made WebSocket, way faster connections)",
-            "🐛 Bug fixes (Fixing any bugs that i find, playlist errors fixed, autocomplete fixed)",
-            "🔧 New UI Beign made (small changes at current)",
-            "📚 Current bugs: not sending embeds after 1 song (auto-queue) - Update: Fixed in aqualink",
+            "✨ Small changes on the track UI (Now the track UI is more compact, and the track UI is now more responsive, also faster)",
+            "✨ Improved the /destroy command in-player code",
+            "🔧 Rewrited the Bot Handler, Command Handler, Events Handler, and Interaction Handler (way faster now)",
+            "🌐 Updated to aqualink 1.9.0 (Lots of speed, performance, and recourses fixes)",
+            "🔧 Remade the /play command, improving autocomplete for saving recourses + speed in resolving",
+            "🐛 Fixed the /lyrics (soon, will be implemented)",
+            "🐛 Fixed nodes getting disconnected at random times (hopefully)",
+            "🔧 Rewrite the /queue system (way faster, new UI)",
+            "📦 Added Latency to the ping command",
+            "🔧 Small changes into the /search command (Now uses ephemeral)",
+            "🔧 Small changes into the /status command (Misc changes in UI)",
+            "📚 Check out on github too see the full changes...",
         ]
     },
     COLORS: {
@@ -215,14 +221,14 @@ class CooldownManager {
 const cooldownManager = new CooldownManager(CONFIG.TIMERS.COOLDOWN_DURATION);
 export const Command = {
   name: "changelog",
-  description: "Shows recent changes and updates to the bot",
+  description: "Stuff that my owner coded on me",
   run: async (client, interaction) => {
     const userId = interaction.user.id;
     if (await cooldownManager.isOnCooldown(userId)) {
       const timeLeft = cooldownManager.getRemainingTime(userId);
       return await interaction.reply({
         content: `⏳ Please wait **${timeLeft.toFixed(1)}** more seconds before using the changelog command again.`,
-        ephemeral: true
+        flags: 64
       });
     }
     await cooldownManager.setCooldown(userId);
