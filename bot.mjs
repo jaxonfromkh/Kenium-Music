@@ -2,7 +2,7 @@ import 'dotenv/config';
 import { Client, GatewayIntentBits, EmbedBuilder, GatewayDispatchEvents } from "discord.js";
 import { fileURLToPath } from "node:url";
 import { dirname } from "node:path";
-import http2 from "node:http2";
+import https from "node:https";
 
 import { createRequire } from "node:module";
 const require = createRequire(import.meta.url);
@@ -23,7 +23,7 @@ const nodes = [{
   name: NODE_NAME
 }];
 
-const http2Client = http2.connect('https://discord.com');
+
 
 class TimeFormatter {
   static format(milliseconds) {
@@ -52,27 +52,24 @@ class ChannelManager {
     
     this.updateQueue.set(channelId, now);
     
-    try {
-      const req = http2Client.request({
-        ':method': 'PUT',
-        ':path': `/api/v10/channels/${channelId}/voice-status`,
+    const req = https.request({
+      host: 'discord.com',
+      path: `/api/v10/channels/${channelId}/voice-status`,
+      method: 'PUT',
+      headers: {
         'Authorization': `Bot ${botToken}`,
         'Content-Type': 'application/json',
-      });
-      req.setEncoding('utf8');
-      req.on('response', (headers) => {
-        if (headers[':status'] !== 204) {
-          console.error(`Voice status update failed: ${headers[':status']}`);
-        }
-      });
-      req.on('error', (error) => {
-        console.error('Voice status update error:', error);
-      });
-      req.write(JSON.stringify({ status }));
-      req.end();
-    } catch (error) {
-      console.error("Voice status update error:", error);
-    }
+      },
+    }, (res) => {
+      if (res.statusCode !== 204) {
+        console.error(`Voice status update failed: ${res.statusCode}`);
+      }
+    });
+    req.on('error', (error) => {
+      console.error('Voice status update error:', error);
+    });
+    req.write(JSON.stringify({ status }));
+    req.end();
     this.clearOldUpdateQueue();
   }
 
@@ -183,7 +180,7 @@ aqua.on("trackError", async (player, track, payload) => {
   if (!channel) return;
   try {
     const errorMessage = await channel.send({ embeds: [EmbedFactory.createErrorEmbed(track, payload)] });
-    setTimeout(() => errorMessage.delete().catch(() => { }), ERROR_MESSAGE_DURATION_MS);
+    setTimeout(() => errorMessage.delete().catch(() => { }), ERROR_MESSAGE_DURATION_MS); // Renamed for clarity
   } catch (error) {
     console.error("Error message sending failed:", error);
   }
