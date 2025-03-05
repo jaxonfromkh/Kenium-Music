@@ -1,12 +1,12 @@
 {
 	"dependencies": {
-		"aqualink": "^2.0.1",
+		"aqualink": "^2.0.2",
 		"discord.js": "^14.18.0",
 		"dotenv": "^16.4.7"
 	},
 	"main": "bot.mjs",
 	"name": "toddys-music",
-	"version": "3.0.0",
+	"version": "2.8.0",
 	"type": "module",
 	"scripts": {
 		"start": "node bot.mjs"
