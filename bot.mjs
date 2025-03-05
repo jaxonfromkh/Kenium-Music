@@ -9,7 +9,7 @@ const { Aqua } = require('aqualink');
 
 const token = process.env.token;
 const { NODE_HOST, NODE_PASSWORD, NODE_PORT, NODE_NAME } = process.env;
-const UPDATE_INTERVAL = 30000;
+const UPDATE_INTERVAL = 10000;
 const ERROR_MESSAGE_DURATION = 5000;
 const ERROR_COLOR = 0xff0000;
 
@@ -69,7 +69,7 @@ class EmbedFactory {
 
     return new EmbedBuilder()
       .setColor(0)
-      .setAuthor({ name: '🎵 Kenium 2.9.0', iconURL: client.user.displayAvatarURL(), url: 'https://github.com/ToddyTheNoobDud/Kenium-Music' })
+      .setAuthor({ name: '🎵 Kenium 3.0.0', iconURL: client.user.displayAvatarURL(), url: 'https://github.com/ToddyTheNoobDud/Kenium-Music' })
       .setDescription(
         `**[${title}](${uri})**\n*by* **${author}** • *${album || 'Single'}* • *${isStream ? '🔴 LIVE' : '🎵 320kbps'}*\n\n` +
         `\`${TimeFormatter.format(position)}\` ${this.createProgressBar(length, position)} \`${TimeFormatter.format(length)}\`\n\n` +
@@ -92,7 +92,7 @@ class EmbedFactory {
       .setColor(ERROR_COLOR)
       .setTitle("❌ Error Playing Track")
       .setDescription(`**Error:** \`${track.info.title}\`\n**Message:** \`${payload.exception?.message}\``)
-      .setFooter({ text: "Kenium v2.9.0 | by mushroom0162" })
+      .setFooter({ text: "Kenium v3.0.0 | by mushroom0162" })
       .setTimestamp();
   }
 }
@@ -106,7 +106,7 @@ const aqua = new Aqua(client, nodes, {
   defaultSearchPlatform: "ytsearch",
   restVersion: "v4",
   shouldDeleteMessage: true,
-  autoResume: false,
+  autoResume: true,
   infiniteReconnects: true,
 });
 
@@ -115,7 +115,7 @@ aqua.on("trackStart", async (player, track) => {
   if (!channel) return;
   
   try {
-    const status = player.queue.size > 2 ? `⭐ Playlist (${player.queue.size} tracks) - Kenium 2.9.0` : `⭐ ${track.info.title} - Kenium 2.9.0`;
+    const status = player.queue.size > 2 ? `⭐ Playlist (${player.queue.size} tracks) - Kenium 3.0.0` : `⭐ ${track.info.title} - Kenium 3.0.0`;
     player.nowPlayingMessage = await channel.send({ embeds: [EmbedFactory.createTrackEmbed(client, player, track)], flags: 4096 });
     ChannelManager.updateVoiceStatus(player.voiceChannel, status, token);
   } catch (error) {
@@ -123,8 +123,9 @@ aqua.on("trackStart", async (player, track) => {
   }
 });
 
-aqua.on("trackEnd", (player) => {
-  if (player.queue.length === 0) ChannelManager.clearOldCache();
+aqua.on("queueEnd", (player) => {
+  ChannelManager.updateVoiceStatus(player.voiceChannel, null, token);
+  ChannelManager.clearOldCache();
   player.nowPlayingMessage = null;
 });
 
