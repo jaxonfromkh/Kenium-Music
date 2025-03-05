@@ -47,8 +47,6 @@ class ChannelManager {
 
     this.updateQueue.set(channelId, now);
 
-    const http2 = require('http2');
-
     try {
       const client = http2.connect('https://discord.com');
       const req = client.request({
