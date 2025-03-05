@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import { Client, GatewayIntentBits, EmbedBuilder, GatewayDispatchEvents } from "discord.js";
 import { dirname } from "node:path";
+import http2 from "node:http2";
 import { fileURLToPath } from "node:url";
 import { createRequire } from "node:module";
 
@@ -45,14 +46,33 @@ class ChannelManager {
     if ((now - (this.updateQueue.get(channelId) || 0)) < UPDATE_INTERVAL) return;
 
     this.updateQueue.set(channelId, now);
-    
+
+    const http2 = require('http2');
+
     try {
-      const res = await fetch(`https://discord.com/api/v10/channels/${channelId}/voice-status`, {
-        method: "PUT",
-        headers: { Authorization: `Bot ${botToken}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ status })
+      const client = http2.connect('https://discord.com');
+      const req = client.request({
+        ':method': 'PUT',
+        ':path': `/api/v10/channels/${channelId}/voice-status`,
+        'Authorization': `Bot ${botToken}`,
+        'Content-Type': 'application/json',
       });
-      if (!res.ok) console.error(`Voice status update failed: ${res.statusText}`);
+
+      req.setEncoding('utf8');
+      req.on('response', (headers) => {
+        if (headers[':status'] !== 204) {
+          console.error(`Voice status update failed: ${headers[':status']}`);
+        }
+        client.close();
+      });
+
+      req.on('error', (e) => {
+        console.error('Voice status update error:', e);
+        client.close();
+      });
+
+      req.write(JSON.stringify({ status }));
+      req.end();
     } catch (e) {
       console.error("Voice status update error:", e);
     }
@@ -128,10 +148,10 @@ aqua.on("trackStart", async (player, track) => {
   if (!channel) return;
 
   try {
-    const status = player.queue.size > 2 
-      ? `⭐ Playlist (${player.queue.size} tracks) - Kenium 3.0.0` 
+    const status = player.queue.size > 2
+      ? `⭐ Playlist (${player.queue.size} tracks) - Kenium 3.0.0`
       : `⭐ ${track.info.title} - Kenium 3.0.0`;
-    
+
     player.nowPlayingMessage = await channel.send({ embeds: [EmbedFactory.createTrackEmbed(client, player, track)], flags: 4096 });
     ChannelManager.updateVoiceStatus(player.voiceChannel, status, token);
   } catch (error) {
@@ -152,7 +172,7 @@ aqua.on("trackError", async (player, track, payload) => {
 
   try {
     const errorMessage = await channel.send({ embeds: [EmbedFactory.createErrorEmbed(track, payload)] });
-    setTimeout(() => errorMessage.delete().catch(() => {}), ERROR_MESSAGE_DURATION);
+    setTimeout(() => errorMessage.delete().catch(() => { }), ERROR_MESSAGE_DURATION);
   } catch (error) {
     console.error("Error message sending failed:", error);
   }
