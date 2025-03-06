@@ -29,7 +29,7 @@ function createWelcomeEmbed(client) {
         `.trim())
         .setTimestamp()
         .setFooter({
-            text: 'By mushroom0162 | Kenium v2.7.0',
+            text: 'By mushroom0162 | Kenium v3.0.1',
             iconURL: client.user.displayAvatarURL()
         })
         .setThumbnail(client.user.displayAvatarURL());
@@ -39,16 +39,16 @@ function createActionRow() {
     return new ActionRowBuilder()
         .addComponents(
             new ButtonBuilder()
-                .setLabel('Top.gg')
-                .setURL('https://top.gg/bot/1202232935311495209')
+                .setLabel('Support Server')
+                .setURL('https://discord.com/invite/K4CVv84VBC')
                 .setStyle(ButtonStyle.Link),
             new ButtonBuilder()
                 .setLabel('Invite to Discord')
                 .setURL('https://discord.com/oauth2/authorize?client_id=1202232935311495209')
                 .setStyle(ButtonStyle.Link),
             new ButtonBuilder()
-                .setLabel('Github')
-                .setURL('https://github.com/ToddyTheNoobDud/Kenium-Music')
+                .setLabel('Website')
+                .setURL('https://toddythenoobdud.github.io/')
                 .setStyle(ButtonStyle.Link)
         );
 }
