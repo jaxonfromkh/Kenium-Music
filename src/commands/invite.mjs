@@ -1,52 +1,81 @@
-import { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } from "discord.js";
+import {
+    EmbedBuilder,
+    PermissionsBitField,
+    ActionRowBuilder,
+    ButtonBuilder,
+    ButtonStyle
+} from "discord.js";
 
-export const Command = {
-    name: "invite",
-    description: "Invite Kenium to your server!",
-    options: [],
-    run: async (client, interaction) => {
-        const embed = new EmbedBuilder()
-            .setAuthor({
-                name: "Kenium v2.8.0 | by mushroom0162",
-                iconURL: client.user.avatarURL()
-            })
-            .setDescription(`
-                **Invite me to your server with [\`this link\`](https://discord.com/oauth2/authorize?client_id=1202232935311495209)!**, Or the buttons below.
-                **🎵 Optimized Music System**
-                • Fast queue loading, smooth playback, low resource usage.
-                • Supports YouTube, Spotify, SoundCloud, Vimeo, and file uploads.
-                • Autocomplete for play commands with smart suggestions.
+const REQUIRED_PERMISSIONS = [
+    PermissionsBitField.Flags.SendMessages,
+    PermissionsBitField.Flags.ViewChannel,
+    PermissionsBitField.Flags.EmbedLinks,
+    PermissionsBitField.Flags.AttachFiles
+];
 
-                **🎶 Search & Queue Manager**
-                • Advanced search for YouTube, Spotify, and SoundCloud.
-                • Manage queue: clear, show, or remove tracks (autocomplete supported).
+function createWelcomeEmbed(client) {
+    return new EmbedBuilder()
+        .setColor(0x000000)
+        .setTitle('About Kenium - Your Open Source Bot')
+        .setDescription(`
+**🎶 Thanks for inviting Kenium!**
+**Key Features:**
+- 🎵 **Optimized Music**: Fast playback and support for YouTube, Spotify, SoundCloud, and more.
+- 🎶 **Search & Queue**: Manage your queue and search easily.
+- 📁 **Playlist Management**: Import/Export playlists in .txt or .pdf.
+- 📜 **Lyrics Support**: Powered by Genius & LyricFind.
+- ⚡ **24/7 Uptime**: Hosted for performance.
+- 🎶 **Start now**: Using </play:1254868331748528302>
+        `.trim())
+        .setTimestamp()
+        .setFooter({
+            text: 'By mushroom0162 | Kenium v3.0.1',
+            iconURL: client.user.displayAvatarURL()
+        })
+        .setThumbnail(client.user.displayAvatarURL());
+}
 
-                **📁 Playlist Import/Export** - Save & share playlists in .txt or .pdf with auto-naming.
-                **📜 Lyrics Support** - Powered by Genius and LyricFind (supports YouTube songs via Lavalink).
-            `)
-            .setColor(0x000000)
-            .setImage('https://cdn.discordapp.com/attachments/1180230815997767681/1318584563764822056/Untitled_1.png')
-            .setFooter({ text: "Kenium | Free, Open Source" });
+function createActionRow() {
+    return new ActionRowBuilder()
+        .addComponents(
+            new ButtonBuilder()
+                .setLabel('Support Server')
+                .setURL('https://discord.com/invite/K4CVv84VBC')
+                .setStyle(ButtonStyle.Link),
+            new ButtonBuilder()
+                .setLabel('Invite to Discord')
+                .setURL('https://discord.com/oauth2/authorize?client_id=1202232935311495209')
+                .setStyle(ButtonStyle.Link),
+            new ButtonBuilder()
+                .setLabel('Website')
+                .setURL('https://toddythenoobdud.github.io/')
+                .setStyle(ButtonStyle.Link)
+        );
+}
 
-        const row = new ActionRowBuilder()
-            .addComponents(
-                new ButtonBuilder()
-                    .setEmoji('🎵')
-                    .setStyle(ButtonStyle.Link)
-                    .setURL("https://top.gg/bot/1202232935311495209")
-                    .setLabel("Top.gg"),
-                new ButtonBuilder()
-                    .setEmoji('📚')
-                    .setStyle(ButtonStyle.Link)
-                    .setURL("https://github.com/ToddyTheNoobDud/Thorium-Music")
-                    .setLabel("GitHub"),
-                new ButtonBuilder()
-                    .setEmoji('🌐')
-                    .setStyle(ButtonStyle.Link)
-                    .setURL("https://discord.rovelstars.com/bots/1202232935311495209")
-                    .setLabel("RovelStars"),
-            );
-
-        await interaction.reply({ embeds: [embed], components: [row], flags: 64 });
+async function findSuitableChannel(guild, client) {
+    const channels = [
+        guild.publicUpdatesChannel,
+        ...guild.channels.cache
+            .filter(c => c.type === 0)
+            .values()
+    ];
+    return channels.find(channel =>
+        channel?.viewable &&
+        channel?.permissionsFor(client.user)?.has(REQUIRED_PERMISSIONS)
+    );
+}
+export const Event = {
+    name: "guildCreate",
+    runOnce: false,
+    run: async (client, guild) => {
+        const suitableChannel = await findSuitableChannel(guild, client);
+        if (suitableChannel) {
+            const welcomeEmbed = createWelcomeEmbed(client);
+            const actionRow = createActionRow();
+            await suitableChannel.send({ embeds: [welcomeEmbed], components: [actionRow] });
+        } else {
+            console.log(`No suitable channel found in guild: ${guild.name}`);
+        }
     }
 };
