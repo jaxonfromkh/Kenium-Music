@@ -1,9 +1,7 @@
 import { EmbedBuilder } from "discord.js";
 
-// Constants
-const AUTOCOMPLETE_DELAY = 300;
-const MAX_AUTOCOMPLETE_RESULTS = 4; // Reduced to make room for recent items
-const MAX_RECENT_ITEMS = 2; // Number of recent items to show
+const MAX_AUTOCOMPLETE_RESULTS = 4;
+const MAX_RECENT_ITEMS = 4;
 const EMBED_COLOR = 0x000000;
 const ERROR_MESSAGES = {
   NO_VOICE: "You must be in a voice channel to use this command.",
@@ -13,9 +11,6 @@ const ERROR_MESSAGES = {
   GENERIC: "An error occurred while processing your request. Please try again later.",
   UNSUPPORTED: "Unsupported content type."
 };
-
-const autocompleteCache = new Map();
-const CACHE_TTL = 10000; 
 
 const userRecentSelections = new Map();
 const RECENT_SELECTIONS_MAX = 10;
