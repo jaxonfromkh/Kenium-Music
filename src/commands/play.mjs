@@ -1,8 +1,24 @@
 import { EmbedBuilder } from "discord.js";
 
+// Constants
 const AUTOCOMPLETE_DELAY = 300;
-const MAX_AUTOCOMPLETE_RESULTS = 6;
+const MAX_AUTOCOMPLETE_RESULTS = 4; // Reduced to make room for recent items
+const MAX_RECENT_ITEMS = 2; // Number of recent items to show
 const EMBED_COLOR = 0x000000;
+const ERROR_MESSAGES = {
+  NO_VOICE: "You must be in a voice channel to use this command.",
+  DIFFERENT_CHANNEL: (id) => `I'm already in <#${id}>`,
+  NO_TRACKS: "No tracks found for the given query.",
+  TIMEOUT: "The request timed out. Please try again.",
+  GENERIC: "An error occurred while processing your request. Please try again later.",
+  UNSUPPORTED: "Unsupported content type."
+};
+
+const autocompleteCache = new Map();
+const CACHE_TTL = 10000; 
+
+const userRecentSelections = new Map();
+const RECENT_SELECTIONS_MAX = 10;
 
 export const Command = {
   name: "play",
@@ -20,53 +36,111 @@ export const Command = {
   _state: {
     lastAutocomplete: 0,
   },
-
+  
   async autocomplete(client, interaction) {
     const voiceChannel = interaction.member?.voice?.channel;
-    if (!voiceChannel) return interaction.respond([]);
-
     const focused = interaction.options.getFocused()?.trim();
-    if (!focused) return interaction.respond([]);
-
-    const now = Date.now();
-    if (now - this._state.lastAutocomplete < AUTOCOMPLETE_DELAY) return;
-    this._state.lastAutocomplete = now;
-
+    const userId = interaction.user.id;
+    
+    if (!voiceChannel) {
+      return interaction.respond([]);
+    }
+    
+    const recentSelections = userRecentSelections.get(userId) || [];
+    
+    if (!focused) {
+      const recentItems = this.formatRecentSelections(recentSelections);
+      return interaction.respond(recentItems);
+    }
+    
     try {
-      const { tracks = [] } =
-        (await client.aqua.resolve({ query: focused, requester: interaction.user })) || {};
+      const result = await client.aqua.resolve({ 
+        query: focused, 
+        requester: interaction.user 
+      });
       
-      const suggestions = tracks.slice(0, MAX_AUTOCOMPLETE_RESULTS).map(({ info: { title, uri, author } }) => ({
-        name: `${title.slice(0, 80)}${author ? ` - ${author.slice(0, 20)}` : ""}`.slice(0, 100),
-        value: uri,
-      }));
+      if (!result?.tracks?.length) {
+        const recentItems = this.formatRecentSelections(recentSelections);
+        return interaction.respond(recentItems);
+      }
       
-      interaction.respond(suggestions);
+      const suggestions = result.tracks
+        .slice(0, MAX_AUTOCOMPLETE_RESULTS)
+        .map(track => ({
+          name: `${track.info.title.slice(0, 80)}${track.info.author ? ` - ${track.info.author.slice(0, 20)}` : ""}`.slice(0, 100),
+          value: track.info.uri
+        }));
+      
+      const combinedResults = this.combineResultsWithRecent(suggestions, recentSelections, focused);
+      
+      return interaction.respond(combinedResults);
+      
     } catch (error) {
       console.error("Autocomplete error:", error);
-      interaction.respond([]);
+      const recentItems = this.formatRecentSelections(recentSelections);
+      return interaction.respond(recentItems);
     }
   },
 
+  formatRecentSelections(recentSelections) {
+    return recentSelections
+      .slice(0, MAX_RECENT_ITEMS)
+      .map(item => ({
+        name: `🕒 Recently played: ${item.title}`,
+        value: item.uri
+      }));
+  },
+
+  combineResultsWithRecent(suggestions, recentSelections, query) {
+    const recentUris = new Set(suggestions.map(s => s.value));
+    const filteredRecent = recentSelections
+      .filter(item => !recentUris.has(item.uri) && 
+                      (!query || item.title.toLowerCase().includes(query.toLowerCase())))
+      .slice(0, MAX_RECENT_ITEMS)
+      .map(item => ({
+        name: `🕒 Recently played: ${item.title}`,
+        value: item.uri
+      }));
+    
+    return [...filteredRecent, ...suggestions].slice(0, MAX_AUTOCOMPLETE_RESULTS + MAX_RECENT_ITEMS);
+  },
+
   async run(client, interaction) {
-    const { guild, member, channel } = interaction;
+    const { guild, member } = interaction;
     const voiceChannel = member?.voice?.channel;
-    if (!voiceChannel) return this.sendError(interaction, "You must be in a voice channel to use this command.");
+    const userId = interaction.user.id;
+    
+    if (!voiceChannel) {
+      return this.sendError(interaction, ERROR_MESSAGES.NO_VOICE);
+    }
 
     const currentVoiceChannel = guild.channels.cache.find(
-      (ch) => ch.type === 2 && ch.members.has(client.user.id)
+      ch => ch.type === 2 && ch.members.has(client.user.id)
     );
+    
     if (currentVoiceChannel && voiceChannel.id !== currentVoiceChannel.id) {
-      return this.sendError(interaction, `I'm already in <#${currentVoiceChannel.id}>`);
+      return this.sendError(interaction, ERROR_MESSAGES.DIFFERENT_CHANNEL(currentVoiceChannel.id));
     }
 
     await interaction.deferReply({ flags: 64 });
+    
     try {
-      const player = this.createPlayer(client, guild, voiceChannel, channel);
-      const result = await this.resolveTrack(client, interaction);
-      if (!result?.tracks?.length) return interaction.editReply("No tracks found for the given query.");
+      const [player, result] = await Promise.all([
+        this.getOrCreatePlayer(client, guild, voiceChannel, interaction.channel),
+        client.aqua.resolve({ 
+          query: interaction.options.getString("query"), 
+          requester: interaction.user 
+        })
+      ]);
+      
+      if (!result?.tracks?.length) {
+        return interaction.editReply(ERROR_MESSAGES.NO_TRACKS);
+      }
 
-      const embed = this.handleTrackResult(result, player, interaction);
+      const embed = this.createEmbed(result, player, interaction);
+      
+      this.updateRecentSelections(userId, result);
+      
       await interaction.editReply({ embeds: [embed] });
 
       if (!player.playing && !player.paused && player.queue.size > 0) {
@@ -76,8 +150,54 @@ export const Command = {
       this.handleError(interaction, error);
     }
   },
+  
+  updateRecentSelections(userId, result) {
+    if (!userRecentSelections.has(userId)) {
+      userRecentSelections.set(userId, []);
+    }
+    
+    const userSelections = userRecentSelections.get(userId);
+    
+    if (["track", "search"].includes(result.loadType)) {
+      const track = result.tracks[0];
+      
+      const existingIndex = userSelections.findIndex(item => item.uri === track.info.uri);
+      if (existingIndex !== -1) {
+        userSelections.splice(existingIndex, 1);
+      }
+      
+      userSelections.unshift({
+        title: track.info.title,
+        uri: track.info.uri,
+        author: track.info.author
+      });
+    } else if (result.loadType === "playlist") {
+      userSelections.unshift({
+        title: `${result.playlistInfo.name} (Playlist)`,
+        uri: result.tracks[0].info.uri,
+      });
+    }
+    
+    if (userSelections.length > RECENT_SELECTIONS_MAX) {
+      userSelections.length = RECENT_SELECTIONS_MAX;
+    }
 
-  createPlayer(client, guild, voiceChannel, channel) {
+    const now = Date.now();
+    const inactiveThreshold = 6000;
+    for (const [userId, { lastAccessed }] of userRecentSelections.entries()) {
+      if (now - lastAccessed > inactiveThreshold) {
+        userRecentSelections.delete(userId);
+      }
+    }
+  },
+
+  getOrCreatePlayer(client, guild, voiceChannel, channel) {
+    const existingPlayer = client.aqua.players.get(guild.id);
+    
+    if (existingPlayer) {
+      return existingPlayer;
+    }
+    
     return client.aqua.createConnection({
       guildId: guild.id,
       voiceChannel: voiceChannel.id,
@@ -87,24 +207,27 @@ export const Command = {
     });
   },
 
-  async resolveTrack(client, interaction) {
-    return client.aqua.resolve({ query: interaction.options.getString("query"), requester: interaction.user });
-  },
-
-  handleTrackResult(result, player, interaction) {
+  createEmbed(result, player, interaction) {
     const embed = new EmbedBuilder().setColor(EMBED_COLOR).setTimestamp();
+    const query = interaction.options.getString("query");
     
-    if (["track", "search"].includes(result.loadType)) {
-      const track = result.tracks[0];
-      player.queue.add(track);
-      embed.setDescription(`Added [${track.info.title}](${track.info.uri}) to the queue.`);
-    } else if (result.loadType === "playlist") {
-      result.tracks.forEach((track) => player.queue.add(track));
-      embed.setDescription(
-        `Added [${result.playlistInfo.name}](${interaction.options.getString("query")}) playlist (${result.tracks.length} tracks) to the queue.`
-      );
-    } else {
-      throw new Error("Unsupported content type.");
+    switch(result.loadType) {
+      case "track":
+      case "search": {
+        const track = result.tracks[0];
+        player.queue.add(track);
+        embed.setDescription(`Added [${track.info.title}](${track.info.uri}) to the queue.`);
+        break;
+      }
+      case "playlist": {
+        player.queue.add(result.tracks);
+        embed.setDescription(
+          `Added [${result.playlistInfo.name}](${query}) playlist (${result.tracks.length} tracks) to the queue.`
+        );
+        break;
+      }
+      default:
+        throw new Error(ERROR_MESSAGES.UNSUPPORTED);
     }
     
     return embed;
@@ -116,11 +239,10 @@ export const Command = {
 
   handleError(interaction, error) {
     console.error("Play command error:", error);
-    return this.sendError(
-      interaction,
-      error.message === "Query timeout"
-        ? "The request timed out. Please try again."
-        : "An error occurred while processing your request. Please try again later."
-    );
+    const message = error.message === "Query timeout" 
+      ? ERROR_MESSAGES.TIMEOUT 
+      : ERROR_MESSAGES.GENERIC;
+      
+    return this.sendError(interaction, message);
   },
 };
