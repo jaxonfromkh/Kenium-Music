@@ -1,4 +1,4 @@
-import { EmbedBuilder, ButtonBuilder, ActionRowBuilder, ButtonStyle } from 'discord.js';
+import { EmbedBuilder, ButtonBuilder, ActionRowBuilder, ButtonStyle, ComponentType } from 'discord.js';
 
 export const Command = {
     name: "lyrics",
@@ -13,126 +13,191 @@ export const Command = {
         try {
             await interaction.deferReply();
             
-            // Early validation of required resources
-            const node = [...client.aqua.nodeMap.values()][0];
-            if (!node) throw new Error("No connected nodes available.");
-            
             const player = client.aqua.players.get(interaction.guildId);
-            if (!player) throw new Error("No player found for this guild.");
+            if (!player) return await interaction.editReply("No player found for this guild.");
             
             const searchQuery = interaction.options.getString('search');
-            const lyricsResult = searchQuery ? 
-                await player.searchLyrics(searchQuery) : 
-                await player.lyrics();
             
-            if (!lyricsResult?.text) throw new Error("No lyrics found.");
+            const lyricsResult = await (searchQuery ? 
+                player.searchLyrics(searchQuery) : 
+                player.lyrics());
             
-            const currentTitle = lyricsResult.track ? 
-                `${lyricsResult.track.title} - ${lyricsResult.track.author}` : 
-                "Current Track";
+            if (!lyricsResult?.text) 
+                return await interaction.editReply("No lyrics found.");
             
-            const image = lyricsResult.track?.albumArt?.url || client.user.avatarURL();
-            const author = lyricsResult?.provider || lyricsResult?.source || 'Unknown';
-            const userTag = interaction.user.tag;
+            const { text: lyrics, track, provider, source } = lyricsResult;
+            const currentTitle = track ? `${track.title} - ${track.author}` : "Current Track";
+            const image = track?.albumArt?.url || client.user.avatarURL();
+            const author = provider || source || 'Unknown';
             
-            const embeds = createLyricsEmbeds(
-                lyricsResult.text,
+            const embeds = splitLyricsIntoEmbeds(
+                lyrics,
                 currentTitle,
                 image,
-                userTag,
+                interaction.user.tag,
                 author
             );
             
-            const row = createButtonRow(embeds.length === 1);
+            const isMultiPage = embeds.length > 1;
+            const row = isMultiPage ? createPaginationButtons(true, false) : null;
             
-
             const response = await interaction.editReply({
                 embeds: [embeds[0]],
-                components: embeds.length > 1 ? [row] : []
+                components: isMultiPage ? [row] : []
             });
             
-            if (embeds.length > 1) {
-                setupPaginationCollector(
-                    interaction,
-                    response,
-                    embeds,
-                    row
-                );
+            if (isMultiPage) {
+                handlePagination(interaction, response, embeds);
             }
             
         } catch (error) {
             console.error('Lyrics fetch error:', error);
+            
             const errorMessage = error.message?.includes('missing plugins')
                 ? "This server doesn't have the required lyrics plugins installed."
-                : error.message || "An error occurred while fetching the lyrics.";
+                : "An error occurred while fetching the lyrics.";
             
-            await interaction.editReply(errorMessage).catch(console.error);
+            await interaction.editReply({
+                embeds: [
+                    new EmbedBuilder()
+                        .setTitle('Error Fetching Lyrics')
+                        .setDescription(errorMessage)
+                        .setColor(0xED4245)
+                ]
+            }).catch(() => {});
         }
     },
 };
 
-function createLyricsEmbeds(lyrics, title, image, userTag, author) {
-    const chunkSize = 1024;
-    const chunks = [];
+function splitLyricsIntoEmbeds(lyrics, title, image, userTag, author) {
+    const maxLength = 3800;
     
-    for (let i = 0; i < lyrics.length; i += chunkSize) {
-        chunks.push(lyrics.slice(i, i + chunkSize));
+    if (lyrics.length <= maxLength) {
+        return [createLyricsEmbed(lyrics, title, image, userTag, author, 1, 1)];
     }
     
-    return chunks.map((chunk, index) => 
-        new EmbedBuilder()
-            .setTitle(`Lyrics for ${title}`)
-            .setDescription(chunk)
-            .setColor(0x3498db)
-            .setFooter({ 
-                text: `Requested by ${userTag} | Provider: ${author} | Page ${index + 1}/${chunks.length}` 
-            })
-            .setThumbnail(image)
-    );
+    const embeds = [];
+    let chunkStart = 0;
+    
+    while (chunkStart < lyrics.length) {
+        let chunkEnd = chunkStart + maxLength;
+        if (chunkEnd < lyrics.length) {
+            const lastNewline = lyrics.lastIndexOf('\n', chunkEnd);
+            if (lastNewline > chunkStart && lastNewline <= chunkEnd) {
+                chunkEnd = lastNewline;
+            }
+        } else {
+            chunkEnd = lyrics.length;
+        }
+        
+        embeds.push(createLyricsEmbed(
+            lyrics.slice(chunkStart, chunkEnd),
+            title,
+            image,
+            userTag,
+            author,
+            embeds.length + 1,
+            Math.ceil(lyrics.length / maxLength)
+        ));
+        
+        chunkStart = chunkEnd;
+    }
+    
+    return embeds;
 }
 
-function createButtonRow(singlePage = false) {
+function createLyricsEmbed(content, title, image, userTag, author, pageNum, totalPages) {
+    return new EmbedBuilder()
+        .setTitle(`🎵 ${title}`)
+        .setDescription(content)
+        .setColor(0x3498db)
+        .setFooter({ 
+            text: `Requested by ${userTag} • Source: ${author} • Page ${pageNum}/${totalPages}` 
+        })
+        .setThumbnail(image)
+        .setTimestamp();
+}
+
+function createPaginationButtons(isFirstDisabled, isLastDisabled) {
     return new ActionRowBuilder()
         .addComponents(
             new ButtonBuilder()
-                .setCustomId('lyrics_back')
-                .setLabel('Back')
+                .setCustomId('lyrics_first')
+                .setLabel('First')
                 .setStyle(ButtonStyle.Secondary)
-                .setDisabled(true),
+                .setEmoji('⏮️')
+                .setDisabled(isFirstDisabled),
+            new ButtonBuilder()
+                .setCustomId('lyrics_back')
+                .setLabel('Previous')
+                .setStyle(ButtonStyle.Primary)
+                .setEmoji('◀️')
+                .setDisabled(isFirstDisabled),
             new ButtonBuilder()
                 .setCustomId('lyrics_next')
                 .setLabel('Next')
+                .setStyle(ButtonStyle.Primary)
+                .setEmoji('▶️')
+                .setDisabled(isLastDisabled),
+            new ButtonBuilder()
+                .setCustomId('lyrics_last')
+                .setLabel('Last')
                 .setStyle(ButtonStyle.Secondary)
-                .setDisabled(singlePage)
+                .setEmoji('⏭️')
+                .setDisabled(isLastDisabled)
         );
 }
 
-function setupPaginationCollector(interaction, response, embeds, row) {
-    let page = 0;
+function handlePagination(interaction, response, embeds) {
+    let currentPage = 0;
     
-    const collector = interaction.channel.createMessageComponentCollector({ 
-        filter: (i) => i.customId.startsWith('lyrics_'),
-        time: 60000 
+    const collector = response.createMessageComponentCollector({ 
+        componentType: ComponentType.Button,
+        idle: 300000 // 5 minutes instead of 1 minute
     });
     
     collector.on('collect', async (i) => {
-        const newPage = i.customId === 'lyrics_back' ? 
-            Math.max(0, page - 1) : 
-            Math.min(embeds.length - 1, page + 1);
-            
-        if (newPage !== page) {
-            page = newPage;
-            row.components[0].setDisabled(page === 0);
-            row.components[1].setDisabled(page === embeds.length - 1);
+        // Validate that the button was clicked by the original user
+        if (i.user.id !== interaction.user.id) {
+            return i.reply({ 
+                content: 'This pagination is not for you.', 
+                ephemeral: true 
+            });
+        }
+        
+        let newPage = currentPage;
+        
+        switch (i.customId) {
+            case 'lyrics_first':
+                newPage = 0;
+                break;
+            case 'lyrics_back':
+                newPage = Math.max(0, currentPage - 1);
+                break;
+            case 'lyrics_next':
+                newPage = Math.min(embeds.length - 1, currentPage + 1);
+                break;
+            case 'lyrics_last':
+                newPage = embeds.length - 1;
+                break;
+        }
+        
+        if (newPage !== currentPage) {
+            currentPage = newPage;
+            const isFirst = currentPage === 0;
+            const isLast = currentPage === embeds.length - 1;
             
             await i.update({ 
-                embeds: [embeds[page]], 
-                components: [row] 
-            }).catch(console.error);
+                embeds: [embeds[currentPage]], 
+                components: [createPaginationButtons(isFirst, isLast)]
+            }).catch(() => {});
+        } else {
+            await i.deferUpdate().catch(() => {});
         }
     });
     
     collector.on('end', () => {
-        response.delete().catch(console.error);
+        collector.stop();
+        interaction.deleteReply().catch(() => {});
     });
 }
