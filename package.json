@@ -1,6 +1,6 @@
 {
 	"dependencies": {
-		"aqualink": "^2.0.2",
+		"aqualink": "^2.1.2",
 		"discord.js": "^14.18.0",
 		"dotenv": "^16.4.7"
 	},
@@ -10,6 +10,10 @@
 	"type": "module",
 	"scripts": {
 		"start": "node bot.mjs"
+	},
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/ToddyTheNoobDud/Kenium-Music"
 	},
 	"optionalDependencies": {
 		"bufferutil": "^4.0.9"
