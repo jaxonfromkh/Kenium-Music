@@ -54,7 +54,6 @@ export const Command = {
         requester: interaction.user 
       });
 
-      console.log(result);
       
       if (!result?.tracks?.length) {
         const recentItems = this.formatRecentSelections(recentSelections);
