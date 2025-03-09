@@ -53,6 +53,8 @@ export const Command = {
         query: focused, 
         requester: interaction.user 
       });
+
+      console.log(result);
       
       if (!result?.tracks?.length) {
         const recentItems = this.formatRecentSelections(recentSelections);
@@ -215,7 +217,9 @@ export const Command = {
         break;
       }
       case "playlist": {
-        player.queue.add(result.tracks);
+        for (const track of result.tracks) {
+          player.queue.add(track);
+        }
         embed.setDescription(
           `Added [${result.playlistInfo.name}](${query}) playlist (${result.tracks.length} tracks) to the queue.`
         );
