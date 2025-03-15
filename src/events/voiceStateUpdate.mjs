@@ -32,13 +32,11 @@ export const Event = {
             if (noSongAddedTimeouts.has(guildId)) {
                 clearTimeout(noSongAddedTimeouts.get(guildId));
                 noSongAddedTimeouts.delete(guildId);
-                console.log(`[Music] Cleared disconnect timeout for guild ${guildId}`);
             }
         };
 
         const startNoSongAddedTimeout = async () => {
             clearNoSongAddedTimeout();
-            console.log(`[Music] Starting disconnect timeout for guild ${guildId}`);
             
             noSongAddedTimeouts.set(guildId, setTimeout(async () => {
                 try {
@@ -69,7 +67,6 @@ export const Event = {
                     }
                     
                     currentPlayer.destroy();
-                    console.log(`[Music] Player destroyed due to inactivity in guild ${guildId}`);
                 } catch (error) {
                     console.error(`[Music] Error in disconnect timeout handler: ${error.message}`);
                 }
@@ -79,12 +76,10 @@ export const Event = {
         if (!client.aqua._eventListenersRegistered) {
             client.aqua.on('trackStart', () => {
                 clearNoSongAddedTimeout();
-                console.log(`[Music] Track started, cleared disconnect timeout for guild ${guildId}`);
             });
             
             client.aqua.on('queueEnd', () => {
                 startNoSongAddedTimeout();
-                console.log(`[Music] Queue ended, starting disconnect timeout for guild ${guildId}`);
             });
             
             client.aqua._eventListenersRegistered = true;
