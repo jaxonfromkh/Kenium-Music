@@ -1,5 +1,5 @@
 import { EmbedBuilder } from "discord.js";
-const NO_SONG_ADDED_TIMEOUT = 1800000;
+const NO_SONG_ADDED_TIMEOUT = 180000;
 const noSongAddedTimeouts = new Map();
 
 export const Event = {
