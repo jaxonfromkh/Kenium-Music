@@ -1,5 +1,5 @@
 import { EmbedBuilder } from "discord.js";
-import { isTwentyFourSevenEnabled } from "../commands/24.7.mjs";
+import { isTwentyFourSevenEnabled } from "../commands/24.7.mjs"; // Make sure path is correct
 
 const NO_SONG_ADDED_TIMEOUT = 180000; // 3 minutes
 const noSongAddedTimeouts = new Map();
@@ -30,6 +30,8 @@ export const Event = {
             if (!isTwentyFourSevenEnabled(guildId)) {
                 startNoSongAddedTimeout(client, guildId, player);
             }
+        } else {
+            clearNoSongAddedTimeout(guildId);
         }
 
         if (!client.aqua._eventListenersRegistered) {
@@ -39,7 +41,7 @@ export const Event = {
             
             client.aqua.on('queueEnd', (player) => {
                 if (!isTwentyFourSevenEnabled(player.guild)) {
-                    startNoSongAddedTimeout(client, player.guild, player);
+                    startNoSongAddedTimeout(client, guildId, player);
                 }
             });
             client.aqua._eventListenersRegistered = true;
@@ -47,6 +49,8 @@ export const Event = {
 
         if (player && !player.playing && !player.paused && !isTwentyFourSevenEnabled(guildId)) {
             startNoSongAddedTimeout(client, guildId, player);
+        } else if (player && player.playing) {
+            clearNoSongAddedTimeout(guildId);
         }
     },
 };
@@ -70,6 +74,11 @@ async function startNoSongAddedTimeout(client, guildId, player) {
             
             const currentPlayer = client.aqua?.players?.get(guildId);
             if (!currentPlayer) return;
+            
+            if (currentPlayer.playing) {
+                clearNoSongAddedTimeout(guildId);
+                return;
+            }
             
             if (!currentPlayer.textChannel) return currentPlayer.destroy();
             
