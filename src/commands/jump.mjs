@@ -19,7 +19,7 @@ export const Command = {
         const focusedValue = interaction.options.getFocused().toLowerCase();
         const results = [];
 
-        for (let i = 0; i < player.queue.length; i++) {
+        for (let i = 0; i < player.queue.length && results.length < 25; i++) {
             const title = player.queue[i].info.title;
             const name = `Song ${i + 1} - ${title}`;
             if (name.toLowerCase().includes(focusedValue)) {
