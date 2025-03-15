@@ -162,7 +162,7 @@ async function displayLyrics(interaction, lyrics, title, image, author, lines, p
     
     collector.on('end', async () => {
         try {
-            await interaction.editReply({ components: [] }).catch(() => {});
+            await interaction.deleteReply().catch(() => {});
         } catch (error) {
         }
     });
