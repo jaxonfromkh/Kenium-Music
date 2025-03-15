@@ -23,7 +23,41 @@ const nodes = [{
 }];
 
 
+const client = new Client({
+  intents: [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.DirectMessages,
+    GatewayIntentBits.GuildMembers,
+    GatewayIntentBits.GuildVoiceStates
+  ],
+  partials: ["CHANNEL"]
+});
 
+const aqua = new Aqua(client, nodes, {
+  defaultSearchPlatform: "ytsearch",
+  restVersion: "v4",
+  shouldDeleteMessage: true,
+  autoResume: true,
+  infiniteReconnects: true,
+});
+
+
+client.aqua = aqua;
+client.slashCommands = new Map();
+client.events = new Map();
+client.selectMenus = new Map();
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+export const rootPath = __dirname;
+
+await Promise.all([
+  import("./src/handlers/Command.mjs").then(({ CommandHandler }) => new CommandHandler(client, rootPath).refreshCommands()),
+  import("./src/handlers/Events.mjs").then(({ EventHandler }) => new EventHandler(client, rootPath).loadEvents())
+]);
+
+
+// AquaLink Handling
 class TimeFormatter {
   static format(milliseconds) {
     return new Date(milliseconds).toISOString().substring(11, 19);
@@ -147,25 +181,6 @@ class EmbedFactory {
   }
 }
 
-const client = new Client({
-  intents: [
-    GatewayIntentBits.Guilds,
-    GatewayIntentBits.GuildMessages,
-    GatewayIntentBits.DirectMessages,
-    GatewayIntentBits.GuildMembers,
-    GatewayIntentBits.GuildVoiceStates
-  ],
-  partials: ["CHANNEL"]
-});
-
-const aqua = new Aqua(client, nodes, {
-  defaultSearchPlatform: "ytsearch",
-  restVersion: "v4",
-  shouldDeleteMessage: true,
-  autoResume: true,
-  infiniteReconnects: true,
-});
-
 aqua.on("trackStart", async (player, track) => {
   const channel = ChannelManager.getChannel(client, player.textChannel);
   if (!channel) return;
@@ -203,23 +218,10 @@ aqua.on("trackError", async (player, track, payload) => {
 
 aqua.on("nodeConnect", node => console.log(`Node "${node.name}" connected.`));
 aqua.on("nodeError", (node, error) => console.error(`Node "${node.name}" encountered an error: ${error.message}`));
+
 client.on("raw", d => {
-  if ([GatewayDispatchEvents.VoiceStateUpdate, GatewayDispatchEvents.VoiceServerUpdate].includes(d.t)) {
     client.aqua.updateVoiceState(d);
-  }
 });
 
-client.aqua = aqua;
-client.slashCommands = new Map();
-client.events = new Map();
-client.selectMenus = new Map();
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-export const rootPath = __dirname;
-
-await Promise.all([
-  import("./src/handlers/Command.mjs").then(({ CommandHandler }) => new CommandHandler(client, rootPath).refreshCommands()),
-  import("./src/handlers/Events.mjs").then(({ EventHandler }) => new EventHandler(client, rootPath).loadEvents())
-]);
-
-client.login(token);
+await client.login(token);
