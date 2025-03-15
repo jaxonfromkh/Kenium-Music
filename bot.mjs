@@ -13,7 +13,6 @@ const { NODE_HOST, NODE_PASSWORD, NODE_PORT, NODE_NAME } = process.env;
 
 const UPDATE_INTERVAL_MS = 10_000;
 const ERROR_MESSAGE_DURATION_MS = 5_000;
-const ERROR_COLOR = 0xff0000;
 
 const nodes = [{
   host: NODE_HOST,
@@ -91,16 +90,16 @@ class ChannelManager {
 class EmbedFactory {
   static createTrackEmbed(client, player, track) {
     return new EmbedBuilder()
-      .setColor(0)
+      .setColor(0x0a1929)
       .setAuthor({
-        name: '🎵 Kenium 3.0.1',
+        name: '🎵 Kenium 3.0.4',
         iconURL: client.user.displayAvatarURL(),
         url: 'https://github.com/ToddyTheNoobDud/Kenium-Music'
       })
       .setDescription(this.getDescription(player, track))
       .setThumbnail(track.info.artworkUrl || client.user.displayAvatarURL())
       .setFooter({
-        text: 'An Open Source Bot',
+        text: 'Kenium • Open Source',
         iconURL: 'https://cdn.discordapp.com/attachments/1296093808236302380/1335389585395683419/a62c2f3218798e7eca7a35d0ce0a50d1_1.png'
       });
   }
@@ -108,26 +107,42 @@ class EmbedFactory {
   static getDescription(player, track) {
     const { position, volume, loop } = player;
     const { title, uri, author, album, length, isStream } = track.info;
-    return `**[${title}](${uri})**\n*by* **${author}** • *${album || 'Single'}* • *${isStream ? '🔴 LIVE' : '🎵 320kbps'}*\n\n` +
-      `\`${TimeFormatter.format(position)}\` ${this.createProgressBar(length, position)} \`${TimeFormatter.format(length)}\`\n\n` +
-      `${volume > 50 ? '🔊' : '🔈'} \`${volume}%\` • ${this.getLoopStatus(loop)} • 👤 <@${track.requester.id}>`;
+    
+    return `**[${title}](${uri})**\n${author} • ${album || 'Single'} • ${isStream ? '🔴 LIVE' : '🎵 320kbps'}\n` +
+      `\`${TimeFormatter.format(position)}\` ${this.createProgressBar(length, position)} \`${TimeFormatter.format(length)}\`\n` +
+      `${this.getVolumeIcon(volume)} \`${volume}%\` ${this.getLoopIcon(loop)} ${this.getRequesterTag(track.requester)}`;
   }
 
-  static createProgressBar(total, current, length = 15) {
+  static createProgressBar(total, current, length = 12) {
     const progress = Math.round((current / total) * length);
-    return `\`[${'━'.repeat(progress)}⚪${'─'.repeat(length - progress)}]\``;
+    return `\`[${('█').repeat(progress)}⦿${('▬').repeat(length - progress)}]\``;
+  }
+  
+  static getVolumeIcon(volume) {
+    if (volume === 0) return '🔇';
+    if (volume < 30) return '🔈';
+    if (volume < 70) return '🔉';
+    return '🔊';
   }
 
-  static getLoopStatus(loop) {
-    return { track: '🔂 Track Loop', queue: '🔁 Queue Loop', none: '▶️ No Loop' }[loop] || '▶️ No Loop';
+  static getLoopIcon(loop) {
+    return {
+      track: '🔂',
+      queue: '🔁',
+      none: '▶️'
+    }[loop] || '▶️';
+  }
+  
+  static getRequesterTag(requester) {
+    return `<@${requester.id}>`;
   }
 
   static createErrorEmbed(track, payload) {
     return new EmbedBuilder()
-      .setColor(ERROR_COLOR)
-      .setTitle("❌ Error Playing Track")
-      .setDescription(`**Error:** \`${track.info.title}\`\n**Message:** \`${payload.exception?.message}\``)
-      .setFooter({ text: "Kenium v3.0.1 | by mushroom0162" })
+      .setColor(0xd32f2f)
+      .setTitle("❌ Error")
+      .setDescription(`Failed to play \`${track.info.title}\`\n\`${payload.exception?.message || 'Unknown error'}\``)
+      .setFooter({ text: "Kenium v3.0.4" })
       .setTimestamp();
   }
 }
@@ -156,8 +171,8 @@ aqua.on("trackStart", async (player, track) => {
   if (!channel) return;
   try {
     const status = player.queue.size > 2
-      ? `⭐ Playlist (${player.queue.size} tracks) - Kenium 3.0.1`
-      : `⭐ ${track.info.title} - Kenium 3.0.1`;
+      ? `⭐ Playlist (${player.queue.size} tracks) - Kenium 3.0.4`
+      : `⭐ ${track.info.title} - Kenium 3.0.4`;
     player.nowPlayingMessage = await channel.send({
       embeds: [EmbedFactory.createTrackEmbed(client, player, track)],
       flags: 4096
