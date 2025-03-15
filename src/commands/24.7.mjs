@@ -1,7 +1,6 @@
 import { EmbedBuilder } from 'discord.js';
-import { SimpleDB } from '../utils/simpleDB.mjs'; // Adjust path as needed
+import { SimpleDB } from '../utils/simpleDB.mjs';
 
-// Initialize database
 const db = new SimpleDB();
 const settingsCollection = db.collection('guildSettings');
 
@@ -9,7 +8,6 @@ export const Command = {
     name: "24_7",
     description: "Enables/disables 24/7 mode to keep the bot in voice channel",
     run: async (client, interaction) => {
-        // Check if user is in a voice channel
         if (!interaction.member.voice.channel) {
             return interaction.reply({
                 embeds: [
@@ -17,7 +15,7 @@ export const Command = {
                         .setDescription("You need to be in a voice channel to use this command")
                         .setColor(0xFF0000)
                 ],
-                ephemeral: true
+                flags: 64
             });
         }
         
@@ -35,7 +33,7 @@ export const Command = {
                         .setDescription("You need to be in the same voice channel as me")
                         .setColor(0xFF0000)
                 ],
-                ephemeral: true
+                flags: 64
             });
         }
         
