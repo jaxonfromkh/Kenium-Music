@@ -1,5 +1,5 @@
 import { EmbedBuilder } from "discord.js";
-import { isTwentyFourSevenEnabled } from "../commands/24.7.mjs"; // Make sure path is correct
+import { isTwentyFourSevenEnabled } from "../commands/24.7.mjs";
 
 const NO_SONG_ADDED_TIMEOUT = 180000; // 3 minutes
 const noSongAddedTimeouts = new Map();
