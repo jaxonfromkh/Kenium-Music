@@ -1,5 +1,5 @@
-import { getChannelIds } from "../commands/24.7.mjs"; // Make sure path is correct
-import { SimpleDB } from '../utils/simpleDB.mjs'; // Adjust path as needed
+import { getChannelIds } from "../commands/24.7.mjs";
+import { SimpleDB } from '../utils/simpleDB.mjs'; 
 
 const db = new SimpleDB();
 const settingsCollection = db.collection('guildSettings');
