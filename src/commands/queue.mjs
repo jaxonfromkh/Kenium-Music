@@ -1,111 +1,41 @@
-import { EmbedBuilder } from "discord.js";
+import { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from "discord.js";
 
 export const Command = {
     name: "queue",
-    description: "Manage the music queue",
-    options: [
-        {
-            name: "show",
-            description: "Show the current queue",
-            type: 1,
-            options: [
-                {
-                    name: "page",
-                    description: "Page number to display (5 tracks per page)",
-                    type: 4,
-                    required: false,
-                }
-            ]
-        },
-        {
-            name: "remove",
-            description: "Remove a track from the queue",
-            type: 1,
-            options: [
-                {
-                    name: "track_number",
-                    description: "The number of the track to remove",
-                    type: 4,
-                    required: true,
-                    autocomplete: true,
-                },
-            ],
-        },
-        {
-            name: "clear",
-            description: "Clear the entire queue",
-            type: 1,
-        },
-    ],
-    
-    async autocomplete(client, interaction) {
-        const player = client.aqua.players.get(interaction.guildId);
-        if (!player?.queue?.length) {
-            return interaction.respond([]);
-        }
-        
-        const focusedValue = interaction.options.getFocused().toString().toLowerCase();
-        
-        const choices = player.queue
-            .slice(0, 25)
-            .map((track, index) => ({
-                name: formatTrackName(`${index + 1}: ${track.info.title}`),
-                value: index + 1,
-            }))
-            .filter(choice => !focusedValue || choice.name.toLowerCase().includes(focusedValue));
-
-        return interaction.respond(choices.slice(0, 25));
-    },
+    description: "Show the music queue",
     
     run: async (client, interaction) => {
-        await interaction.deferReply({ flags: 64 });
-        
         const player = client.aqua.players.get(interaction.guildId);
         if (!player) {
-            return interaction.editReply("🔇 Nothing is currently playing.");
+            return interaction.reply("🔇 Nothing is currently playing.");
         }
         
         const userVoiceChannelId = interaction.member.voice.channelId;
         const botVoiceChannelId = interaction.guild.members.me?.voice.channelId;
         
         if (!userVoiceChannelId) {
-            return interaction.editReply("❌ You need to join a voice channel first.");
+            return interaction.reply("❌ You need to join a voice channel first.");
         }
         
         if (botVoiceChannelId && botVoiceChannelId !== userVoiceChannelId) {
-            return interaction.editReply("❌ You need to be in the same voice channel as the bot.");
+            return interaction.reply("❌ You need to be in the same voice channel as the bot.");
         }
 
-        const subcommand = interaction.options.getSubcommand();
-        
         try {
-            switch (subcommand) {
-                case "show":
-                    return await handleShowQueue(client, interaction, player);
-                
-                case "remove":
-                    return await handleRemoveTrack(interaction, player);
-                
-                case "clear":
-                    return await handleClearQueue(interaction, player);
-                
-                default:
-                    return interaction.editReply("❓ Unknown command.");
-            }
+            return await handleShowQueue(client, interaction, player);
         } catch (error) {
             console.error("Queue command error:", error);
-            return interaction.editReply("⚠️ An error occurred while processing your request.");
+            return interaction.reply("⚠️ An error occurred while processing your request.");
         }
     }
 };
 
-function formatTrackName(name) {
-    return name.length <= 100 ? name : `${name.substring(0, 97)}...`;
-}
-
 function formatDuration(ms) {
-    const minutes = Math.floor(ms / 60000);
-    const seconds = Math.floor((ms % 60000) / 1000);
+    if (ms <= 0) return "0:00";
+    
+    const totalSeconds = Math.floor(ms / 1000);
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
 }
 
@@ -113,102 +43,137 @@ async function handleShowQueue(client, interaction, player) {
     const queueLength = player.queue.length;
     
     if (queueLength === 0) {
-        return interaction.editReply("📭 Queue is empty.");
+        const emptyEmbed = new EmbedBuilder()
+            .setTitle('🎵 Queue')
+            .setDescription("📭 Queue is empty. Add some tracks!")
+            .setColor(0x0a1931)
+            .setTimestamp();
+        return interaction.reply({ embeds: [emptyEmbed] });
     }
     
-    const page = interaction.options.getInteger("page") || 1;
+    const embed = createQueueEmbed(client, interaction, player, 1);
+    const buttons = createPaginationButtons(interaction.user.id, 1, Math.ceil(queueLength / 10));
+    
+    await interaction.reply({ 
+        embeds: [embed], 
+        components: queueLength > 10 ? [buttons] : []
+    });
+    const message = await interaction.fetchReply();
+    
+    const collector = message.createMessageComponentCollector({ 
+        time: 60000,
+        filter: i => i.user.id === interaction.user.id && i.customId.startsWith('queue_')
+    });
+    
+    collector.on('collect', async i => {
+        try {
+            await i.deferUpdate();
+            
+            const [, action] = i.customId.split('_');
+            const currentPage = parseInt(i.message.embeds[0].footer.text.match(/Page (\d+)/)[1]);
+            const maxPages = Math.ceil(player.queue.length / 10);
+            
+            let newPage = currentPage;
+            
+            switch (action) {
+                case 'first': newPage = 1; break;
+                case 'prev': newPage = Math.max(1, currentPage - 1); break;
+                case 'next': newPage = Math.min(maxPages, currentPage + 1); break;
+                case 'last': newPage = maxPages; break;
+                case 'refresh': break;
+            }
+            
+            const newEmbed = createQueueEmbed(client, interaction, player, newPage);
+            const newButtons = createPaginationButtons(interaction.user.id, newPage, maxPages);
+            
+            await i.editReply({
+                embeds: [newEmbed],
+                components: player.queue.length > 10 ? [newButtons] : []
+            });
+            
+            collector.resetTimer();
+        } catch (error) {
+            console.error("Button interaction error:", error);
+        }
+    });
+    
+    collector.on('end', async () => {
+        try {
+            await message.delete();
+        } catch (error) {
+            console.error("Failed to delete message:", error);
+        }
+    });
+}
+
+function createQueueEmbed(client, interaction, player, page) {
     const tracksPerPage = 10;
+    const queueLength = player.queue.length;
     const maxPages = Math.ceil(queueLength / tracksPerPage);
     
-    if (page < 1 || page > maxPages) {
-        return interaction.editReply(`❌ Invalid page number. Please choose a page between 1 and ${maxPages}.`);
-    }
-    
-    const startIndex = (page - 1) * tracksPerPage;
+    const validPage = Math.max(1, Math.min(page, maxPages));
+    const startIndex = (validPage - 1) * tracksPerPage;
     const endIndex = Math.min(startIndex + tracksPerPage, queueLength);
     
     const currentTrack = player.current;
-    let queueList = "";
+    
+    let queueContent = [];
     
     if (currentTrack) {
-        queueList += `**▶️ Now Playing:** [${currentTrack.info.title}](${currentTrack.info.uri}) - \`${formatDuration(currentTrack.info.length)}\`\n\n`;
+        queueContent.push(`**▶️ Now Playing:**\n[${currentTrack.info.title}](${currentTrack.info.uri}) \`${formatDuration(currentTrack.info.length)}\``);
     }
     
     if (queueLength > 0) {
-        queueList += player.queue.slice(startIndex, endIndex).map((track, i) => 
-            `**${startIndex + i + 1}.** [${track.info.title}](${track.info.uri}) - \`${formatDuration(track.info.length)}\``
-        ).join('\n');
+        queueContent.push("**Queue:**");
         
-        queueList += `\n\n**Total:** ${queueLength} tracks`;
+        const queueItems = player.queue.slice(startIndex, endIndex).map((track, i) => 
+            `\`${startIndex + i + 1}.\` [${track.info.title}](${track.info.uri}) \`${formatDuration(track.info.length)}\``
+        );
         
-        if (queueLength > tracksPerPage) {
-            queueList += ` • Page ${page}/${maxPages}`;
-        }
+        queueContent = [...queueContent, ...queueItems];
+        
+        const totalDuration = player.queue.reduce((total, track) => total + track.info.length, 0);
+        
+        queueContent.push(`\n**Total:** ${queueLength} tracks • Duration: \`${formatDuration(totalDuration)}\``);
     }
     
-    const totalDuration = player.queue.reduce((total, track) => total + track.info.length, 0);
-    queueList += ` • Duration: \`${formatDuration(totalDuration)}\``;
-    
-    const embed = new EmbedBuilder()
+    return new EmbedBuilder()
         .setTitle('🎵 Music Queue')
-        .setDescription(queueList)
-        .setColor(0)
-        .setThumbnail(client.user.displayAvatarURL({ dynamic: true, size: 64 }))
-        .setTimestamp()
+        .setDescription(queueContent.join('\n'))
+        .setColor(0x0a1931)
+        .setThumbnail(client.user.displayAvatarURL({ size: 64 }))
         .setFooter({ 
-            text: `Kenium v3.0.0 • Requested by ${interaction.user.tag}`, 
-            iconURL: interaction.user.displayAvatarURL({ dynamic: true }) 
-        });
-
-    return interaction.editReply({ embeds: [embed] });
+            text: `Page ${validPage}/${maxPages} • Kenium v3.0.5`, 
+            iconURL: interaction.user.displayAvatarURL() 
+        })
+        .setTimestamp();
 }
 
-async function handleRemoveTrack(interaction, player) {
-    const queueLength = player.queue.length;
-    
-    if (queueLength === 0) {
-        return interaction.editReply("📭 Queue is empty.");
-    }
-    
-    const trackNumber = interaction.options.getInteger("track_number");
-    
-    if (trackNumber < 1 || trackNumber > queueLength) {
-        return interaction.editReply(`❌ Invalid track number. Please choose a number between 1 and ${queueLength}.`);
-    }
-
-    const trackIndex = trackNumber - 1;
-    const removedTrack = player.queue[trackIndex];
-    
-    if (!removedTrack) {
-        return interaction.editReply("❌ Could not find the specified track.");
-    }
-    
-    player.queue.splice(trackIndex, 1);
-    
-    const embed = new EmbedBuilder()
-        .setTitle('🗑️ Track Removed')
-        .setDescription(`Removed [${removedTrack.info.title}](${removedTrack.info.uri}) from the queue.`)
-        .setColor(15548997)
-        .setTimestamp();
-    
-    return interaction.editReply({ embeds: [embed] });
-}
-
-async function handleClearQueue(interaction, player) {
-    const queueLength = player.queue.length;
-    
-    if (queueLength === 0) {
-        return interaction.editReply("📭 Queue is already empty.");
-    }
-    
-    const clearedCount = player.queue.length;
-    player.queue.length = 0;
-    
-    const embed = new EmbedBuilder()
-        .setTitle('🧹 Queue Cleared')
-        .setDescription(`Cleared ${clearedCount} tracks from the queue.`)
-        .setColor(15105570)
-        .setTimestamp();
-    
-    return interaction.editReply({ embeds: [embed] });
+function createPaginationButtons(userId, currentPage, maxPages) {
+    return new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+            .setCustomId(`queue_first_${userId}`)
+            .setLabel('◀◀')
+            .setStyle(ButtonStyle.Secondary)
+            .setDisabled(currentPage === 1),
+        new ButtonBuilder()
+            .setCustomId(`queue_prev_${userId}`)
+            .setLabel('◀')
+            .setStyle(ButtonStyle.Primary)
+            .setDisabled(currentPage === 1),
+        new ButtonBuilder()
+            .setCustomId(`queue_refresh_${userId}`)
+            .setLabel('🔄')
+            .setStyle(ButtonStyle.Success),
+        new ButtonBuilder()
+            .setCustomId(`queue_next_${userId}`)
+            .setLabel('▶')
+            .setStyle(ButtonStyle.Primary)
+            .setDisabled(currentPage === maxPages),
+        new ButtonBuilder()
+            .setCustomId(`queue_last_${userId}`)
+            .setLabel('▶▶')
+            .setStyle(ButtonStyle.Secondary)
+            .setDisabled(currentPage === maxPages)
+    );
 }
