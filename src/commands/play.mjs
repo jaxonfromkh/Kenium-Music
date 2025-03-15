@@ -47,20 +47,27 @@ export const Command = {
       const recentItems = this.formatRecentSelections(recentSelections);
       return interaction.respond(recentItems);
     }
+
+    const urlMatch = focused.match(/^https?:\/\/.+/i);
+    if (urlMatch) {
+      return interaction.respond([]);
+    }
+    
+    const now = Date.now();
+    if (now - this._state.lastAutocomplete < 500) {
+      return interaction.respond([]);
+    }
+    this._state.lastAutocomplete = now;
     
     try {
-      const result = await client.aqua.resolve({ 
-        query: focused, 
-        requester: interaction.user 
-      });
+      const result = await client.aqua.search(focused, interaction.user);
 
-      
-      if (!result?.tracks?.length) {
+      if (!result?.length) {
         const recentItems = this.formatRecentSelections(recentSelections);
         return interaction.respond(recentItems);
       }
       
-      const suggestions = result.tracks
+      const suggestions = result
         .slice(0, MAX_AUTOCOMPLETE_RESULTS)
         .map(track => ({
           name: `${track.info.title.slice(0, 80)}${track.info.author ? ` - ${track.info.author.slice(0, 20)}` : ""}`.slice(0, 100),
