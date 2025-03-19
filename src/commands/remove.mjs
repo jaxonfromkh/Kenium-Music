@@ -25,13 +25,15 @@ export const Command = {
         
         const choices = player.queue
             .slice(0, 25)
-            .map((track, index) => ({
-                name: formatTrackName(`${index + 1}: ${track.info.title}`),
-                value: index + 1,
-            }))
+            .map((track, index) => {
+                const name = formatTrackName(`${index + 1}: ${track.info.title}`);
+                return { name, value: index + 1 };
+            })
             .filter(choice => !focusedValue || choice.name.toLowerCase().includes(focusedValue));
 
-        return interaction.respond(choices.slice(0, 25));
+        const validChoices = choices.filter(choice => choice.name.length >= 1 && choice.name.length <= 100);
+
+        return interaction.respond(validChoices.slice(0, 25));
     },
     run: async (client, interaction) => {
         const player = client.aqua.players.get(interaction.guildId);
