@@ -71,7 +71,7 @@ export const Command = {
         .slice(0, MAX_AUTOCOMPLETE_RESULTS)
         .map(track => ({
           name: `${track.info.title.slice(0, 80)}${track.info.author ? ` - ${track.info.author.slice(0, 20)}` : ""}`.slice(0, 100),
-          value: track.info.uri.slice(0, 100)
+          value: track.info.uri.slice(0, 97)
         }));
       
       const combinedResults = this.combineResultsWithRecent(suggestions, recentSelections, focused);
@@ -89,8 +89,8 @@ export const Command = {
     return recentSelections
       .slice(0, MAX_RECENT_ITEMS)
       .map(item => ({
-        name: `🕒 Recently played: ${item.title.slice(0, 100)}`,
-        value: item.uri.slice(0, 100)
+        name: `🕒 Recently played: ${item.title.slice(0, 97)}`,
+        value: item.uri.slice(0, 97)
       }));
   },
 
@@ -101,8 +101,8 @@ export const Command = {
                       (!query || item.title.toLowerCase().includes(query.toLowerCase())))
       .slice(0, MAX_RECENT_ITEMS)
       .map(item => ({
-        name: `🕒 Recently played: ${item.title.slice(0, 100)}`,
-        value: item.uri.slice(0, 100)
+        name: `🕒 Recently played: ${item.title.slice(0, 97)}`,
+        value: item.uri.slice(0, 97)
       }));
     
     return [...filteredRecent, ...suggestions].slice(0, MAX_AUTOCOMPLETE_RESULTS + MAX_RECENT_ITEMS);
