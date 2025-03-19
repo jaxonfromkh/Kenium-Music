@@ -21,7 +21,7 @@ export const Command = {
 
         for (let i = 0; i < player.queue.length && results.length < 25; i++) {
             const title = player.queue[i].info.title;
-            const name = `Song ${i + 1} - ${title}`;
+            const name = `Song ${i + 1} - ${title.slice(0, 97)}`; 
             if (name.toLowerCase().includes(focusedValue)) {
                 results.push({ name, value: i + 1 });
             }
@@ -40,6 +40,7 @@ export const Command = {
             return interaction.reply({ content: `Position must be between 1 and ${queueLength}`, flags: 64 });
         }
 
+        // Remove songs before the selected position and stop the player to jump
         player.queue.splice(0, position - 1);
         player.stop();
         return interaction.reply({ content: `Jumped to song ${position}`, flags: 64 });
