@@ -1,27 +1,21 @@
 import 'dotenv/config';
-import { Client, GatewayIntentBits, EmbedBuilder, GatewayDispatchEvents } from "discord.js";
+import { Client, GatewayIntentBits, EmbedBuilder } from "discord.js";
 import { fileURLToPath } from "node:url";
 import { dirname } from "node:path";
 import https from "node:https";
-
 import { createRequire } from "node:module";
-const require = createRequire(import.meta.url);
-const { Aqua } = require('aqualink');
 
-const token = process.env.token;
-const { NODE_HOST, NODE_PASSWORD, NODE_PORT, NODE_NAME } = process.env;
-
+const CACHE_EXPIRY_MS = 600_000;
 const UPDATE_INTERVAL_MS = 10_000;
 const ERROR_MESSAGE_DURATION_MS = 5_000;
+const MESSAGE_FLAGS = 4096;
+const EMBED_COLOR = 0x000000;
+const ERROR_COLOR = 0xd32f2f;
+const VERSION = '3.1.0';
 
-const nodes = [{
-  host: NODE_HOST,
-  password: NODE_PASSWORD,
-  port: NODE_PORT,
-  secure: false,
-  name: NODE_NAME
-}];
-
+const require = createRequire(import.meta.url);
+const { Aqua } = require('aqualink');
+const { token, NODE_HOST, NODE_PASSWORD, NODE_PORT, NODE_NAME } = process.env;
 
 const client = new Client({
   intents: [
@@ -30,8 +24,16 @@ const client = new Client({
     GatewayIntentBits.DirectMessages,
     GatewayIntentBits.GuildVoiceStates
   ],
-  partials: ["CHANNEL"]
+  partials: ["CHANNEL"],
 });
+
+const nodes = [{
+  host: NODE_HOST,
+  password: NODE_PASSWORD,
+  port: NODE_PORT,
+  secure: false,
+  name: NODE_NAME,
+}];
 
 const aqua = new Aqua(client, nodes, {
   defaultSearchPlatform: "ytsearch",
@@ -41,7 +43,6 @@ const aqua = new Aqua(client, nodes, {
   infiniteReconnects: true,
 });
 
-
 client.aqua = aqua;
 client.slashCommands = new Map();
 client.events = new Map();
@@ -50,82 +51,131 @@ client.selectMenus = new Map();
 const __dirname = dirname(fileURLToPath(import.meta.url));
 export const rootPath = __dirname;
 
-await Promise.all([
-  import("./src/handlers/Command.mjs").then(({ CommandHandler }) => new CommandHandler(client, rootPath).refreshCommands()),
-  import("./src/handlers/Events.mjs").then(({ EventHandler }) => new EventHandler(client, rootPath).loadEvents())
-]);
-
-
-// AquaLink Handling
 class TimeFormatter {
+  static #cache = new Map();
+  
   static format(milliseconds) {
-    return new Date(milliseconds).toISOString().substring(11, 19);
+    const rounded = Math.floor(milliseconds / 1000) * 1000;
+    if (this.#cache.has(rounded)) {
+      return this.#cache.get(rounded);
+    }
+    
+    const formatted = new Date(rounded).toISOString().substring(11, 19);
+    this.#cache.set(rounded, formatted);
+    
+    if (this.#cache.size > 3600) {
+      const oldestKey = this.#cache.keys().next().value;
+      this.#cache.delete(oldestKey);
+    }
+    
+    return formatted;
   }
 }
 
 class ChannelManager {
-  static cache = new Map();
-  static updateQueue = new Map();
+  static #cache = new Map();
+  static #updateQueue = new Map();
+  static #lastCleanup = Date.now();
+  
   static getChannel(client, channelId) {
-    const cached = this.cache.get(channelId);
+    const cached = this.#cache.get(channelId);
     if (cached) {
+      cached.timestamp = Date.now(); 
       return cached.channel;
     }
+    
     const channel = client.channels.cache.get(channelId);
     if (channel) {
-      this.cache.set(channelId, { channel, timestamp: Date.now() });
+      this.#cache.set(channelId, { channel, timestamp: Date.now() });
+      
+      const now = Date.now();
+      if (now - this.#lastCleanup > 60000) {
+        this.clearOldCache();
+        this.clearOldUpdateQueue();
+        this.#lastCleanup = now;
+      }
     }
+    
     return channel;
   }
 
   static async updateVoiceStatus(channelId, status, botToken) {
     const now = Date.now();
-    if ((now - (this.updateQueue.get(channelId) || 0)) < UPDATE_INTERVAL_MS) return;
+    const lastUpdate = this.#updateQueue.get(channelId) || 0;
     
-    this.updateQueue.set(channelId, now);
+    if (now - lastUpdate < UPDATE_INTERVAL_MS) return;
     
-    const req = https.request({
-      host: 'discord.com',
-      path: `/api/v10/channels/${channelId}/voice-status`,
-      method: 'PUT',
-      headers: {
-        'Authorization': `Bot ${botToken}`,
-        'Content-Type': 'application/json',
-      },
-    }, (res) => {
-      if (res.statusCode !== 204) {
-        console.error(`Voice status update failed: ${res.statusCode}`);
-      }
-    });
-    req.on('error', (error) => {
+    this.#updateQueue.set(channelId, now);
+    
+    try {
+      return new Promise((resolve, reject) => {
+        const req = https.request({
+          host: 'discord.com',
+          path: `/api/v10/channels/${channelId}/voice-status`,
+          method: 'PUT',
+          headers: {
+            'Authorization': `Bot ${botToken}`,
+            'Content-Type': 'application/json',
+          },
+        }, (res) => {
+          if (res.statusCode !== 204) {
+            console.error(`Voice status update failed: ${res.statusCode}`);
+            reject(new Error(`HTTP ${res.statusCode}`));
+          } else {
+            resolve();
+          }
+        });
+        
+        req.on('error', reject);
+        req.write(JSON.stringify({ status }));
+        req.end();
+      });
+    } catch (error) {
       console.error('Voice status update error:', error);
-    });
-    req.write(JSON.stringify({ status }));
-    req.end();
-    this.clearOldUpdateQueue();
+    }
   }
 
-  static clearOldCache(expiry = 600_000) {
+  static clearOldCache(expiry = CACHE_EXPIRY_MS) {
     const now = Date.now();
-    this.cache.forEach(({ timestamp }, id) => {
-      if (now - timestamp > expiry) this.cache.delete(id);
-    });
+    let removed = 0;
+    
+    for (const [id, { timestamp }] of this.#cache.entries()) {
+      if (now - timestamp > expiry) {
+        this.#cache.delete(id);
+        removed++;
+      }
+    }
+    
+    if (removed > 0) {
+      console.debug(`Cleared ${removed} stale channel cache entries`);
+    }
   }
 
-  static clearOldUpdateQueue(expiry = 600_000) {
+  static clearOldUpdateQueue(expiry = CACHE_EXPIRY_MS) {
     const now = Date.now();
-    this.updateQueue.forEach((timestamp, id) => {
-      if (now - timestamp > expiry) this.updateQueue.delete(id);
-    });
+    let removed = 0;
+    
+    for (const [id, timestamp] of this.#updateQueue.entries()) {
+      if (now - timestamp > expiry) {
+        this.#updateQueue.delete(id);
+        removed++;
+      }
+    }
+    
+    if (removed > 0) {
+      console.debug(`Cleared ${removed} stale update queue entries`);
+    }
   }
 }
 
 class EmbedFactory {
+  static #progressBarCache = new Map();
+  
   static createTrackEmbed(client, player, track) {
     return new EmbedBuilder()
-      .setColor(0x0a1929)
+      .setColor(EMBED_COLOR)
       .setAuthor({
-        name: '🎵 Kenium 3.0.4',
+        name: `🎵 Kenium ${VERSION}`,
         iconURL: client.user.displayAvatarURL(),
         url: 'https://github.com/ToddyTheNoobDud/Kenium-Music'
       })
@@ -141,14 +191,34 @@ class EmbedFactory {
     const { position, volume, loop } = player;
     const { title, uri, author, album, length, isStream } = track.info;
     
-    return `**[${title}](${uri})**\n${author} • ${album || 'Single'} • ${isStream ? '🔴 LIVE' : '🎵 320kbps'}\n` +
-      `\`${TimeFormatter.format(position)}\` ${this.createProgressBar(length, position)} \`${TimeFormatter.format(length)}\`\n` +
-      `${this.getVolumeIcon(volume)} \`${volume}%\` ${this.getLoopIcon(loop)} ${this.getRequesterTag(track.requester)}`;
+    return [
+      `**[${title}](${uri})**`,
+      `${author} ${album ? `• ${album}` : ''} • ${isStream ? '🔴 LIVE' : '🎵 320kbps'}`,
+      '',
+      `\`${TimeFormatter.format(position)}\` ${this.createProgressBar(length, position)} \`${TimeFormatter.format(length)}\``,
+      '',
+      `${this.getVolumeIcon(volume)} \`${volume}%\` ${this.getLoopIcon(loop)} ${this.getRequesterTag(track.requester)}`
+    ].join('\n');
   }
 
   static createProgressBar(total, current, length = 12) {
-    const progress = Math.round((current / total) * length);
-    return `\`[${('█').repeat(progress)}⦿${('▬').repeat(length - progress)}]\``;
+    const progressPercent = Math.floor((current / total) * 20) * 5;
+    const cacheKey = `${total}_${progressPercent}_${length}`;
+    
+    if (this.#progressBarCache.has(cacheKey)) {
+      return this.#progressBarCache.get(cacheKey);
+    }
+    
+    const progress = Math.round((progressPercent / 100) * length);
+    const bar = `\`[${('█').repeat(progress)}⦿${('▬').repeat(length - progress)}]\``;
+    
+    if (this.#progressBarCache.size > 100) {
+      const oldestKey = this.#progressBarCache.keys().next().value;
+      this.#progressBarCache.delete(oldestKey);
+    }
+    
+    this.#progressBarCache.set(cacheKey, bar);
+    return bar;
   }
   
   static getVolumeIcon(volume) {
@@ -159,11 +229,11 @@ class EmbedFactory {
   }
 
   static getLoopIcon(loop) {
-    return {
-      track: '🔂',
-      queue: '🔁',
-      none: '▶️'
-    }[loop] || '▶️';
+    switch (loop) {
+      case 'track': return '🔂';
+      case 'queue': return '🔁';
+      default: return '▶️';
+    }
   }
   
   static getRequesterTag(requester) {
@@ -172,55 +242,117 @@ class EmbedFactory {
 
   static createErrorEmbed(track, payload) {
     return new EmbedBuilder()
-      .setColor(0xd32f2f)
+      .setColor(ERROR_COLOR)
       .setTitle("❌ Error")
       .setDescription(`Failed to play \`${track.info.title}\`\n\`${payload.exception?.message || 'Unknown error'}\``)
-      .setFooter({ text: "Kenium v3.0.4" })
+      .setFooter({ text: `Kenium v${VERSION}` })
       .setTimestamp();
   }
 }
 
-aqua.on("trackStart", async (player, track) => {
+const handleTrackStart = async (player, track) => {
   const channel = ChannelManager.getChannel(client, player.textChannel);
   if (!channel) return;
+  
   try {
     const status = player.queue.size > 2
-      ? `⭐ Playlist (${player.queue.size} tracks) - Kenium 3.0.4`
-      : `⭐ ${track.info.title} - Kenium 3.0.4`;
+      ? `⭐ Playlist (${player.queue.size} tracks) - Kenium ${VERSION}`
+      : `⭐ ${track.info.title} - Kenium ${VERSION}`;
+    
+    if (player.nowPlayingMessage) {
+      try {
+        await player.nowPlayingMessage.delete().catch(() => {});
+      } catch (e) {
+      }
+    }
+    
     player.nowPlayingMessage = await channel.send({
       embeds: [EmbedFactory.createTrackEmbed(client, player, track)],
-      flags: 4096
+      flags: MESSAGE_FLAGS
     });
-    ChannelManager.updateVoiceStatus(player.voiceChannel, status, token);
+    
+    ChannelManager.updateVoiceStatus(player.voiceChannel, status, token)
+      .catch(err => console.warn("Voice status update failed:", err));
   } catch (error) {
     console.error("Track start error:", error);
   }
-});
+};
 
-aqua.on("queueEnd", (player) => {
-  ChannelManager.updateVoiceStatus(player.voiceChannel, null, token);
-  ChannelManager.clearOldCache();
+const handleQueueEnd = (player) => {
+  ChannelManager.updateVoiceStatus(player.voiceChannel, null, token)
+    .catch(err => console.warn("Voice status clear failed:", err));
+  
   player.nowPlayingMessage = null;
-});
+};
 
-aqua.on("trackError", async (player, track, payload) => {
-  console.error(`Error ${payload.exception.code} / ${payload.exception.message}`);
+const handleTrackError = async (player, track, payload) => {
+  console.error(`Error ${payload.exception?.code || 'unknown'} / ${payload.exception?.message || 'No message'}`);
+  
   const channel = ChannelManager.getChannel(client, player.textChannel);
   if (!channel) return;
+  
   try {
-    const errorMessage = await channel.send({ embeds: [EmbedFactory.createErrorEmbed(track, payload)] });
-    setTimeout(() => errorMessage.delete().catch(() => { }), ERROR_MESSAGE_DURATION_MS); // Renamed for clarity
+    const errorMessage = await channel.send({ 
+      embeds: [EmbedFactory.createErrorEmbed(track, payload)],
+      flags: MESSAGE_FLAGS
+    });
+    
+    setTimeout(() => errorMessage.delete().catch(() => {}), ERROR_MESSAGE_DURATION_MS);
   } catch (error) {
     console.error("Error message sending failed:", error);
   }
-});
+};
+
+aqua.on("trackStart", handleTrackStart);
+aqua.on("queueEnd", handleQueueEnd);
+aqua.on("trackError", handleTrackError);
 
 aqua.on("nodeConnect", node => console.log(`Node "${node.name}" connected.`));
 aqua.on("nodeError", (node, error) => console.error(`Node "${node.name}" encountered an error: ${error.message}`));
 
 client.on("raw", d => {
+  if (d.t === "VOICE_STATE_UPDATE" || d.t === "VOICE_SERVER_UPDATE") {
     client.aqua.updateVoiceState(d);
+  }
 });
 
+const loadHandlers = async () => {
+  try {
+    await Promise.all([
+      import("./src/handlers/Command.mjs").then(({ CommandHandler }) => 
+        new CommandHandler(client, rootPath).refreshCommands()),
+      import("./src/handlers/Events.mjs").then(({ EventHandler }) => 
+        new EventHandler(client, rootPath).loadEvents())
+    ]);
+    console.log("All handlers loaded successfully");
+  } catch (error) {
+    console.error("Failed to load handlers:", error);
+    process.exit(1);
+  }
+};
 
-await client.login(token);
+const startup = async () => {
+  try {
+    await loadHandlers();
+    
+    await client.login(token);
+    console.log(`Logged in as ${client.user.tag}`);
+    
+    setInterval(() => {
+      ChannelManager.clearOldCache();
+      ChannelManager.clearOldUpdateQueue();
+    }, CACHE_EXPIRY_MS / 2);
+    
+  } catch (error) {
+    console.error("Startup failed:", error);
+    process.exit(1);
+  }
+};
+
+process.on('SIGINT', async () => {
+  console.log('Shutting down gracefully...');
+  client.destroy();
+  process.exit(0);
+});
+
+startup();
