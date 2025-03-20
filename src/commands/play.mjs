@@ -47,12 +47,9 @@ export const Command = {
     
     const focused = interaction.options.getFocused()?.trim() || "";
     const userId = interaction.user.id;
-    const recentSelections = userRecentSelections.get(userId) || [];
+    const recentSelectionObject = userRecentSelections.get(userId) || { items: [], lastAccessed: null };
+    const recentSelections = recentSelectionObject.items || [];
     
-    if (!focused) {
-      return interaction.respond(this.getFormattedRecentSelections(recentSelections));
-    }
-
     if (URL_REGEX.test(focused)) {
       return interaction.respond([]);
     }
@@ -69,8 +66,12 @@ export const Command = {
     }
     
     try {
+      if (!focused) {
+        return interaction.respond(this.getFormattedRecentSelections(recentSelections));
+      }
+      
       const result = await client.aqua.search(focused, interaction.user);
-
+  
       if (!result?.length) {
         return interaction.respond(this.getFormattedRecentSelections(recentSelections));
       }
@@ -78,7 +79,7 @@ export const Command = {
       const suggestions = result
         .slice(0, MAX_AUTOCOMPLETE_RESULTS)
         .map(track => ({
-          name: this.formatTrackName(track.info),
+          name: this.truncateTrackName(track.info.title, track.info.author),
           value: track.info.uri.slice(0, 97)
         }));
       
@@ -90,22 +91,24 @@ export const Command = {
       return interaction.respond(this.getFormattedRecentSelections(recentSelections));
     }
   },
-
-  formatTrackName(info) {
-    const title = info.title.slice(0, 80);
-    const author = info.author ? ` - ${info.author.slice(0, 20)}` : "";
-    return `${title}${author}`.slice(0, 100);
+  
+  truncateTrackName(title, author) {
+    const titlePart = title?.slice(0, 70) || "";
+    const authorPart = author ? ` - ${author.slice(0, 20)}` : "";
+    
+    const combined = `${titlePart}${authorPart}`;
+    return combined.length > 100 ? combined.slice(0, 97) + "..." : combined;
   },
-
+  
   getFormattedRecentSelections(recentSelections) {
-    return recentSelections
+    return (recentSelections || [])
       .slice(0, MAX_RECENT_ITEMS)
       .map(item => ({
-        name: `🕒 Recently played: ${item.title.slice(0, 97)}`,
-        value: item.uri.slice(0, 97)
+        name: `🕒 Recently played: ${item.title?.slice(0, 70) || "Unknown"}`.slice(0, 100),
+        value: (item.uri || "").slice(0, 97)
       }));
   },
-
+  
   combineResultsWithRecent(suggestions, recentSelections, query) {
     const recentUris = new Set(suggestions.map(s => s.value));
     const queryLower = query.toLowerCase();
@@ -123,7 +126,7 @@ export const Command = {
     
     return [...filteredRecent, ...suggestions].slice(0, MAX_AUTOCOMPLETE_RESULTS + MAX_RECENT_ITEMS);
   },
-
+  
   cleanupInactiveUsers(now) {
     for (const [userId, selections] of userRecentSelections.entries()) {
       if (selections.lastAccessed && now - selections.lastAccessed > INACTIVE_THRESHOLD_MS) {
