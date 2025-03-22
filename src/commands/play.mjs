@@ -93,7 +93,7 @@ export const Command = {
   },
   
   truncateTrackName(title, author) {
-    const titlePart = title?.slice(0, 70) || "";
+    const titlePart = title?.slice(0, 97) || "";
     const authorPart = author ? ` - ${author.slice(0, 20)}` : "";
     
     const combined = `${titlePart}${authorPart}`;
@@ -104,27 +104,20 @@ export const Command = {
     return (recentSelections || [])
       .slice(0, MAX_RECENT_ITEMS)
       .map(item => ({
-        name: `🕒 Recently played: ${item.title?.slice(0, 70) || "Unknown"}`.slice(0, 100),
+        name: `🕒 Recently played: ${item.title?.slice(0, 97) || "Unknown"}`,
         value: (item.uri || "").slice(0, 97)
       }));
   },
   
   combineResultsWithRecent(suggestions, recentSelections, query) {
-    const recentUris = new Set(suggestions.map(s => s.value));
     const queryLower = query.toLowerCase();
+    const recentUris = new Set(suggestions.map(s => s.value));
     
     const filteredRecent = recentSelections
-      .filter(item => 
-        !recentUris.has(item.uri) && 
-        (!query || item.title.toLowerCase().includes(queryLower))
-      )
-      .slice(0, MAX_RECENT_ITEMS)
-      .map(item => ({
-        name: `🕒 Recently played: ${item.title.slice(0, 97)}`,
-        value: item.uri.slice(0, 97)
-      }));
+      .filter(item => !recentUris.has(item.uri) && (!query || item.title.toLowerCase().includes(queryLower)))
+      .map(item => ({ name: ` ${item.title.slice(0, 97)}`, value: item.uri.slice(0, 97) }));
     
-    return [...filteredRecent, ...suggestions].slice(0, MAX_AUTOCOMPLETE_RESULTS + MAX_RECENT_ITEMS);
+    return [...filteredRecent.slice(0, MAX_RECENT_ITEMS), ...suggestions].slice(0, MAX_AUTOCOMPLETE_RESULTS + MAX_RECENT_ITEMS);
   },
   
   cleanupInactiveUsers(now) {
