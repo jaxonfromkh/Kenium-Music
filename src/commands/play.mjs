@@ -5,7 +5,7 @@ const MAX_RECENT_ITEMS = 4;
 const EMBED_COLOR = 0x000000;
 const RECENT_SELECTIONS_MAX = 10;
 const AUTOCOMPLETE_THROTTLE_MS = 500;
-const INACTIVE_THRESHOLD_MS = 6000;
+const INACTIVE_THRESHOLD_MS = 360000; // 1 hour
 
 const ERROR_MESSAGES = {
   NO_VOICE: "You must be in a voice channel to use this command.",
