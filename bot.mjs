@@ -357,6 +357,9 @@ client.on('interactionCreate', async (interaction) => {
   }
 });
 
+aqua.on('nodeError', (node, error) => console.error(`Node error: ${error.message}`));
+aqua.on('nodeConnect', (node) => console.log(`Node connected: ${node.name}`));
+
 
 client.on("raw", d => client.aqua.updateVoiceState(d));
 await client.login(token);
