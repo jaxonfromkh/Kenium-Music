@@ -5,9 +5,25 @@ const db = new SimpleDB();
 const playlistsCollection = db.collection('playlists');
 
 const EMBED_COLOR = '#000000';
+const SUCCESS_COLOR = '#4cd964';
 const ERROR_COLOR = '#ff3b30';
 const FOOTER_TEXT = '🎵 Kenium Playlists';
 const PAGE_SIZE = 10;
+
+const EMOJIS = {
+  playlist: '🎧',
+  tracks: '💿',
+  duration: '⏱️',
+  created: '📅',
+  artist: '🎤',
+  source: '🔊',
+  removed: '🗑️',
+  added: '✅',
+  loading: '⏳',
+  youtube: '📺',
+  spotify: '📗',
+  soundcloud: '🔸'
+};
 
 export const Command = {
     name: "playlist",
@@ -138,7 +154,7 @@ export const Command = {
         } else {
             return await interaction.reply({ 
                 embeds: [createErrorEmbed("Unknown subcommand")], 
-                flags: 64
+                ephemeral: true
             });
         }
     },
@@ -168,7 +184,7 @@ export const Command = {
                     try {
                         const searchResults = await client.aqua.resolve({
                             query: focusedOption.value,
-                        })
+                        });
 
                         if (searchResults?.tracks?.length) {
                             choices = searchResults.tracks
@@ -213,13 +229,13 @@ export const Command = {
 const createEmbed = (() => {
     const cache = new Map();
     
-    return (title, description = null) => {
-        const key = `${title}-${description}`;
+    return (title, description = null, color = EMBED_COLOR) => {
+        const key = `${title}-${description}-${color}`;
         if (cache.has(key)) return cache.get(key).clone();
         
         const embed = new EmbedBuilder()
-            .setColor(EMBED_COLOR)
-            .setTitle(title);
+            .setColor(color)
+            .setTitle(`${getEmojiForTitle(title)} ${title}`);
 
         if (description) embed.setDescription(description);
 
@@ -231,6 +247,18 @@ const createEmbed = (() => {
     };
 })();
 
+function getEmojiForTitle(title) {
+    if (title.includes('Created')) return EMOJIS.playlist;
+    if (title.includes('Added')) return EMOJIS.added;
+    if (title.includes('Removed')) return EMOJIS.removed;
+    if (title.includes('Playing')) return '▶️';
+    if (title.includes('Your Playlists')) return EMOJIS.playlist;
+    if (title.includes('Deleted')) return EMOJIS.removed;
+    if (title.includes('Error')) return '❌';
+    if (title.includes('Playlist:')) return EMOJIS.playlist;
+    return '🎵';
+}
+
 const createErrorEmbed = (() => {
     const cache = new Map();
     
@@ -239,7 +267,7 @@ const createErrorEmbed = (() => {
         
         const embed = new EmbedBuilder()
             .setColor(ERROR_COLOR)
-            .setTitle('Error')
+            .setTitle('❌ Error')
             .setDescription(errorMessage)
             .setTimestamp()
             .setFooter({ text: FOOTER_TEXT });
@@ -250,9 +278,15 @@ const createErrorEmbed = (() => {
 })();
 
 function determineSource(uri) {
-    if (uri.includes('youtube.com') || uri.includes('youtu.be')) return 'YouTube';
-    if (uri.includes('spotify.com')) return 'Spotify';
-    if (uri.includes('soundcloud.com')) return 'SoundCloud';
+    if (!uri) return 'Unknown';
+    
+    if (uri.includes('youtube.com') || uri.includes('youtu.be')) 
+        return `${EMOJIS.youtube} YouTube`;
+    if (uri.includes('spotify.com')) 
+        return `${EMOJIS.spotify} Spotify`;
+    if (uri.includes('soundcloud.com')) 
+        return `${EMOJIS.soundcloud} SoundCloud`;
+    
     return 'Unknown';
 }
 
@@ -263,7 +297,7 @@ async function createPlaylist(interaction, userId) {
     if (existingPlaylist) {
         return await interaction.reply({ 
             embeds: [createErrorEmbed(`You already have a playlist named "${name}"`)], 
-            flags: 64 
+            ephemeral: true 
         });
     }
 
@@ -274,10 +308,10 @@ async function createPlaylist(interaction, userId) {
         createdAt: new Date().toISOString()
     });
 
-    const embed = createEmbed('Playlist Created', `Playlist **${name}** was successfully created!`);
+    const embed = createEmbed('Playlist Created', `Playlist **${name}** was successfully created!`, SUCCESS_COLOR);
     embed.setThumbnail('https://img.icons8.com/nolan/64/playlist.png');
 
-    await interaction.reply({ embeds: [embed], flags: 64 });
+    await interaction.reply({ embeds: [embed], ephemeral: true });
 }
 
 async function addTrackToPlaylist(interaction, userId, client) {
@@ -288,18 +322,18 @@ async function addTrackToPlaylist(interaction, userId, client) {
     if (!playlist) {
         return await interaction.reply({ 
             embeds: [createErrorEmbed(`Playlist "${playlistName}" not found`)], 
-            flags: 64 
+            ephemeral: true 
         });
     }
 
     if (playlist.tracks.length >= 50) {
         return await interaction.reply({ 
             embeds: [createErrorEmbed(`Playlist "${playlistName}" has reached the maximum of 50 tracks.`)], 
-            flags: 64 
+            ephemeral: true 
         });
     }
 
-    await interaction.deferReply({ flags: 64 });
+    await interaction.deferReply({ ephemeral: true });
 
     try {
         const res = await client.aqua.resolve({
@@ -314,7 +348,7 @@ async function addTrackToPlaylist(interaction, userId, client) {
                     ? `Failed to load track: ${res.exception?.message || "Unknown error"}`
                     : `No tracks found matching "${trackQuery}"`
                 )],
-                flags: 64
+                ephemeral: true
             });
         }
 
@@ -331,15 +365,19 @@ async function addTrackToPlaylist(interaction, userId, client) {
         }
         playlistsCollection.update({ _id: playlist._id }, playlist);
 
+        const tracksAdded = Math.min(res.tracks.length, 50 - playlist.tracks.length);
+        
         const embed = createEmbed(
             'Tracks Added', 
-            `Added ${Math.min(res.tracks.length, 50 - playlist.tracks.length)} tracks to playlist **${playlistName}**`
+            `Added ${tracksAdded} track${tracksAdded > 1 ? 's' : ''} to playlist **${playlistName}**`,
+            SUCCESS_COLOR
         );
 
         embed.addFields(
-            { name: 'First Track', value: `**${res.tracks[0].info.title}** by ${res.tracks[0].info.author}`, inline: true },
-            { name: 'Source', value: determineSource(res.tracks[0].info.uri), inline: true },
-            { name: 'Playlist Size', value: `${playlist.tracks.length} tracks`, inline: true }
+            { name: '🎵 Track', value: `**${res.tracks[0].info.title}**`, inline: false },
+            { name: `${EMOJIS.artist} Artist`, value: res.tracks[0].info.author, inline: true },
+            { name: `${EMOJIS.source} Source`, value: determineSource(res.tracks[0].info.uri), inline: true },
+            { name: `${EMOJIS.tracks} Playlist Size`, value: `${playlist.tracks.length} tracks`, inline: true }
         );
 
         const videoId = extractYouTubeId(res.tracks[0].info.uri);
@@ -347,12 +385,12 @@ async function addTrackToPlaylist(interaction, userId, client) {
             embed.setThumbnail(`https://img.youtube.com/vi/${videoId}/hqdefault.jpg`);
         }
 
-        return await interaction.editReply({ embeds: [embed], flags: 64 });
+        return await interaction.editReply({ embeds: [embed], ephemeral: true });
     } catch (error) {
         console.error("Error adding track to playlist:", error);
         return await interaction.editReply({
             embeds: [createErrorEmbed(`Error adding track: ${error.message || "Unknown error"}`)],
-            flags: 64
+            ephemeral: true
         });
     }
 }
@@ -365,14 +403,14 @@ async function removeTrackFromPlaylist(interaction, userId) {
     if (!playlist) {
         return await interaction.reply({ 
             embeds: [createErrorEmbed(`Playlist "${playlistName}" not found`)], 
-            flags: 64 
+            ephemeral: true 
         });
     }
 
     if (index < 0 || index >= playlist.tracks.length) {
         return await interaction.reply({ 
             embeds: [createErrorEmbed(`Invalid track index. Playlist has ${playlist.tracks.length} tracks.`)], 
-            flags: 64 
+            ephemeral: true 
         });
     }
 
@@ -381,8 +419,8 @@ async function removeTrackFromPlaylist(interaction, userId) {
 
     const embed = createEmbed('Track Removed', `Removed **${removedTrack.title}** from playlist **${playlistName}**`);
     embed.addFields(
-        { name: 'Artist', value: removedTrack.author || 'Unknown', inline: true },
-        { name: 'Remaining Tracks', value: playlist.tracks.length.toString(), inline: true }
+        { name: `${EMOJIS.artist} Artist`, value: removedTrack.author || 'Unknown', inline: true },
+        { name: `${EMOJIS.tracks} Remaining`, value: playlist.tracks.length.toString(), inline: true }
     );
 
     const videoId = extractYouTubeId(removedTrack.uri);
@@ -390,7 +428,7 @@ async function removeTrackFromPlaylist(interaction, userId) {
         embed.setThumbnail(`https://img.youtube.com/vi/${videoId}/hqdefault.jpg`);
     }
 
-    return await interaction.reply({ embeds: [embed], flags: 64 });
+    return await interaction.reply({ embeds: [embed], ephemeral: true });
 }
 
 async function listPlaylists(interaction, userId) {
@@ -403,7 +441,7 @@ async function listPlaylists(interaction, userId) {
         if (playlists.length === 0) {
             return await interaction.reply({ 
                 embeds: [createEmbed('Your Playlists', 'You don\'t have any playlists yet. Use `/playlist create` to create one!')], 
-                flags: 64 
+                ephemeral: true 
             });
         }
 
@@ -422,8 +460,8 @@ async function listPlaylists(interaction, userId) {
         visiblePlaylists.forEach(playlist => {
             const totalDuration = playlist.tracks.reduce((total, track) => total + track.duration, 0);
             embed.addFields({
-                name: playlist.name,
-                value: `📀 ${playlist.tracks.length} tracks • ⏱️ ${formatDuration(totalDuration)} • 📅 ${new Date(playlist.createdAt).toLocaleDateString()}`
+                name: `${EMOJIS.playlist} ${playlist.name}`,
+                value: `${EMOJIS.tracks} ${playlist.tracks.length} tracks • ${EMOJIS.duration} ${formatDuration(totalDuration)} • ${EMOJIS.created} <t:${Math.floor(new Date(playlist.createdAt).getTime() / 1000)}:R>`
             });
         });
 
@@ -432,12 +470,14 @@ async function listPlaylists(interaction, userId) {
             const row = new ActionRowBuilder().addComponents(
                 new ButtonBuilder()
                     .setCustomId(`playlist_prev_${currentPage}_${userId}`)
-                    .setLabel('◀️ Previous')
+                    .setLabel('Previous')
+                    .setEmoji('◀️')
                     .setStyle(ButtonStyle.Secondary)
                     .setDisabled(currentPage === 1),
                 new ButtonBuilder()
                     .setCustomId(`playlist_next_${currentPage}_${userId}`)
-                    .setLabel('Next ▶️')
+                    .setLabel('Next')
+                    .setEmoji('▶️')
                     .setStyle(ButtonStyle.Secondary)
                     .setDisabled(currentPage === totalPages)
             );
@@ -447,7 +487,7 @@ async function listPlaylists(interaction, userId) {
         return await interaction.reply({ 
             embeds: [embed], 
             components: components,
-            flags: 64 
+            ephemeral: true 
         });
     } else {
         const playlist = playlistsCollection.findOne({ userId, name: playlistName });
@@ -455,14 +495,14 @@ async function listPlaylists(interaction, userId) {
         if (!playlist) {
             return await interaction.reply({ 
                 embeds: [createErrorEmbed(`Playlist "${playlistName}" not found`)], 
-                flags: 64 
+                ephemeral: true 
             });
         }
 
         if (playlist.tracks.length === 0) {
             return await interaction.reply({ 
                 embeds: [createEmbed(`Playlist: ${playlistName}`, 'This playlist is empty. Add tracks with `/playlist add`')], 
-                flags: 64 
+                ephemeral: true 
             });
         }
 
@@ -481,9 +521,11 @@ async function listPlaylists(interaction, userId) {
         );
 
         visibleTracks.forEach((track, index) => {
+            const source = determineSource(track.uri);
+            
             embed.addFields({
                 name: `${startIdx + index + 1}. ${track.title}`,
-                value: `🎤 ${track.author || 'Unknown'} • ⏱️ ${formatDuration(track.duration)} • 🔊 ${determineSource(track.uri)}`
+                value: `${EMOJIS.artist} ${track.author || 'Unknown'} • ${EMOJIS.duration} ${formatDuration(track.duration)} • ${source}`
             });
         });
 
@@ -492,12 +534,14 @@ async function listPlaylists(interaction, userId) {
             const row = new ActionRowBuilder().addComponents(
                 new ButtonBuilder()
                     .setCustomId(`playlist_track_prev_${currentPage}_${playlistName}_${userId}`)
-                    .setLabel('◀️ Previous')
+                    .setLabel('Previous')
+                    .setEmoji('◀️')
                     .setStyle(ButtonStyle.Secondary)
                     .setDisabled(currentPage === 1),
                 new ButtonBuilder()
                     .setCustomId(`playlist_track_next_${currentPage}_${playlistName}_${userId}`)
-                    .setLabel('Next ▶️')
+                    .setLabel('Next')
+                    .setEmoji('▶️')
                     .setStyle(ButtonStyle.Secondary)
                     .setDisabled(currentPage === totalPages)
             );
@@ -507,7 +551,7 @@ async function listPlaylists(interaction, userId) {
         return await interaction.reply({ 
             embeds: [embed], 
             components: components,
-            flags: 64 
+            ephemeral: true 
         });
     }
 }
@@ -519,14 +563,14 @@ async function playPlaylist(interaction, userId, client) {
     if (!playlist) {
         return await interaction.reply({ 
             embeds: [createErrorEmbed(`Playlist "${playlistName}" not found`)], 
-            flags: 64 
+            ephemeral: true 
         });
     }
 
     if (playlist.tracks.length === 0) {
         return await interaction.reply({ 
             embeds: [createErrorEmbed(`Playlist "${playlistName}" is empty. Add tracks with \`/playlist add\``)], 
-            flags: 64 
+            ephemeral: true 
         });
     }
 
@@ -536,18 +580,18 @@ async function playPlaylist(interaction, userId, client) {
     if (!voiceChannel) {
         return await interaction.reply({ 
             embeds: [createErrorEmbed("You need to be in a voice channel to play music!")], 
-            flags: 64 
+            ephemeral: true 
         });
     }
 
-    await interaction.deferReply({ flags: 64 });
+    await interaction.deferReply({ ephemeral: true });
 
     try {
         const player = client.aqua.createConnection({
             guildId: interaction.guild.id,
             voiceChannel: voiceChannel.id,
             textChannel: interaction.channel.id,
-            shouldDeleteMessage: true
+            defaultVolume: 65,
         });
 
         let loadedTracks = 0;
@@ -578,19 +622,19 @@ async function playPlaylist(interaction, userId, client) {
         const totalDuration = playlist.tracks.reduce((total, track) => total + track.duration, 0);
 
         const embed = createEmbed(
-            '▶️ Now Playing Playlist', 
+            'Now Playing Playlist', 
             `Started playing playlist **${playlistName}**`
         );
 
         embed.addFields(
-            { name: 'Tracks Queued', value: `${loadedTracks}/${playlist.tracks.length}`, inline: true },
-            { name: 'Total Duration', value: formatDuration(totalDuration), inline: true },
-            { name: 'Voice Channel', value: voiceChannel.name, inline: true }
+            { name: `${EMOJIS.tracks} Tracks Queued`, value: `${loadedTracks}/${playlist.tracks.length}`, inline: true },
+            { name: `${EMOJIS.duration} Total Duration`, value: formatDuration(totalDuration), inline: true },
+            { name: '🔊 Voice Channel', value: voiceChannel.name, inline: true }
         );
 
         if (loadedTracks > 0) {
             embed.addFields({
-                name: 'Loading Progress',
+                name: `${EMOJIS.loading} Loading Progress`,
                 value: createProgressBar(loadedTracks, playlist.tracks.length)
             });
         }
@@ -605,12 +649,12 @@ async function playPlaylist(interaction, userId, client) {
             }
         }
 
-        return await interaction.editReply({ embeds: [embed], flags: 64 });
+        return await interaction.editReply({ embeds: [embed], ephemeral: true });
     } catch (error) {
         console.error("Error playing playlist:", error);
         return await interaction.editReply({
             embeds: [createErrorEmbed(`Error playing playlist: ${error.message || "Unknown error"}`)],
-            flags: 64
+            ephemeral: true
         });
     }
 }
@@ -622,7 +666,7 @@ async function deletePlaylist(interaction, userId) {
     if (!playlist) {
         return await interaction.reply({ 
             embeds: [createErrorEmbed(`Playlist "${playlistName}" not found`)], 
-            flags: 64 
+            ephemeral: true 
         });
     }
 
@@ -632,20 +676,22 @@ async function deletePlaylist(interaction, userId) {
     if (deleted === 0) {
         return await interaction.reply({ 
             embeds: [createErrorEmbed(`Failed to delete playlist "${playlistName}"`)], 
-            flags: 64 
+            ephemeral: true 
         });
     }
 
     const embed = createEmbed(
         'Playlist Deleted', 
-        `Successfully deleted playlist **${playlistName}**`
+        `Successfully deleted playlist **${playlistName}**`,
+        ERROR_COLOR 
     );
 
-    embed.addFields({ name: 'Tracks Removed', value: trackCount.toString(), inline: true });
+    embed.addFields({ name: `${EMOJIS.removed} Tracks Removed`, value: trackCount.toString(), inline: true });
     embed.setThumbnail('https://img.icons8.com/nolan/64/delete-property.png');
 
-    return await interaction.reply({ embeds: [embed], flags: 64 });
+    return await interaction.reply({ embeds: [embed], ephemeral: true });
 }
+
 
 function formatDuration(ms) {
     const seconds = Math.floor((ms / 1000) % 60);
@@ -670,10 +716,11 @@ function extractYouTubeId(url) {
     }
 }
 
-function createProgressBar(current, total, barSize = 15) {
+function createProgressBar(current, total, barSize = 10) {
     const progress = Math.round((current / total) * barSize);
-    const filledChar = '█';
-    const emptyChar = '░';
+    const filledChar = '■'; 
+    const emptyChar = '□'; 
+    const percentage = Math.round((current / total) * 100);
     
-    return `${filledChar.repeat(progress)}${emptyChar.repeat(barSize - progress)} ${current}/${total}`;
+    return `${filledChar.repeat(progress)}${emptyChar.repeat(barSize - progress)} ${percentage}% (${current}/${total})`;
 }
