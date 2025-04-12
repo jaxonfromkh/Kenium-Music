@@ -154,7 +154,7 @@ export const Command = {
         } else {
             return await interaction.reply({ 
                 embeds: [createErrorEmbed("Unknown subcommand")], 
-                ephemeral: true
+                flags: 64
             });
         }
     },
@@ -297,7 +297,7 @@ async function createPlaylist(interaction, userId) {
     if (existingPlaylist) {
         return await interaction.reply({ 
             embeds: [createErrorEmbed(`You already have a playlist named "${name}"`)], 
-            ephemeral: true 
+            flags: 64 
         });
     }
 
@@ -311,7 +311,7 @@ async function createPlaylist(interaction, userId) {
     const embed = createEmbed('Playlist Created', `Playlist **${name}** was successfully created!`, SUCCESS_COLOR);
     embed.setThumbnail('https://img.icons8.com/nolan/64/playlist.png');
 
-    await interaction.reply({ embeds: [embed], ephemeral: true });
+    await interaction.reply({ embeds: [embed], flags: 64 });
 }
 
 async function addTrackToPlaylist(interaction, userId, client) {
@@ -322,18 +322,18 @@ async function addTrackToPlaylist(interaction, userId, client) {
     if (!playlist) {
         return await interaction.reply({ 
             embeds: [createErrorEmbed(`Playlist "${playlistName}" not found`)], 
-            ephemeral: true 
+            flags: 64 
         });
     }
 
     if (playlist.tracks.length >= 50) {
         return await interaction.reply({ 
             embeds: [createErrorEmbed(`Playlist "${playlistName}" has reached the maximum of 50 tracks.`)], 
-            ephemeral: true 
+            flags: 64 
         });
     }
 
-    await interaction.deferReply({ ephemeral: true });
+    await interaction.deferReply({ flags: 64 });
 
     try {
         const res = await client.aqua.resolve({
@@ -348,7 +348,7 @@ async function addTrackToPlaylist(interaction, userId, client) {
                     ? `Failed to load track: ${res.exception?.message || "Unknown error"}`
                     : `No tracks found matching "${trackQuery}"`
                 )],
-                ephemeral: true
+                flags: 64
             });
         }
 
@@ -385,12 +385,12 @@ async function addTrackToPlaylist(interaction, userId, client) {
             embed.setThumbnail(`https://img.youtube.com/vi/${videoId}/hqdefault.jpg`);
         }
 
-        return await interaction.editReply({ embeds: [embed], ephemeral: true });
+        return await interaction.editReply({ embeds: [embed], flags: 64 });
     } catch (error) {
         console.error("Error adding track to playlist:", error);
         return await interaction.editReply({
             embeds: [createErrorEmbed(`Error adding track: ${error.message || "Unknown error"}`)],
-            ephemeral: true
+            flags: 64
         });
     }
 }
@@ -403,14 +403,14 @@ async function removeTrackFromPlaylist(interaction, userId) {
     if (!playlist) {
         return await interaction.reply({ 
             embeds: [createErrorEmbed(`Playlist "${playlistName}" not found`)], 
-            ephemeral: true 
+            flags: 64 
         });
     }
 
     if (index < 0 || index >= playlist.tracks.length) {
         return await interaction.reply({ 
             embeds: [createErrorEmbed(`Invalid track index. Playlist has ${playlist.tracks.length} tracks.`)], 
-            ephemeral: true 
+            flags: 64 
         });
     }
 
@@ -428,7 +428,7 @@ async function removeTrackFromPlaylist(interaction, userId) {
         embed.setThumbnail(`https://img.youtube.com/vi/${videoId}/hqdefault.jpg`);
     }
 
-    return await interaction.reply({ embeds: [embed], ephemeral: true });
+    return await interaction.reply({ embeds: [embed], flags: 64 });
 }
 
 async function listPlaylists(interaction, userId) {
@@ -441,7 +441,7 @@ async function listPlaylists(interaction, userId) {
         if (playlists.length === 0) {
             return await interaction.reply({ 
                 embeds: [createEmbed('Your Playlists', 'You don\'t have any playlists yet. Use `/playlist create` to create one!')], 
-                ephemeral: true 
+                flags: 64 
             });
         }
 
@@ -487,7 +487,7 @@ async function listPlaylists(interaction, userId) {
         return await interaction.reply({ 
             embeds: [embed], 
             components: components,
-            ephemeral: true 
+            flags: 64 
         });
     } else {
         const playlist = playlistsCollection.findOne({ userId, name: playlistName });
@@ -495,14 +495,14 @@ async function listPlaylists(interaction, userId) {
         if (!playlist) {
             return await interaction.reply({ 
                 embeds: [createErrorEmbed(`Playlist "${playlistName}" not found`)], 
-                ephemeral: true 
+                flags: 64 
             });
         }
 
         if (playlist.tracks.length === 0) {
             return await interaction.reply({ 
                 embeds: [createEmbed(`Playlist: ${playlistName}`, 'This playlist is empty. Add tracks with `/playlist add`')], 
-                ephemeral: true 
+                flags: 64 
             });
         }
 
@@ -551,7 +551,7 @@ async function listPlaylists(interaction, userId) {
         return await interaction.reply({ 
             embeds: [embed], 
             components: components,
-            ephemeral: true 
+            flags: 64 
         });
     }
 }
@@ -563,14 +563,14 @@ async function playPlaylist(interaction, userId, client) {
     if (!playlist) {
         return await interaction.reply({ 
             embeds: [createErrorEmbed(`Playlist "${playlistName}" not found`)], 
-            ephemeral: true 
+            flags: 64 
         });
     }
 
     if (playlist.tracks.length === 0) {
         return await interaction.reply({ 
             embeds: [createErrorEmbed(`Playlist "${playlistName}" is empty. Add tracks with \`/playlist add\``)], 
-            ephemeral: true 
+            flags: 64 
         });
     }
 
@@ -580,11 +580,11 @@ async function playPlaylist(interaction, userId, client) {
     if (!voiceChannel) {
         return await interaction.reply({ 
             embeds: [createErrorEmbed("You need to be in a voice channel to play music!")], 
-            ephemeral: true 
+            flags: 64 
         });
     }
 
-    await interaction.deferReply({ ephemeral: true });
+    await interaction.deferReply({ flags: 64 });
 
     try {
         const player = client.aqua.createConnection({
@@ -649,12 +649,12 @@ async function playPlaylist(interaction, userId, client) {
             }
         }
 
-        return await interaction.editReply({ embeds: [embed], ephemeral: true });
+        return await interaction.editReply({ embeds: [embed], flags: 64 });
     } catch (error) {
         console.error("Error playing playlist:", error);
         return await interaction.editReply({
             embeds: [createErrorEmbed(`Error playing playlist: ${error.message || "Unknown error"}`)],
-            ephemeral: true
+            flags: 64
         });
     }
 }
@@ -666,7 +666,7 @@ async function deletePlaylist(interaction, userId) {
     if (!playlist) {
         return await interaction.reply({ 
             embeds: [createErrorEmbed(`Playlist "${playlistName}" not found`)], 
-            ephemeral: true 
+            flags: 64 
         });
     }
 
@@ -676,7 +676,7 @@ async function deletePlaylist(interaction, userId) {
     if (deleted === 0) {
         return await interaction.reply({ 
             embeds: [createErrorEmbed(`Failed to delete playlist "${playlistName}"`)], 
-            ephemeral: true 
+            flags: 64 
         });
     }
 
@@ -689,7 +689,7 @@ async function deletePlaylist(interaction, userId) {
     embed.addFields({ name: `${EMOJIS.removed} Tracks Removed`, value: trackCount.toString(), inline: true });
     embed.setThumbnail('https://img.icons8.com/nolan/64/delete-property.png');
 
-    return await interaction.reply({ embeds: [embed], ephemeral: true });
+    return await interaction.reply({ embeds: [embed], flags: 64 });
 }
 
 
