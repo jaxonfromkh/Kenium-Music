@@ -31,6 +31,7 @@ const aqua = new Aqua(client, nodes, {
   shouldDeleteMessage: true,
   autoResume: true,
   infiniteReconnects: true,
+  leaveOnEnd: false,
 });
 
 client.aqua = aqua;
@@ -288,6 +289,12 @@ aqua.on("trackError", async (player, track, payload) => {
   }
 });
 
+aqua.on("queueEnd", async (player) => {
+   ChannelManager.updateVoiceStatus(player.voiceChannel, null, token);
+   ChannelManager.cleanupQueue();
+   player.nowPlayingMessage = null;
+});
+
 client.on('interactionCreate', async (interaction) => {
   if (!interaction.isButton()) return;
   
@@ -360,6 +367,9 @@ client.on('interactionCreate', async (interaction) => {
 aqua.on('nodeError', (node, error) => console.error(`Node error: ${error.message}`));
 aqua.on('nodeConnect', (node) => console.log(`Node connected: ${node.name}`));
 
+aqua.on('debug', (node, message) => {
+  console.log(`[${node.name}] ${message}`);
+});
 
 client.on("raw", d => client.aqua.updateVoiceState(d));
 await client.login(token);
