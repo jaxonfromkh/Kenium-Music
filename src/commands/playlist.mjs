@@ -227,11 +227,9 @@ export const Command = {
 };
 
 const createEmbed = (() => {
-    const cache = new Map();
     
     return (title, description = null, color = EMBED_COLOR) => {
         const key = `${title}-${description}-${color}`;
-        if (cache.has(key)) return cache.get(key).clone();
         
         const embed = new EmbedBuilder()
             .setColor(color)
@@ -242,7 +240,6 @@ const createEmbed = (() => {
         embed.setTimestamp()
              .setFooter({ text: FOOTER_TEXT });
 
-        cache.set(key, embed);
         return embed;
     };
 })();
@@ -260,10 +257,8 @@ function getEmojiForTitle(title) {
 }
 
 const createErrorEmbed = (() => {
-    const cache = new Map();
     
     return (errorMessage) => {
-        if (cache.has(errorMessage)) return cache.get(errorMessage).clone();
         
         const embed = new EmbedBuilder()
             .setColor(ERROR_COLOR)
@@ -272,7 +267,6 @@ const createErrorEmbed = (() => {
             .setTimestamp()
             .setFooter({ text: FOOTER_TEXT });
 
-        cache.set(errorMessage, embed);
         return embed;
     };
 })();
