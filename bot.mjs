@@ -8,12 +8,10 @@ import { createRequire } from "node:module";
 const require = createRequire(import.meta.url);
 const { Aqua } = require('aqualink');
 
-const token = process.env.token;
-const { NODE_HOST, NODE_PASSWORD, NODE_PORT, NODE_NAME } = process.env;
-
+const { token, NODE_HOST, NODE_PASSWORD, NODE_PORT, NODE_NAME } = process.env;
 const UPDATE_INTERVAL_MS = 10_000;
-
-const nodes = [{ host: NODE_HOST, password: NODE_PASSWORD, port: NODE_PORT, secure: false, name: NODE_NAME }];
+const __dirname = dirname(fileURLToPath(import.meta.url));
+export const rootPath = __dirname;
 
 const client = new Client({
   intents: [
@@ -21,16 +19,20 @@ const client = new Client({
     GatewayIntentBits.GuildMessages,
     GatewayIntentBits.DirectMessages,
     GatewayIntentBits.GuildVoiceStates
-  ],
-  partials: ["CHANNEL"]
+  ]
 });
 
-const aqua = new Aqua(client, nodes, {
+const aqua = new Aqua(client, [{ 
+  host: NODE_HOST, 
+  password: NODE_PASSWORD, 
+  port: NODE_PORT, 
+  secure: false, 
+  name: NODE_NAME 
+}], {
   defaultSearchPlatform: "ytsearch",
   restVersion: "v4",
   shouldDeleteMessage: true,
   autoResume: true,
-  infiniteReconnects: true,
   leaveOnEnd: false,
 });
 
@@ -40,36 +42,73 @@ client.events = new Map();
 client.selectMenus = new Map();
 client.buttons = new Map();
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-export const rootPath = __dirname;
-
-await Promise.all([
-  import("./src/handlers/Command.mjs").then(({ CommandHandler }) => new CommandHandler(client, rootPath).refreshCommands()),
-  import("./src/handlers/Events.mjs").then(({ EventHandler }) => new EventHandler(client, rootPath).loadEvents())
-]);
-
-
-class TimeFormatter {
-  static format(ms) {
-    return new Date(ms).toISOString().substring(11, 19);
+class LRUCache {
+  constructor(maxSize = 500) {
+    this.cache = new Map();
+    this.maxSize = maxSize;
+  }
+  
+  get(key) {
+    if (!this.cache.has(key)) return undefined;
+    const value = this.cache.get(key);
+    this.cache.delete(key);
+    this.cache.set(key, value);
+    return value;
+  }
+  
+  set(key, value) {
+    if (this.cache.size >= this.maxSize) {
+      this.cache.delete(this.cache.keys().next().value);
+    }
+    this.cache.set(key, value);
+    return value;
+  }
+  
+  delete(key) {
+    return this.cache.delete(key);
+  }
+  
+  clear() {
+    this.cache.clear();
   }
 }
 
-class ChannelManager {
-  static cache = new Map();
-  static updateQueue = new Map();
+class TimeFormatter {
+  static format(ms) {
+    const date = new Date(ms);
+    return `${String(date.getUTCHours()).padStart(2, '0')}:${String(date.getUTCMinutes()).padStart(2, '0')}:${String(date.getUTCSeconds()).padStart(2, '0')}`;
+  }
+}
 
+const PROGRESS_BARS = new Array(13).fill(0).map((_, i) => {
+  return `\`[${'█'.repeat(i)}⦿${'▬'.repeat(12 - i)}]\``;
+});
+
+class ChannelManager {
+  static channels = new LRUCache(200);
+  static lastUpdates = new LRUCache(200);
+  
   static getChannel(client, channelId) {
-    if (this.cache.has(channelId)) return this.cache.get(channelId).channel;
+    const cached = this.channels.get(channelId);
+    if (cached) return cached;
+    
     const channel = client.channels.cache.get(channelId);
-    if (channel) this.cache.set(channelId, { channel, timestamp: Date.now() });
+    if (channel) this.channels.set(channelId, channel);
     return channel;
   }
 
-  static async updateVoiceStatus(channelId, status, botToken) {
-    if (Date.now() - (this.updateQueue.get(channelId) || 0) < UPDATE_INTERVAL_MS) return;
-    this.updateQueue.set(channelId, Date.now());
+  static canUpdate(channelId) {
+    const lastUpdate = this.lastUpdates.get(channelId) || 0;
+    const now = Date.now();
+    if (now - lastUpdate < UPDATE_INTERVAL_MS) return false;
+    
+    this.lastUpdates.set(channelId, now);
+    return true;
+  }
   
+  static async updateVoiceStatus(channelId, status, botToken) {
+    if (!this.canUpdate(channelId)) return;
+    
     return new Promise((resolve) => {
       const req = https.request({
         host: 'discord.com',
@@ -99,96 +138,51 @@ class ChannelManager {
       
       req.write(JSON.stringify({ status }));
       req.end();
-      this.cleanupQueue();
     });
-  }
-
-  static cleanupQueue(expiry = 300_000) {
-    const now = Date.now();
-    if (this.cache.size > 1000) {
-      const entries = [...this.cache.entries()]
-        .sort((a, b) => b[1].timestamp - a[1].timestamp)
-        .slice(0, 500);
-      this.cache.clear();
-      entries.forEach(([id, data]) => this.cache.set(id, data));
-    } else {
-      this.cache.forEach(({ timestamp }, id) => now - timestamp > expiry && this.cache.delete(id));
-    }
-    
-    if (this.updateQueue.size > 1000) {
-      const entries = [...this.updateQueue.entries()]
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 500);
-      this.updateQueue.clear();
-      entries.forEach(([id, timestamp]) => this.updateQueue.set(id, timestamp));
-    } else {
-      this.updateQueue.forEach((timestamp, id) => now - timestamp > expiry && this.updateQueue.delete(id));
-    }
   }
 }
 
-class EmbedFactory {
-  static createTrackEmbed(client, player, track) {
-    return new EmbedBuilder()
-      .setColor(0)
-      .setAuthor({
-        name: '🎵 Kenium 3.2.1',
-        iconURL: client.user.displayAvatarURL(),
-        url: 'https://github.com/ToddyTheNoobDud/Kenium-Music'
-      })
-      .setDescription(this.getDescription(player, track))
-      .setThumbnail(track.thumbnail || client.user.displayAvatarURL())
-      .setFooter({
-        text: 'Kenium • Open Source',
-        iconURL: 'https://cdn.discordapp.com/attachments/1296093808236302380/1335389585395683419/a62c2f3218798e7eca7a35d0ce0a50d1_1.png'
-      });
-  }
-
-  static getDescription(player, track) {
-    const { position, volume, loop } = player;
-    const { title, uri, author, album, length, isStream } = track;
-
-    
-    return [
+function createTrackEmbed(client, player, track) {
+  const { position, volume, loop } = player;
+  const { title, uri, author, album, length, isStream } = track;
+  
+  const progress = Math.min(12, Math.max(0, Math.round((position / length) * 12)));
+  const progressBar = PROGRESS_BARS[progress];
+  
+  const volumeIcon = volume === 0 ? '🔇' : volume < 30 ? '🔈' : volume < 70 ? '🔉' : '🔊';
+  const loopIcon = { track: '🔂', queue: '🔁', none: '▶️' }[loop] || '▶️';
+  
+  return new EmbedBuilder()
+    .setColor(0)
+    .setAuthor({
+      name: '🎵 Kenium 3.2.1',
+      iconURL: client.user.displayAvatarURL(),
+      url: 'https://github.com/ToddyTheNoobDud/Kenium-Music'
+    })
+    .setDescription([
       `**[${title}](${uri})**`,
       `${author} ${album ? `• ${album}` : ''} • ${isStream ? '🔴 LIVE' : '🎵 320kbps'}`,
       '',
-      `\`${TimeFormatter.format(position)}\` ${this.createProgressBar(length, position)} \`${TimeFormatter.format(length)}\``,
+      `\`${TimeFormatter.format(position)}\` ${progressBar} \`${TimeFormatter.format(length)}\``,
       '',
-      `${this.getVolumeIcon(volume)} \`${volume}%\` ${this.getLoopIcon(loop)} <@${track.requester.id}>`
-    ].join('\n');
-  }
-
-  static createProgressBar(total, current, length = 12) {
-    if (!this._progressCache) {
-      this._progressCache = new Array(length + 1).fill(0).map((_, i) => {
-        return `\`[${'█'.repeat(i)}⦿${'▬'.repeat(length - i)}]\``;
-      });
-    }
-    
-    const progress = Math.min(length, Math.max(0, Math.round((current / total) * length)));
-    return this._progressCache[progress];
-  }
-
-  static getVolumeIcon(volume) {
-    return volume === 0 ? '🔇' : volume < 30 ? '🔈' : volume < 70 ? '🔉' : '🔊';
-  }
-
-  static getLoopIcon(loop) {
-    return { track: '🔂', queue: '🔁', none: '▶️' }[loop] || '▶️';
-  }
-  
-  static createErrorEmbed(track, payload) {
-    return new EmbedBuilder()
-      .setColor(0xFF0000)
-      .setTitle('❌ Track Error')
-      .setDescription(`Error playing: **${track.title}**\n\`${payload.exception.message}\``)
-      .setTimestamp();
-  }
+      `${volumeIcon} \`${volume}%\` ${loopIcon} <@${track.requester.id}>`
+    ].join('\n'))
+    .setThumbnail(track.thumbnail || client.user.displayAvatarURL())
+    .setFooter({
+      text: 'Kenium • Open Source',
+      iconURL: 'https://cdn.discordapp.com/attachments/1296093808236302380/1335389585395683419/a62c2f3218798e7eca7a35d0ce0a50d1_1.png'
+    });
 }
+
+function createErrorEmbed(track, payload) {
+  return new EmbedBuilder()
+    .setColor(0xFF0000)
+    .setTitle('❌ Track Error')
+    .setDescription(`Error playing: **${track.title}**\n\`${payload.exception.message}\``)
+    .setTimestamp();
+}
+
 function createControlButtons(player) {
-  const isPaused = player.paused;
-  
   return new ActionRowBuilder()
     .addComponents(
       new ButtonBuilder()
@@ -200,9 +194,9 @@ function createControlButtons(player) {
         .setLabel('⏮️')
         .setStyle(ButtonStyle.Secondary),
       new ButtonBuilder()
-        .setCustomId(isPaused ? 'resume' : 'pause')
-        .setLabel(isPaused ? '▶️' : '⏸️')
-        .setStyle(isPaused ? ButtonStyle.Success : ButtonStyle.Secondary),
+        .setCustomId(player.paused ? 'resume' : 'pause')
+        .setLabel(player.paused ? '▶️' : '⏸️')
+        .setStyle(player.paused ? ButtonStyle.Success : ButtonStyle.Secondary),
       new ButtonBuilder()
         .setCustomId('skip')
         .setLabel('⏭️')
@@ -214,107 +208,81 @@ function createControlButtons(player) {
     );
 }
 
-function scheduleNowPlayingUpdate(player, track, updateProgress = false) {
-  if (player.updateScheduled) return;
-  
-  player.updateScheduled = true;
-  setTimeout(() => {
-    updateNowPlayingMessage(player, track, updateProgress);
-    player.updateScheduled = false;
-  }, 1000);
+function debounce(func, wait) {
+  let timeout;
+  return function(...args) {
+    clearTimeout(timeout);
+    timeout = setTimeout(() => func(...args), wait);
+  };
 }
 
-async function updateNowPlayingMessage(player, track, updateProgress = false) {
+const updateNowPlayingMessage = debounce(async (player, track, updateProgress) => {
   if (!player.nowPlayingMessage) return;
 
   try {
-    let embed;
-    if (updateProgress) {
-      embed = EmbedFactory.createTrackEmbed(client, player, track);
-    } else {
-      if (!player.cachedEmbed) {
-        player.cachedEmbed = EmbedFactory.createTrackEmbed(client, player, track);
-      }
-      
-      embed = EmbedBuilder.from(player.cachedEmbed);
-      
-      const descriptionLines = embed.data.description.split('\n');
-      const volumeLine = `${EmbedFactory.getVolumeIcon(player.volume)} \`${player.volume}%\` ${EmbedFactory.getLoopIcon(player.loop)} <@${track.requester.id}>`;
-      descriptionLines[descriptionLines.length - 1] = volumeLine;
-      
-      embed.setDescription(descriptionLines.join('\n'));
-    }
-
+    const embed = updateProgress 
+      ? createTrackEmbed(client, player, track) 
+      : player.cachedEmbed;
+    
     await player.nowPlayingMessage.edit({
       embeds: [embed],
       components: [createControlButtons(player)]
     });
   } catch (error) {
-    console.error("Error updating now playing message:", error);
+    console.error("Error updating message:", error);
+    player.nowPlayingMessage = null;
   }
-}
+}, 1000);
 
 aqua.on("trackStart", async (player, track) => {
   const channel = ChannelManager.getChannel(client, player.textChannel);
   if (!channel) return;
+  
   try {
-    const initialEmbed = EmbedFactory.createTrackEmbed(client, player, track);
-    player.cachedEmbed = initialEmbed;
+    const embed = createTrackEmbed(client, player, track);
+    player.cachedEmbed = embed;
     
     player.nowPlayingMessage = await channel.send({
-      embeds: [initialEmbed],
+      embeds: [embed],
       components: [createControlButtons(player)],
       flags: 4096
     });
     
-    if (player.updateInterval) clearInterval(player.updateInterval);
-    
-    
     ChannelManager.updateVoiceStatus(player.voiceChannel, `⭐ ${track.info.title} - Kenium 3.2.1`, token);
-  } catch (error) { 
-    return; 
+  } catch (error) {
+    console.error("Track start error:", error);
   }
 });
 
 aqua.on("trackError", async (player, track, payload) => {
   const channel = ChannelManager.getChannel(client, player.textChannel);
   if (!channel) return;
+  
   try {
-    const errorEmbed = EmbedFactory.createErrorEmbed(track, payload);
     await channel.send({
-      embeds: [errorEmbed],
+      embeds: [createErrorEmbed(track, payload)],
       flags: 64
     });
   } catch (error) {
-    console.error("Error sending track error message:", error);
+    console.error("Error sending track error:", error);
   }
 });
 
 aqua.on("playerDestroy", async (player) => {
-  const channelToUpdate = player._lastVoiceChannel || player.voiceChannel;
+  const channelId = player._lastVoiceChannel || player.voiceChannel;
   
-  if (channelToUpdate) {
-    try {
-      ChannelManager.updateVoiceStatus(channelToUpdate, null, token);
-    } catch (err) {
-      console.error("Failed to update voice status:", err);
-    }
+  if (channelId) {
+    ChannelManager.updateVoiceStatus(channelId, null, token);
   }
   
-  ChannelManager.cleanupQueue();
   player.nowPlayingMessage = null;
 });
 
 aqua.on("queueEnd", async (player) => {
   if (player.voiceChannel) {
-    try {
-      ChannelManager.updateVoiceStatus(player.voiceChannel, null, token);
-    } catch (err) {
-      console.error("Failed to update voice status:", err);
-    }
+    ChannelManager.updateVoiceStatus(player.voiceChannel, null, token);
   }
   
-  ChannelManager.cleanupQueue();
   player.nowPlayingMessage = null;
 });
 
@@ -335,60 +303,68 @@ client.on('interactionCreate', async (interaction) => {
     return interaction.reply({ content: '❌ You need to be in the same voice channel as the bot', flags: 64 });
   }
   
-  const actions = {
-    'volume_down': async () => {
-      const newVolumeDown = Math.max(0, player.volume - 10);
-      await player.setVolume(newVolumeDown);
-      return `🔉 Volume decreased to ${newVolumeDown}%`;
-    },
-    'previous': async () => {
-      if (!player.previous) {
-        return '❌ No previous track found';
-      }
-      player.queue.unshift(player.previous);
-      await player.stop();
-      return '⏮️ Playing previous track';
-    },
-    'pause': async () => {
-      await player.pause(true);
-      scheduleNowPlayingUpdate(player, player.current, false);
-      return '⏸️ Playback paused';
-    },
-    'resume': async () => {
-      await player.pause(false);
-      scheduleNowPlayingUpdate(player, player.current, false);
-      return '▶️ Playback resumed';
-    },
-    'skip': async () => {
-      await player.skip();
-      return '⏭️ Skipped to next track';
-    },
-    'volume_up': async () => {
-      const newVolumeUp = Math.min(150, player.volume + 10);
-      await player.setVolume(newVolumeUp);
-      return `🔊 Volume increased to ${newVolumeUp}%`;
-    }
-  };
-  
   try {
-    const action = actions[customId];
-    if (!action) return;
+    let message;
     
-    const response = await action();
+    switch(customId) {
+      case 'volume_down':
+        player.setVolume(Math.max(0, player.volume - 10));
+        message = `🔉 Volume decreased to ${player.volume}%`;
+        break;
+        
+      case 'previous':
+        if (!player.previous) {
+          return interaction.reply({ content: '❌ No previous track found', flags: 64 });
+        }
+        player.queue.unshift(player.previous);
+        player.stop();
+        message = '⏮️ Playing previous track';
+        break;
+        
+      case 'pause':
+        player.pause(true);
+        message = '⏸️ Playback paused';
+        break;
+        
+      case 'resume':
+        player.pause(false);
+        message = '▶️ Playback resumed';
+        break;
+        
+      case 'skip':
+        player.skip();
+        message = '⏭️ Skipped to next track';
+        break;
+        
+      case 'volume_up':
+        player.setVolume(Math.min(150, player.volume + 10));
+        message = `🔊 Volume increased to ${player.volume}%`;
+        break;
+        
+      default:
+        return;
+    }
     
-    await interaction.reply({ content: response, flags: 64 });
+    await interaction.reply({ content: message, flags: 64 });
     
     if (['volume_down', 'volume_up', 'pause', 'resume'].includes(customId) && player.current) {
-      scheduleNowPlayingUpdate(player, player.current, false);
+      player.cachedEmbed = createTrackEmbed(client, player, player.current);
+      updateNowPlayingMessage(player, player.current, false);
     }
   } catch (error) {
     console.error('Button interaction error:', error);
-    interaction.reply({ content: '❌ An error occurred while processing your request', flags: 64 }).catch(() => {});
+    interaction.reply({ content: '❌ An error occurred', flags: 64 }).catch(() => {});
   }
 });
 
 aqua.on('nodeError', (node, error) => console.error(`Node error: ${error.message}`));
 aqua.on('nodeConnect', (node) => console.log(`Node connected: ${node.name}`));
 
+Promise.all([
+  import("./src/handlers/Command.mjs").then(({ CommandHandler }) => new CommandHandler(client, rootPath).refreshCommands()),
+  import("./src/handlers/Events.mjs").then(({ EventHandler }) => new EventHandler(client, rootPath).loadEvents())
+]).catch(err => console.error("Handler initialization error:", err));
+
 client.on("raw", d => client.aqua.updateVoiceState(d));
-await client.login(token);
+
+client.login(token).catch(err => console.error("Login error:", err));
