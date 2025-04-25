@@ -132,7 +132,7 @@ class EmbedFactory {
     return new EmbedBuilder()
       .setColor(0)
       .setAuthor({
-        name: '🎵 Kenium 3.2.0',
+        name: '🎵 Kenium 3.2.1',
         iconURL: client.user.displayAvatarURL(),
         url: 'https://github.com/ToddyTheNoobDud/Kenium-Music'
       })
@@ -147,6 +147,7 @@ class EmbedFactory {
   static getDescription(player, track) {
     const { position, volume, loop } = player;
     const { title, uri, author, album, length, isStream } = track;
+
     
     return [
       `**[${title}](${uri})**`,
@@ -269,7 +270,7 @@ aqua.on("trackStart", async (player, track) => {
     if (player.updateInterval) clearInterval(player.updateInterval);
     
     
-    ChannelManager.updateVoiceStatus(player.voiceChannel, `⭐ ${track.info.title} - Kenium 3.2.0`, token);
+    ChannelManager.updateVoiceStatus(player.voiceChannel, `⭐ ${track.info.title} - Kenium 3.2.1`, token);
   } catch (error) { 
     return; 
   }
@@ -289,10 +290,32 @@ aqua.on("trackError", async (player, track, payload) => {
   }
 });
 
+aqua.on("playerDestroy", async (player) => {
+  const channelToUpdate = player._lastVoiceChannel || player.voiceChannel;
+  
+  if (channelToUpdate) {
+    try {
+      ChannelManager.updateVoiceStatus(channelToUpdate, null, token);
+    } catch (err) {
+      console.error("Failed to update voice status:", err);
+    }
+  }
+  
+  ChannelManager.cleanupQueue();
+  player.nowPlayingMessage = null;
+});
+
 aqua.on("queueEnd", async (player) => {
-   ChannelManager.updateVoiceStatus(player.voiceChannel, null, token);
-   ChannelManager.cleanupQueue();
-   player.nowPlayingMessage = null;
+  if (player.voiceChannel) {
+    try {
+      ChannelManager.updateVoiceStatus(player.voiceChannel, null, token);
+    } catch (err) {
+      console.error("Failed to update voice status:", err);
+    }
+  }
+  
+  ChannelManager.cleanupQueue();
+  player.nowPlayingMessage = null;
 });
 
 client.on('interactionCreate', async (interaction) => {
