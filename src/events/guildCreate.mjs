@@ -16,16 +16,21 @@ const REQUIRED_PERMISSIONS = [
 function createWelcomeEmbed(client) {
     return new EmbedBuilder()
         .setColor(0x000000)
-        .setTitle('About Kenium - Your Open Source Bot')
+        .setTitle('Kenium - An Open Source Bot')
         .setDescription(`
-**🎶 Thanks for inviting Kenium!**
-**Key Features:**
-- 🎵 **Optimized Music**: Fast playback and support for YouTube, Spotify, SoundCloud, and more.
-- 🎶 **Search & Queue**: Manage your queue and search easily.
-- 📁 **Playlist Management**: Import/Export playlists in .txt or .pdf.
-- 📜 **Lyrics Support**: Powered by Genius & LyricFind.
-- ⚡ **24/7 Uptime**: Hosted for performance.
-- 🎶 **Start now**: Using </play:1254868331748528302>
+🌀 Imagine needing to PAY or VOTE just to use a music bot? Hell nah.
+
+Why deal with paywalls, sketchy premium tiers, or begging for votes every hour just to play your favorite tracks? Kenium says NO to that nonsense. Here’s why you’ll vibe with it:
+
+🔥 **Free. Forever.** No hidden fees, no "premium-only" commands, no ads. YouTube, Spotify, SoundCloud, Vimeo - slash into any platform, zero cash needed.
+🎶 **24/7 bangers** - High-quality audio, lightning-fast responses, and ZERO downtime.
+🤖 **Simplicity rules** - Type /play and boom, your queue's popping. No PhD in Discord bot navigation required.
+🔓 **Open source & transparent** - Peek under the hood anytime. No shady code, just real freedom.
+🎧 **Playlists? Free. Filters? Free.** - Crank up the bass, slow down the vibe, or queue 10-hour lo-fi - zero cash needed.
+💻 **Made with Aqualink** - fast, performant, stable lavalink handler, and self-coded
+🎶 **Start now**: Using </play:1254868331748528302>
+
+Ain't nobody got time for cash-grabbing bots or democracy-for-a-playlist schemes. Kenium keeps it real: you press play, we handle the rest.
         `.trim())
         .setTimestamp()
         .setFooter({
@@ -47,7 +52,7 @@ function createActionRow() {
                 .setURL('https://discord.com/oauth2/authorize?client_id=1202232935311495209')
                 .setStyle(ButtonStyle.Link),
             new ButtonBuilder()
-                .setLabel('Website')
+                .setLabel('website')
                 .setURL('https://toddythenoobdud.github.io/')
                 .setStyle(ButtonStyle.Link)
         );
