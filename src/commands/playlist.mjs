@@ -22,7 +22,9 @@ const EMOJIS = {
   loading: '⏳',
   youtube: '📺',
   spotify: '📗',
-  soundcloud: '🔸'
+  soundcloud: '🔸',
+  import: '📥',
+  export: '📤'
 };
 
 export const Command = {
@@ -131,6 +133,39 @@ export const Command = {
                     autocomplete: true
                 }
             ]
+        },
+        {
+            name: "export",
+            description: "Export a playlist as a JSON file",
+            type: 1,
+            options: [
+                {
+                    name: "name",
+                    description: "The name of the playlist to export",
+                    type: 3,
+                    required: true,
+                    autocomplete: true
+                }
+            ]
+        },
+        {
+            name: "import",
+            description: "Import a playlist from a JSON file",
+            type: 1,
+            options: [
+                {
+                    name: "file",
+                    description: "The JSON file containing the playlist data",
+                    type: 11,
+                    required: true
+                },
+                {
+                    name: "name",
+                    description: "Optional new name for the imported playlist",
+                    type: 3,
+                    required: false
+                }
+            ]
         }
     ],
 
@@ -144,7 +179,9 @@ export const Command = {
             ['remove', removeTrackFromPlaylist],
             ['list', listPlaylists],
             ['play', (i, id) => playPlaylist(i, id, client)],
-            ['delete', deletePlaylist]
+            ['delete', deletePlaylist],
+            ['export', exportPlaylist],
+            ['import', (i, id) => importPlaylist(i, id, client)]
         ]);
 
         const handler = commandHandlers.get(subcommand);
@@ -253,6 +290,8 @@ function getEmojiForTitle(title) {
     if (title.includes('Deleted')) return EMOJIS.removed;
     if (title.includes('Error')) return '❌';
     if (title.includes('Playlist:')) return EMOJIS.playlist;
+    if (title.includes('Exported')) return EMOJIS.export;
+    if (title.includes('Imported')) return EMOJIS.import;
     return '🎵';
 }
 
@@ -686,6 +725,166 @@ async function deletePlaylist(interaction, userId) {
     return await interaction.reply({ embeds: [embed], flags: 64 });
 }
 
+async function exportPlaylist(interaction, userId) {
+    const playlistName = interaction.options.getString("name");
+
+    const playlist = playlistsCollection.findOne({ userId, name: playlistName });
+    if (!playlist) {
+        return await interaction.reply({ 
+            embeds: [createErrorEmbed(`Playlist "${playlistName}" not found`)], 
+            flags: 64 
+        });
+    }
+
+    if (playlist.tracks.length === 0) {
+        return await interaction.reply({ 
+            embeds: [createErrorEmbed(`Playlist "${playlistName}" is empty. Add tracks with \`/playlist add\` before exporting`)], 
+            flags: 64 
+        });
+    }
+
+    const exportData = {
+        name: playlist.name,
+        tracks: playlist.tracks.map(track => ({
+            title: track.title,
+            uri: track.uri,
+            author: track.author,
+            duration: track.duration
+        }))
+    };
+
+    const jsonData = JSON.stringify(exportData, null, 2);
+    const fileName = `${playlistName.replace(/\s+/g, '_')}_playlist.json`;
+    
+    const fileBuffer = Buffer.from(jsonData, 'utf-8');
+    
+    const attachment = {
+        attachment: fileBuffer,
+        name: fileName
+    };
+
+    const embed = createEmbed(
+        'Playlist Exported', 
+        `Successfully exported playlist **${playlistName}** with ${playlist.tracks.length} tracks`,
+        SUCCESS_COLOR
+    );
+
+    embed.addFields(
+        { name: `${EMOJIS.export} Export File`, value: `Your playlist has been exported as \`${fileName}\`. Download and share it with others!`, inline: false },
+        { name: 'How to Import', value: `Others can import this playlist using \`/playlist import file:[upload the JSON file]\``, inline: false }
+    );
+
+    const totalDuration = playlist.tracks.reduce((total, track) => total + track.duration, 0);
+    embed.addFields(
+        { name: `${EMOJIS.tracks} Tracks`, value: `${playlist.tracks.length}`, inline: true },
+        { name: `${EMOJIS.duration} Duration`, value: formatDuration(totalDuration), inline: true }
+    );
+
+    if (playlist.tracks[0]?.uri) {
+        const videoId = extractYouTubeId(playlist.tracks[0].uri);
+        if (videoId) {
+            embed.setThumbnail(`https://img.youtube.com/vi/${videoId}/hqdefault.jpg`);
+        }
+    }
+
+    return await interaction.reply({ 
+        embeds: [embed], 
+        files: [attachment],
+        flags: 64 
+    });
+}
+
+async function importPlaylist(interaction, userId, client) {
+    const fileAttachment = interaction.options.getAttachment("file");
+    let customName = interaction.options.getString("name");
+
+    if (!fileAttachment || !fileAttachment.name.endsWith('.json')) {
+        return await interaction.reply({ 
+            embeds: [createErrorEmbed("Please provide a valid JSON file.")], 
+            flags: 64 
+        });
+    }
+
+    try {
+        const response = await fetch(fileAttachment.url);
+        if (!response.ok) {
+            throw new Error(`Failed to fetch file: ${response.statusText}`);
+        }
+        
+        const fileContent = await response.text();
+        const importData = JSON.parse(fileContent);
+        
+        if (!importData.name || !Array.isArray(importData.tracks)) {
+            return await interaction.reply({ 
+                embeds: [createErrorEmbed("Invalid playlist format. The file does not contain valid playlist data.")], 
+                flags: 64 
+            });
+        }
+        
+        const playlistName = customName || importData.name;
+        
+        const existingPlaylist = playlistsCollection.findOne({ userId, name: playlistName });
+        if (existingPlaylist) {
+            return await interaction.reply({ 
+                embeds: [createErrorEmbed(`You already have a playlist named "${playlistName}". Choose a different name.`)], 
+                flags: 64 
+            });
+        }
+
+        // Validate the tracks format
+        const validTracks = importData.tracks.filter(track => 
+            track.title && 
+            track.uri && 
+            typeof track.duration === 'number'
+        );
+
+        if (validTracks.length === 0) {
+            return await interaction.reply({ 
+                embeds: [createErrorEmbed("No valid tracks found in the playlist file.")], 
+                flags: 64 
+            });
+        }
+
+        const newPlaylist = {
+            userId,
+            name: playlistName,
+            tracks: validTracks.slice(0, 50),
+            createdAt: new Date().toISOString(),
+            importedAt: new Date().toISOString(),
+            originalName: importData.name
+        };
+        
+        playlistsCollection.insert(newPlaylist);
+
+        const totalDuration = newPlaylist.tracks.reduce((total, track) => total + track.duration, 0);
+        
+        const embed = createEmbed(
+            'Playlist Imported', 
+            `Successfully imported playlist **${importData.name}** as **${playlistName}**`,
+            SUCCESS_COLOR
+        );
+
+        embed.addFields(
+            { name: `${EMOJIS.tracks} Tracks Imported`, value: `${newPlaylist.tracks.length}${importData.tracks.length > 50 ? ` (limited from ${importData.tracks.length})` : ''}`, inline: true },
+            { name: `${EMOJIS.duration} Total Duration`, value: formatDuration(totalDuration), inline: true }
+        );
+
+        if (newPlaylist.tracks[0]?.uri) {
+            const videoId = extractYouTubeId(newPlaylist.tracks[0].uri);
+            if (videoId) {
+                embed.setThumbnail(`https://img.youtube.com/vi/${videoId}/hqdefault.jpg`);
+            }
+        }
+
+        return await interaction.reply({ embeds: [embed], flags: 64 });
+    } catch (error) {
+        console.error("Error importing playlist:", error);
+        return await interaction.reply({
+            embeds: [createErrorEmbed(`Error importing playlist: ${error.message || "Invalid file format"}`)],
+            flags: 64
+        });
+    }
+}
 
 function formatDuration(ms) {
     const seconds = Math.floor((ms / 1000) % 60);
@@ -699,22 +898,29 @@ function formatDuration(ms) {
     }
 }
 
-function extractYouTubeId(url) {
-    if (!url) return null;
-    try {
-        const regex = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/;
-        const match = url.match(regex);
-        return match ? match[1] : null;
-    } catch (error) {
-        return null;
-    }
+function createProgressBar(current, total, barSize = 15) {
+    const progress = Math.round((current / total) * barSize);
+    const emptyProgress = barSize - progress;
+    
+    const progressBar = '█'.repeat(progress) + '░'.repeat(emptyProgress);
+    return `${progressBar} ${current}/${total}`;
 }
 
-function createProgressBar(current, total, barSize = 10) {
-    const progress = Math.round((current / total) * barSize);
-    const filledChar = '■'; 
-    const emptyChar = '□'; 
-    const percentage = Math.round((current / total) * 100);
+function extractYouTubeId(url) {
+    if (!url || typeof url !== 'string') return null;
     
-    return `${filledChar.repeat(progress)}${emptyChar.repeat(barSize - progress)} ${percentage}% (${current}/${total})`;
+    const patterns = [
+        /youtube\.com\/watch\?v=([^&]+)/,
+        /youtu\.be\/([^?]+)/,
+        /youtube\.com\/embed\/([^?]+)/
+    ];
+    
+    for (const pattern of patterns) {
+        const match = url.match(pattern);
+        if (match && match[1]) {
+            return match[1];
+        }
+    }
+    
+    return null;
 }
