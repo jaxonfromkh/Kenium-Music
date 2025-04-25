@@ -60,11 +60,6 @@ export const Command = {
     }
     this._state.lastAutocomplete = now;
     
-    if (now - lastCleanupTime.value > INACTIVE_THRESHOLD_MS) {
-      this.cleanupInactiveUsers(now);
-      lastCleanupTime.value = now;
-    }
-    
     try {
       if (!focused) {
         return interaction.respond(this.getFormattedRecentSelections(recentSelections));
@@ -104,7 +99,7 @@ export const Command = {
     return (recentSelections || [])
       .slice(0, MAX_RECENT_ITEMS)
       .map(item => ({
-        name: `🕒 Recently played: ${item.title?.slice(0, 97) || "Unknown"}`,
+        name: `🕒 Recently played: ${item.title?.slice(0, 97) || "Unknown"}`.slice(0, 97),
         value: (item.uri || "").slice(0, 97)
       }));
   },
@@ -120,13 +115,6 @@ export const Command = {
     return [...filteredRecent.slice(0, MAX_RECENT_ITEMS), ...suggestions].slice(0, MAX_AUTOCOMPLETE_RESULTS + MAX_RECENT_ITEMS);
   },
   
-  cleanupInactiveUsers(now) {
-    for (const [userId, selections] of userRecentSelections.entries()) {
-      if (selections.lastAccessed && now - selections.lastAccessed > INACTIVE_THRESHOLD_MS) {
-        userRecentSelections.delete(userId);
-      }
-    }
-  },
 
   async run(client, interaction) {
     const { guild, member } = interaction;
@@ -199,6 +187,7 @@ export const Command = {
       userSelections.items.length = RECENT_SELECTIONS_MAX;
     }
   },
+
   
   addTrackToRecentSelections(selections, track) {
     // Remove existing entry if present
@@ -234,7 +223,7 @@ export const Command = {
       voiceChannel: voiceChannelId,
       textChannel: textChannelId,
       deaf: true,
-      shouldDeleteMessage: true,
+      defaultVolume: 65,
     });
   },
 

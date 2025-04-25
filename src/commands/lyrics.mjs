@@ -32,6 +32,7 @@ export const Command = {
             const image = track?.albumArt?.url || client.user.avatarURL();
             const author = provider || source || 'Unknown';
             
+            // Determine if we have synced lyrics or not
             const hasSyncedLyrics = lines && Array.isArray(lines) && lines.length > 0;
             
             return await displayLyrics(interaction, lyrics, title, image, author, hasSyncedLyrics ? lines : null, player);
@@ -115,6 +116,7 @@ async function displayLyrics(interaction, lyrics, title, image, author, lines, p
         );
     };
     
+    // Add a source indicator in the footer
     const sourceIndicator = hasSyncedLyrics ? "Synced Lyrics" : "Genius Lyrics";
     
     const updatedPages = pages.map(page => {
@@ -137,7 +139,7 @@ async function displayLyrics(interaction, lyrics, title, image, author, lines, p
     
     collector.on('collect', async (i) => {
         if (i.user.id !== interaction.user.id) {
-            return i.reply({ content: 'This pagination is not for you.', ephemeral: true });
+            return i.reply({ content: 'This pagination is not for you.', flags: 64 });
         }
         
         const navMap = {
@@ -164,6 +166,7 @@ async function displayLyrics(interaction, lyrics, title, image, author, lines, p
         try {
             await interaction.deleteReply().catch(() => {});
         } catch (error) {
+            // Silently ignore errors when removing components
         }
     });
     

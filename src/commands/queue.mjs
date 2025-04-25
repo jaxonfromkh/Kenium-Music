@@ -143,7 +143,7 @@ function createQueueEmbed(client, interaction, player, page) {
         .setColor(0x0a1931)
         .setThumbnail(client.user.displayAvatarURL({ size: 64 }))
         .setFooter({ 
-            text: `Page ${validPage}/${maxPages} • Kenium v3.0.5`, 
+            text: `Page ${validPage}/${maxPages} • Kenium v3.2.1`, 
             iconURL: interaction.user.displayAvatarURL() 
         })
         .setTimestamp();

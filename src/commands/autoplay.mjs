@@ -1,3 +1,5 @@
+import { EmbedBuilder } from "discord.js";
+
 export const Command = {
     name: "autoplay",
     description: "Toggle autoplay",
@@ -5,17 +7,32 @@ export const Command = {
     run: async (client, interaction) => {
         const player = client.aqua.players.get(interaction.guild.id);
 
-        if (!player) return interaction.reply({ content: "Nothing is playing", flags: 64 });
+        if (!player) {
+            return interaction.reply({ 
+                content: "Nothing is playing", 
+                flags: 64 
+            });
+        }
 
         if (interaction.guild.members.me.voice.channelId !== interaction.member.voice.channelId) {
-            return interaction.reply({ content: "You must be in the same voice channel as the bot.", flags: 64 });
+            return interaction.reply({ 
+                content: "You must be in the same voice channel as the bot.", 
+                flags: 64 
+            });
         }
 
         const newState = !player.isAutoplayEnabled;
         player.setAutoplay(newState);
 
+        const embed = new EmbedBuilder()
+            .setColor(newState ? "#0000FF" : "#000000") 
+            .setTitle("Autoplay Status")
+            .setDescription(`Autoplay has been **${newState ? "enabled" : "disabled"}**.`)
+            .setFooter({ text: "Autoplay Toggle", iconURL: client.user.displayAvatarURL() })
+            .setTimestamp();
+
         return interaction.reply({
-            content: `Autoplay has been **${newState ? "enabled" : "disabled"}**.`,
+            embeds: [embed],
             flags: 64
         });
     }

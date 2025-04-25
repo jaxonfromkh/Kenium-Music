@@ -37,6 +37,7 @@ export const Command = {
             voiceChannel: voiceChannel.id,
             textChannel: channel.id,
             deaf: true,
+            defaultVolume: 65,
         });
 
         const file = interaction.options.getAttachment("file");

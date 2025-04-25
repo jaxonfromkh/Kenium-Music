@@ -54,7 +54,7 @@ export const Command = {
           voiceChannel: voiceChannel.id,
           textChannel: interaction.channel.id,
           deaf: true,
-          shouldDeleteMessage: true
+          defaultVolume: 65,
         });
 
         const BATCH_SIZE = 10;

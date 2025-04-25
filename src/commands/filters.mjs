@@ -32,7 +32,7 @@ export const Command = {
       if (!player || !interaction.member.voice.channel || interaction.guild.members.me.voice.channelId !== interaction.member.voice.channelId) {
         return interaction.reply({
           content: "You must be in the same voice channel as the bot to use this command.",
-          ephemeral: true,
+          flags: 64,
         });
       }
 

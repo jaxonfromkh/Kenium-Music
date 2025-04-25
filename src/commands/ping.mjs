@@ -19,6 +19,11 @@ export const Command = {
                         value: `\`${Date.now() - interaction.createdTimestamp}\` ms`,
                         inline: true,
                     },
+                    {
+                        name: "Latency",
+                        value: `\`${Date.now() - interaction.createdTimestamp - client.ws.ping}\` ms`,
+                        inline: true,
+                    },
                 ])
                 .setFooter({ text: "Made by mushroom0162" })
             await interaction.reply({ embeds: [embed] });

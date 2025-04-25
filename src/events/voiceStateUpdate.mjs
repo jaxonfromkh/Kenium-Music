@@ -1,5 +1,5 @@
 import { EmbedBuilder } from "discord.js";
-import { isTwentyFourSevenEnabled } from "../commands/24.7.mjs"; // Make sure path is correct
+import { isTwentyFourSevenEnabled } from "../commands/247.mjs";
 
 const NO_SONG_ADDED_TIMEOUT = 180000; // 3 minutes
 const noSongAddedTimeouts = new Map();
@@ -8,21 +8,22 @@ export const Event = {
     name: "voiceStateUpdate",
     runOnce: false,
     async run(client, oldState, newState) {
-        if (!client || !oldState || !oldState.guild) return;
+        if (!client?.aqua?.players || !oldState?.guild?.id) return;
         
         const guildId = oldState.guild.id;
-        if (!guildId) return;
-        
-        const player = client.aqua?.players?.get(guildId);
+        const player = client.aqua.players.get(guildId);
         if (!player) return;
 
-        const botVoiceChannel = player.voiceChannel;
-        const botMember = oldState.guild.members.cache.get(client.user.id);
-        if (!botMember || !botVoiceChannel) return;
+        const botMember = oldState.guild.members.cache.get(client.user?.id);
+        if (!botMember?.voice?.channelId) return;
         
-        const botVoiceState = botMember.voice;
-        if (!botVoiceState?.channelId || botVoiceState.channelId !== botVoiceChannel) {
+        const botVoiceChannel = player.voiceChannel;
+        if (!botVoiceChannel || botMember.voice.channelId !== botVoiceChannel) {
             return player.destroy();
+        }
+        
+        if (!client.aqua._eventListenersRegistered) {
+            registerEventListeners(client);
         }
         
         const voiceChannel = botMember.voice.channel;
@@ -34,19 +35,6 @@ export const Event = {
             clearNoSongAddedTimeout(guildId);
         }
 
-        if (!client.aqua._eventListenersRegistered) {
-            client.aqua.on('trackStart', (player) => {
-                clearNoSongAddedTimeout(player.guild);
-            });
-            
-            client.aqua.on('queueEnd', (player) => {
-                if (!isTwentyFourSevenEnabled(player.guild)) {
-                    startNoSongAddedTimeout(client, guildId, player);
-                }
-            });
-            client.aqua._eventListenersRegistered = true;
-        }
-
         if (player && !player.playing && !player.paused && !isTwentyFourSevenEnabled(guildId)) {
             startNoSongAddedTimeout(client, guildId, player);
         } else if (player && player.playing) {
@@ -55,9 +43,24 @@ export const Event = {
     },
 };
 
+function registerEventListeners(client) {
+    client.aqua.on('trackStart', (player) => {
+        clearNoSongAddedTimeout(player.guild);
+    });
+    
+    client.aqua.on('queueEnd', (player) => {
+        if (!isTwentyFourSevenEnabled(player.guild)) {
+            startNoSongAddedTimeout(client, player.guild, player);
+        }
+    });
+    
+    client.aqua._eventListenersRegistered = true;
+}
+
 function clearNoSongAddedTimeout(guildId) {
-    if (noSongAddedTimeouts.has(guildId)) {
-        clearTimeout(noSongAddedTimeouts.get(guildId));
+    const timeoutId = noSongAddedTimeouts.get(guildId);
+    if (timeoutId) {
+        clearTimeout(timeoutId);
         noSongAddedTimeouts.delete(guildId);
     }
 }
@@ -80,32 +83,32 @@ async function startNoSongAddedTimeout(client, guildId, player) {
                 return;
             }
             
-            if (!currentPlayer.textChannel) return currentPlayer.destroy();
+            if (!currentPlayer.textChannel) {
+                currentPlayer.destroy();
+                return;
+            }
             
             const textChannel = await client.channels.fetch(currentPlayer.textChannel).catch(() => null);
-            if (textChannel && textChannel.isTextBased()) {
+            if (textChannel?.isTextBased()) {
                 const embed = new EmbedBuilder()
                     .setColor(0)
                     .setDescription("No song added in 3 minutes, disconnecting...\nUse the `/24/7` command to keep the bot in voice channel.")
                     .setFooter({ text: "Automatically destroying player" });
                     
-                const message = await textChannel.send({ embeds: [embed] }).catch(err => {
-                    console.error(`[Music] Failed to send disconnect message: ${err.message}`);
-                    return null;
-                });
+                const message = await textChannel.send({ embeds: [embed] }).catch(() => null);
                 
                 if (message) {
                     setTimeout(() => {
-                        message.delete().catch(err => {
-                            console.error(`[Music] Failed to delete message: ${err.message}`);
-                        });
+                        message.delete().catch(() => {});
                     }, 10000);
                 }
             }
             
             currentPlayer.destroy();
-        } catch (error) {
-            console.error(`[Music] Error in disconnect timeout handler: ${error.message}`);
+        } catch {
+            if (client.aqua?.players?.get(guildId)) {
+                client.aqua.players.get(guildId).destroy();
+            }
         }
     }, NO_SONG_ADDED_TIMEOUT));
 }

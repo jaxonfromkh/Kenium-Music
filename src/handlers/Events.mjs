@@ -1,5 +1,5 @@
-import { readdir } from "fs/promises";
-import path from "path";
+import glob from 'tiny-glob';
+import path from 'path';
 
 class EventHandler {
     constructor(client, rootPath) {
@@ -13,12 +13,14 @@ class EventHandler {
 
     async loadEvents() {
         try {
-            const files = await readdir(this.eventsDir);
-            await Promise.all(
-                files.filter(file => file.endsWith(".mjs")).map(file => this.loadEvent(file))
-            );
+            const eventFiles = await glob('*.mjs', {
+                cwd: this.eventsDir,
+                onlyFiles: true
+            });
+            
+            await Promise.all(eventFiles.map(file => this.loadEvent(file)));
         } catch (error) {
-            console.error("Failed to open events directory:", error);
+            console.error("Failed to load events:", error);
             throw error;
         }
     }

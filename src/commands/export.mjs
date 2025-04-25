@@ -34,7 +34,7 @@ export const Command = {
       if (!containsPlatforms.spotify && uri.includes("spotify")) containsPlatforms.spotify = true;
     }
 
-    const fileNameParts = ["Kenium_3.0.1"];
+    const fileNameParts = ["Kenium_3.2.1"];
     if (containsPlatforms.youtube) fileNameParts.push("youtube");
     if (containsPlatforms.soundcloud) fileNameParts.push("soundcloud");
     if (containsPlatforms.spotify) fileNameParts.push("spotify");

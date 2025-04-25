@@ -29,7 +29,7 @@ function createWelcomeEmbed(client) {
         `.trim())
         .setTimestamp()
         .setFooter({
-            text: 'By mushroom0162 | Kenium v3.0.1',
+            text: 'By mushroom0162 | Kenium v3.2.1',
             iconURL: client.user.displayAvatarURL()
         })
         .setThumbnail(client.user.displayAvatarURL());

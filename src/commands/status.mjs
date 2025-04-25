@@ -122,7 +122,7 @@ export const Command = {
       })
       .setDescription([
         '```ansi',
-        `\u001b[1;94m┌────────────────── \u001b[1;97mKENIUM 3.2.0\u001b[1;94m ─────────────────┐\u001b[0m`,
+        `\u001b[1;94m┌────────────────── \u001b[1;97mKENIUM 3.2.1\u001b[1;94m ─────────────────┐\u001b[0m`,
         '',
         `\u001b[1;90m SYSTEM METRICS \u001b[0m`,
         `\u001b[1;94m❯\u001b[0m \u001b[1;97mCPU    \u001b[0m ${CPU_CACHE.model}`,

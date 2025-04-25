@@ -7,7 +7,7 @@ export const Command = {
     run: async (client, interaction) => {
         const embed = new EmbedBuilder()
             .setAuthor({
-                name: "Kenium v3.0.1 | by mushroom0162",
+                name: "Kenium v3.2.1 | by mushroom0162",
                 iconURL: client.user.avatarURL()
             })
             .setDescription(`

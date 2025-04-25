@@ -9,11 +9,12 @@ const CONFIG = {
         ISSUES_URL: 'https://github.com/ToddyTheNoobDud/Kenium-Music/issues/new',
     },
     BOT: {
-        VERSION: '3.2.0',
+        VERSION: '3.2.1',
         DEVELOPER: "mushroom0162",
         CHANGELOG: [
-            "✨ Rewrited the /status command. New ui and faster",
-            "✨ Rewrited the /changelog UI. making it better",
+            "✨ Rewrited All of the playlists to be better looking, faster and more efficient.",
+            "✨ Updated to aqualink 2.6.0",
+            "🚀 Fixed vc status not beign cleaned on queue end.",
         ]
     },
     COLORS: { 
@@ -181,7 +182,7 @@ export const Command = {
             if (timeLeft > 0) {
                 return interaction.reply({ 
                     content: `⏳ Please wait **${(timeLeft / 1000).toFixed(1)}** seconds before using this command again.`, 
-                    ephemeral: true 
+                    flags: 64 
                 });
             }
         }

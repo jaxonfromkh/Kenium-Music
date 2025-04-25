@@ -1,4 +1,3 @@
-import { getChannelIds } from "../commands/24.7.mjs";
 import { SimpleDB } from '../utils/simpleDB.mjs'; 
 
 const db = new SimpleDB();
@@ -10,7 +9,7 @@ export const Event = {
     run: async (client) => {
         client.aqua.init(client.user.id);
 
-        client.user.setActivity({ name: "🌟Made by mushroom0162, Kenium", type: 2, state: "🌊 Powered by AquaLink" });
+        client.user.setActivity({ name: "🌊 Kenium", type: 2 });
  
         client.user.setStatus("idle");
         console.log(`logged in ${client.user.tag}`)
@@ -36,7 +35,8 @@ export const Event = {
                                 guildId: guildId,
                                 voiceChannel: voiceChannelId,
                                 textChannel: textChannelId,
-                                deaf: true
+                                deaf: true,
+                                defaultVolume: 65,
                             });
                             
                             
