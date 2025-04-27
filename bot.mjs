@@ -164,7 +164,7 @@ function createTrackEmbed(client, player, track) {
           },
           {
             type: 10,
-            content: `**[${title}](${uri})**\n${author} ${album ? `• ${album}` : ''} • ${isStream ? '🔴 LIVE' : '🎵 320kbps'}`
+            content: `### [${truncateText(title, 60)}](${uri})`
           },
           {
             type: 10,
@@ -272,6 +272,12 @@ function createTrackEmbed(client, player, track) {
     accent_color: 0
   });
 }
+
+function truncateText(text, maxLength) {
+  if (text.length <= maxLength) return text;
+  return text.substring(0, maxLength - 3) + '...';
+}
+
 
 function createErrorEmbed(track, payload) {
   return new ContainerBuilder({
