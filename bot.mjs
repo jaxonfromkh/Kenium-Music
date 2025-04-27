@@ -145,7 +145,7 @@ class ChannelManager {
 
 function createTrackEmbed(client, player, track) {
   const { position, volume, loop } = player;
-  const { title, uri, author, album, length, isStream } = track;
+  const { title, uri, length } = track;
 
   const progress = Math.min(12, Math.max(0, Math.round((position / length) * 12)));
   const progressBar = PROGRESS_BARS[progress];
@@ -160,7 +160,7 @@ function createTrackEmbed(client, player, track) {
         components: [
           {
             type: 10,
-            content: `## 🎵 Now Playing`
+            content: `### 🎵 Now Playing`
           },
           {
             type: 10,
