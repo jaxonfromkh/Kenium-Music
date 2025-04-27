@@ -147,6 +147,7 @@ function createTrackEmbed(client, player, track) {
   const { position, volume, loop } = player;
   const { title, uri, length } = track;
 
+
   const progress = Math.min(12, Math.max(0, Math.round((position / length) * 12)));
   const progressBar = PROGRESS_BARS[progress];
 
@@ -168,7 +169,7 @@ function createTrackEmbed(client, player, track) {
           },
           {
             type: 10,
-            content: `\`${TimeFormatter.format(position)}\` ${progressBar} \`${TimeFormatter.format(length)}\`\n${volumeIcon} \`${volume}%\` ${loopIcon} <@${track.requester.id}>`
+            content: `\`${TimeFormatter.format(position)}\` ${progressBar} \`${TimeFormatter.format(length)}\`\n${volumeIcon} \`${volume}%\` ${loopIcon} \`${track.requester.username}\``
           }
         ],
         accessory: {
@@ -258,7 +259,7 @@ function createTrackEmbed(client, player, track) {
         components: [
           {
             type: 10,
-            content: "*Kenium 3.3.0 • Open Source*"
+            content: "*Kenium 3.3.1 • Open Source*"
           }
         ],
         accessory: {
@@ -344,7 +345,7 @@ aqua.on("trackStart", async (player, track) => {
       flags: ["4096", "32768"]
     });
 
-    ChannelManager.updateVoiceStatus(player.voiceChannel, `⭐ ${track.info.title} - Kenium 3.3.0`, token);
+    ChannelManager.updateVoiceStatus(player.voiceChannel, `⭐ ${track.info.title} - Kenium 3.3.1`, token);
   } catch (error) {
     console.error("Track start error:", error);
   }
