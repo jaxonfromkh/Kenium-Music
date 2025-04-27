@@ -1,11 +1,9 @@
 import 'dotenv/config';
-import { Client, GatewayIntentBits, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ContainerBuilder } from "discord.js";
+import { Client, GatewayIntentBits, ContainerBuilder } from "discord.js";
 import { fileURLToPath } from "node:url";
 import { dirname } from "node:path";
 import https from "node:https";
 import { createRequire } from "node:module";
-import { type } from 'node:os';
-import { url } from 'node:inspector';
 
 const require = createRequire(import.meta.url);
 const { Aqua } = require('aqualink');
