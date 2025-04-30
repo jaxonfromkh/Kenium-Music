@@ -25,7 +25,7 @@ export const Command = {
         player.setAutoplay(newState);
 
         const embed = new EmbedBuilder()
-            .setColor(newState ? "#0000FF" : "#000000") 
+            .setColor(newState ? "#000000" : "#000000") 
             .setTitle("Autoplay Status")
             .setDescription(`Autoplay has been **${newState ? "enabled" : "disabled"}**.`)
             .setFooter({ text: "Autoplay Toggle", iconURL: client.user.displayAvatarURL() })
