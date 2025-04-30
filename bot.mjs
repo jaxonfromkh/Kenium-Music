@@ -190,7 +190,7 @@ function createTrackEmbed(client, player, track) {
         accessory: {
           type: 2, 
           label: "🔉",
-          style: 2,
+          style: 1,
           custom_id: "volume_down"
         }
       },
@@ -205,7 +205,7 @@ function createTrackEmbed(client, player, track) {
         accessory: {
           type: 2,
           label: "⏮️",
-          style: 2,
+          style: 1,
           custom_id: "previous"
         }
       },
@@ -220,7 +220,7 @@ function createTrackEmbed(client, player, track) {
         accessory: {
           type: 2,
           label: player.paused ? "▶️" : "⏸️",
-          style: player.paused ? 3 : 2,
+          style: player.paused ? 3 : 1,
           custom_id: player.paused ? "resume" : "pause"
         }
       },
@@ -235,7 +235,7 @@ function createTrackEmbed(client, player, track) {
         accessory: {
           type: 2,
           label: "⏭️",
-          style: 2,
+          style: 1,
           custom_id: "skip"
         }
       },
@@ -250,7 +250,7 @@ function createTrackEmbed(client, player, track) {
         accessory: {
           type: 2,
           label: "🔊",
-          style: 2,
+          style: 1,
           custom_id: "volume_up"
         }
       },
