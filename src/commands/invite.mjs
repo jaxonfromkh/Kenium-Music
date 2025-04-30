@@ -1,52 +1,56 @@
-import { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } from "discord.js";
+import { ActionRowBuilder, ButtonBuilder, ButtonStyle, ContainerBuilder, EmbedBuilder } from "discord.js";
 
 export const Command = {
     name: "invite",
     description: "Invite Kenium cuz yes",
     options: [],
     run: async (client, interaction) => {
-        const embed = new EmbedBuilder()
-            .setAuthor({
-                name: "Kenium v3.2.1 | by mushroom0162",
-                iconURL: client.user.avatarURL()
+            const embedsv2 = new ContainerBuilder({
+                components: [
+                    {
+                        "type": 10,
+                        "content": `
+                ## 🌀 Imagine needing to PAY or VOTE just to use a music bot? Hell nah.
+                
+Why deal with paywalls, sketchy premium tiers, or begging for votes every hour just to play your favorite tracks? Kenium says NO to that nonsense. Here’s why you’ll vibe with it:
+                
+🔥 **Free. Forever.** No hidden fees, no "premium-only" commands, no ads. YouTube, Spotify, SoundCloud, Vimeo - slash into any platform, zero cash needed.
+**24/7 bangers** - High-quality audio, lightning-fast responses, and ZERO downtime.
+🤖 **Simplicity rules** - Type /play and boom, your queue's popping. No PhD in Discord bot navigation required.
+🔓 **Open source & transparent** - Peek under the hood anytime. No shady code, just real freedom.
+🎧 **Playlists? Free. Filters? Free.** - Crank up the bass, slow down the vibe, or queue 10-hour lo-fi - zero cash needed.
+💻 **Made with Aqualink** - fast, performant, stable lavalink handler, and self-coded
+**Start now**: Using </play:1254868331748528302>
+                
+Ain't nobody got time for cash-grabbing bots or democracy-for-a-playlist schemes. Kenium keeps it real: you press play, we handle the rest.
+                        `.trim(),
+                    },
+                    {
+                        type: 1,
+                        components: [
+                            {
+                                type: 2,
+                                style: 5,
+                                label: "Support Server",
+                                url: "https://discord.com/invite/K4CVv84VBC"
+                            },
+                            {
+                                type: 2,
+                                style: 5,
+                                label: "GitHub",
+                                url: "https://github.com/ToddyTheNoobDud/Kenium-Music"
+                            },
+                            {
+                                type: 2,
+                                style: 5,
+                                label: "Website",
+                                url: "https://toddythenoobdud.github.io/"
+                            }
+                          ],
+                    },
+                ]
             })
-            .setDescription(`
-                **Invite me to your server with [\`this link\`](https://discord.com/oauth2/authorize?client_id=1202232935311495209)!**, Or the buttons below.
-                **🎵 Optimized Music System**
-                • Fast queue loading, smooth playback, low resource usage.
-                • Supports YouTube, Spotify, SoundCloud, Vimeo, and file uploads.
-                • Autocomplete for play commands with smart suggestions.
 
-                **🎶 Search & Queue Manager**
-                • Advanced search for YouTube, Spotify, and SoundCloud.
-                • Manage queue: clear, show, or remove tracks (autocomplete supported).
-
-                **📁 Playlist Import/Export** - Save & share playlists in .txt or .pdf with auto-naming.
-                **📜 Lyrics Support** - Powered by Genius and LyricFind (supports YouTube songs via Lavalink).
-            `)
-            .setColor(0x000000)
-            .setImage('https://cdn.discordapp.com/attachments/1180230815997767681/1318584563764822056/Untitled_1.png')
-            .setFooter({ text: "Kenium | Free, Open Source" });
-
-        const row = new ActionRowBuilder()
-            .addComponents(
-                new ButtonBuilder()
-                    .setEmoji('🎵')
-                    .setStyle(ButtonStyle.Link)
-                    .setURL("https://discord.com/invite/K4CVv84VBC")
-                    .setLabel("Support Server"),
-                new ButtonBuilder()
-                    .setEmoji('📚')
-                    .setStyle(ButtonStyle.Link)
-                    .setURL("https://github.com/ToddyTheNoobDud/Thorium-Music")
-                    .setLabel("GitHub"),
-                new ButtonBuilder()
-                    .setEmoji('🌐')
-                    .setStyle(ButtonStyle.Link)
-                    .setURL("https://toddythenoobdud.github.io/")
-                    .setLabel("Website"),
-            );
-
-        await interaction.reply({ embeds: [embed], components: [row], flags: 64 });
+        await interaction.reply({  components: [embedsv2], flags: ["64", "32768"] });
     }
 };
