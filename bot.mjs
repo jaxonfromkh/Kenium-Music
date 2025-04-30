@@ -180,79 +180,39 @@ function createTrackEmbed(client, player, track) {
         }
       },
       {
-        type: 9,
+        type: 1,
         components: [
           {
-            type: 10,
-            content: "Volume Down"
-          }
-        ],
-        accessory: {
-          type: 2, 
-          label: "🔉",
-          style: 1,
-          custom_id: "volume_down"
-        }
-      },
-      {
-        type: 9,
-        components: [
+            type: 2, 
+            label: "🔉",
+            style: 1,
+            custom_id: "volume_down"
+          },
           {
-            type: 10,
-            content: "Previous Track"
-          }
-        ],
-        accessory: {
-          type: 2,
-          label: "⏮️",
-          style: 1,
-          custom_id: "previous"
-        }
-      },
-      {
-        type: 9,
-        components: [
+            type: 2,
+            label: "⏮️",
+            style: 1,
+            custom_id: "previous"
+          },
           {
-            type: 10,
-            content: player.paused ? "Resume" : "Pause"
-          }
-        ],
-        accessory: {
-          type: 2,
-          label: player.paused ? "▶️" : "⏸️",
-          style: player.paused ? 3 : 1,
-          custom_id: player.paused ? "resume" : "pause"
-        }
-      },
-      {
-        type: 9,
-        components: [
+            type: 2,
+            label: player.paused ? "▶️" : "⏸️",
+            style: player.paused ? 3 : 1,
+            custom_id: player.paused ? "resume" : "pause"
+          },
           {
-            type: 10,
-            content: "Skip"
-          }
-        ],
-        accessory: {
-          type: 2,
-          label: "⏭️",
-          style: 1,
-          custom_id: "skip"
-        }
-      },
-      {
-        type: 9,
-        components: [
+            type: 2,
+            label: "⏭️",
+            style: 1,
+            custom_id: "next"
+          },
           {
-            type: 10,
-            content: "Volume Up"
-          }
+            type: 2, 
+            label: "🔊",
+            style: 1,
+            custom_id: "volume_up"
+          },
         ],
-        accessory: {
-          type: 2,
-          label: "🔊",
-          style: 1,
-          custom_id: "volume_up"
-        }
       },
       {
         type: 9,
