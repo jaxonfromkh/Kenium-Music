@@ -22,7 +22,9 @@ export const Command = {
         await client.aqua.players.get(interaction.guildId) || await client.aqua.createConnection({
             guildId: interaction.guildId,
             voiceChannel: interaction.member.voice.channelId,
-            textChannel: interaction.channelId
+            textChannel: interaction.channelId,
+            deaf: true,
+            defaultVolume: 65,
         });
         
         if (interaction.guild.members.me.voice.channelId && 
