@@ -165,7 +165,7 @@ function createTrackEmbed(client, player, track) {
           },
           {
             type: 10,
-            content: `\`${TimeFormatter.format(position)}\` ${progressBar} \`${TimeFormatter.format(length)}\`\n${volumeIcon} \`${volume}%\` ${loopIcon} \`${track.requester.username}\``
+            content: `\`${TimeFormatter.format(position)}\` ${progressBar} \`${TimeFormatter.format(length)}\`\n\n${volumeIcon} \`${volume}%\` ${loopIcon} \`${track.requester.username}\``
           }
         ],
         accessory: {
@@ -205,7 +205,7 @@ function createTrackEmbed(client, player, track) {
             type: 2,
             label: "⏭️",
             style: 1,
-            custom_id: "next"
+            custom_id: "skip"
           },
           {
             type: 2, 
