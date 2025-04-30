@@ -219,21 +219,6 @@ function createTrackEmbed(client, player, track) {
           },
         ],
       },
-      {
-        type: 9,
-        components: [
-          {
-            type: 10,
-            content: "*Kenium 3.3.1 • Open Source*"
-          }
-        ],
-        accessory: {
-          type: 2,
-          label: "Invite",
-          style: 5,
-          url: "https://discord.com/oauth2/authorize?client_id=1202232935311495209"
-        }
-      }
     ],
     accent_color: 0
   });
