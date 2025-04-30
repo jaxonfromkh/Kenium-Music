@@ -1,4 +1,4 @@
-import { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from "discord.js";
+import { EmbedBuilder, ContainerBuilder } from "discord.js";
 
 export const Command = {
     name: "queue",
@@ -39,6 +39,7 @@ function formatDuration(ms) {
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
 }
 
+
 async function handleShowQueue(client, interaction, player) {
     const queueLength = player.queue.length;
     
@@ -46,22 +47,22 @@ async function handleShowQueue(client, interaction, player) {
         const emptyEmbed = new EmbedBuilder()
             .setTitle('🎵 Queue')
             .setDescription("📭 Queue is empty. Add some tracks!")
-            .setColor(0x0a1931)
+            .setColor(0x000000)
             .setTimestamp();
         return interaction.reply({ embeds: [emptyEmbed] });
     }
     
     const embed = createQueueEmbed(client, interaction, player, 1);
-    const buttons = createPaginationButtons(interaction.user.id, 1, Math.ceil(queueLength / 10));
     
     await interaction.reply({ 
-        embeds: [embed], 
-        components: queueLength > 10 ? [buttons] : []
+        components: [embed],
+        flags: 32768 // components v2 lol
     });
+
     const message = await interaction.fetchReply();
-    
+
     const collector = message.createMessageComponentCollector({ 
-        time: 60000,
+        time: 300000, // 5 minutes
         filter: i => i.user.id === interaction.user.id && i.customId.startsWith('queue_')
     });
     
@@ -70,7 +71,7 @@ async function handleShowQueue(client, interaction, player) {
             await i.deferUpdate();
             
             const [, action] = i.customId.split('_');
-            const currentPage = parseInt(i.message.embeds[0].footer.text.match(/Page (\d+)/)[1]);
+            const currentPage = parseInt(i.message.components[0].components[1].content.match(/Page (\d+)/)[1]);
             const maxPages = Math.ceil(player.queue.length / 10);
             
             let newPage = currentPage;
@@ -84,11 +85,10 @@ async function handleShowQueue(client, interaction, player) {
             }
             
             const newEmbed = createQueueEmbed(client, interaction, player, newPage);
-            const newButtons = createPaginationButtons(interaction.user.id, newPage, maxPages);
             
             await i.editReply({
-                embeds: [newEmbed],
-                components: player.queue.length > 10 ? [newButtons] : []
+                components: [newEmbed],
+                flags: 32768 // components v2 lol
             });
             
             collector.resetTimer();
@@ -105,6 +105,7 @@ async function handleShowQueue(client, interaction, player) {
         }
     });
 }
+    
 
 function createQueueEmbed(client, interaction, player, page) {
     const tracksPerPage = 10;
@@ -118,7 +119,7 @@ function createQueueEmbed(client, interaction, player, page) {
     const currentTrack = player.current;
     
     let queueContent = [];
-    
+
     if (currentTrack) {
         queueContent.push(`**▶️ Now Playing:**\n[${currentTrack.info.title}](${currentTrack.info.uri}) \`${formatDuration(currentTrack.info.length)}\``);
     }
@@ -137,43 +138,55 @@ function createQueueEmbed(client, interaction, player, page) {
         queueContent.push(`\n**Total:** ${queueLength} tracks • Duration: \`${formatDuration(totalDuration)}\``);
     }
     
-    return new EmbedBuilder()
-        .setTitle('🎵 Music Queue')
-        .setDescription(queueContent.join('\n'))
-        .setColor(0x0a1931)
-        .setThumbnail(client.user.displayAvatarURL({ size: 64 }))
-        .setFooter({ 
-            text: `Page ${validPage}/${maxPages} • Kenium v3.2.1`, 
-            iconURL: interaction.user.displayAvatarURL() 
-        })
-        .setTimestamp();
-}
-
-function createPaginationButtons(userId, currentPage, maxPages) {
-    return new ActionRowBuilder().addComponents(
-        new ButtonBuilder()
-            .setCustomId(`queue_first_${userId}`)
-            .setLabel('◀◀')
-            .setStyle(ButtonStyle.Secondary)
-            .setDisabled(currentPage === 1),
-        new ButtonBuilder()
-            .setCustomId(`queue_prev_${userId}`)
-            .setLabel('◀')
-            .setStyle(ButtonStyle.Primary)
-            .setDisabled(currentPage === 1),
-        new ButtonBuilder()
-            .setCustomId(`queue_refresh_${userId}`)
-            .setLabel('🔄')
-            .setStyle(ButtonStyle.Success),
-        new ButtonBuilder()
-            .setCustomId(`queue_next_${userId}`)
-            .setLabel('▶')
-            .setStyle(ButtonStyle.Primary)
-            .setDisabled(currentPage === maxPages),
-        new ButtonBuilder()
-            .setCustomId(`queue_last_${userId}`)
-            .setLabel('▶▶')
-            .setStyle(ButtonStyle.Secondary)
-            .setDisabled(currentPage === maxPages)
-    );
+    return new ContainerBuilder({
+        components: [
+            {
+                type: 10,
+                content: `${queueContent.join('\n')}`
+            },
+            {
+                type: 10,
+                content: `Page ${validPage} of ${maxPages}`
+            },
+            {
+                type: 1,
+                components: [
+                    {
+                        type: 2,
+                        label: "◀◀",
+                        style: 2,
+                        custom_id: "queue_first",
+                        disabled: validPage === 1
+                    },
+                    {
+                        type: 2,
+                        label: "◀",
+                        style: 1,
+                        custom_id: "queue_prev",
+                        disabled: validPage === 1
+                    },
+                    {
+                        type: 2,
+                        label: "🔄",
+                        style: 3,
+                        custom_id: "queue_refresh"
+                    },
+                    {
+                        type: 2,
+                        label: "▶",
+                        style: 1,
+                        custom_id: "queue_next",
+                        disabled: validPage === maxPages
+                    },
+                    {
+                        type: 2,
+                        label: "▶▶",
+                        style: 2,
+                        custom_id: "queue_last",
+                        disabled: validPage === maxPages
+                    }
+                ]
+            }
+        ]
+    });
 }
