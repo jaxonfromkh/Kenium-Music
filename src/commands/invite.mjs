@@ -1,4 +1,4 @@
-import { ActionRowBuilder, ButtonBuilder, ButtonStyle, ContainerBuilder, EmbedBuilder } from "discord.js";
+import {ContainerBuilder } from "discord.js";
 
 export const Command = {
     name: "invite",
@@ -10,9 +10,9 @@ export const Command = {
                     {
                         "type": 10,
                         "content": `
-                ## 🌀 Imagine needing to PAY or VOTE just to use a music bot? Hell nah.
+                ## [🌀 Imagine needing to PAY or VOTE just to use a music bot? Hell nah.](https://discord.com/oauth2/authorize?client_id=1202232935311495209)
                 
-Why deal with paywalls, sketchy premium tiers, or begging for votes every hour just to play your favorite tracks? Kenium says NO to that nonsense. Here’s why you’ll vibe with it:
+Why deal with paywalls, sketchy premium tiers, or begging for votes every hour just to play your favorite tracks? Kenium says NO to that nonsense. Here's why you'll vibe with it:
                 
 🔥 **Free. Forever.** No hidden fees, no "premium-only" commands, no ads. YouTube, Spotify, SoundCloud, Vimeo - slash into any platform, zero cash needed.
 **24/7 bangers** - High-quality audio, lightning-fast responses, and ZERO downtime.
@@ -22,7 +22,8 @@ Why deal with paywalls, sketchy premium tiers, or begging for votes every hour j
 💻 **Made with Aqualink** - fast, performant, stable lavalink handler, and self-coded
 **Start now**: Using </play:1254868331748528302>
                 
-Ain't nobody got time for cash-grabbing bots or democracy-for-a-playlist schemes. Kenium keeps it real: you press play, we handle the rest.
+Ain't nobody got time for cash-grabbing bots or democracy-for-a-playlist schemes. Kenium keeps it real: **you press play, we handle the rest.**
+# 👉 **[Invite Kenium](https://discord.com/oauth2/authorize?client_id=1202232935311495209)** 
                         `.trim(),
                     },
                     {
