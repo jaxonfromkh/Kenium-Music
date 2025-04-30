@@ -180,6 +180,11 @@ function createTrackEmbed(client, player, track) {
         }
       },
       {
+        "type": 14,
+        "divider": true,
+        "spacing": 2
+      },
+      {
         type: 1,
         components: [
           {
