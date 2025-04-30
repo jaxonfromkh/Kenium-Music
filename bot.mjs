@@ -161,10 +161,6 @@ function createTrackEmbed(client, player, track) {
         components: [
           {
             type: 10,
-            content: `### 🎵 Now Playing`
-          },
-          {
-            type: 10,
             content: `### [${truncateText(title, 60)}](${uri})`
           },
           {
