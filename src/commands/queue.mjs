@@ -125,17 +125,19 @@ function createQueueEmbed(client, interaction, player, page) {
     }
 
     if (queueLength > 0) {
-        queueContent.push("**## Queue:**");
+        queueContent.push("**__Queue:__**\n");
 
         const queueItems = player.queue.slice(startIndex, endIndex).map((track, i) =>
-            `**\`${startIndex + i + 1}.\` [${track.info.title}](${track.info.uri}) \`${formatDuration(track.info.length)}\`**`
+            `**${startIndex + i + 1}.** [**\`${track.info.title}\`**](${track.info.uri}) \`${formatDuration(track.info.length)}\``
         );
 
         queueContent = [...queueContent, ...queueItems];
 
         const totalDuration = player.queue.reduce((total, track) => total + track.info.length, 0);
 
-        queueContent.push(`\n**Total:** ${queueLength} tracks • Duration: \`${formatDuration(totalDuration)}\``);
+        queueContent.push(
+            `\n**Total:** \`${queueLength}\` track${queueLength > 1 ? "s" : ""} • **Duration:** \`${formatDuration(totalDuration)}\``
+        );
     }
 
     return new ContainerBuilder({
