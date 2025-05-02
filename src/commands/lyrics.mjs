@@ -1,8 +1,14 @@
-import { EmbedBuilder, ButtonBuilder, ActionRowBuilder, ButtonStyle, ComponentType } from 'discord.js';
+import {
+    EmbedBuilder,
+    ButtonBuilder,
+    ActionRowBuilder,
+    ButtonStyle,
+    ComponentType
+} from 'discord.js';
 
 export const Command = {
     name: "lyrics",
-    description: "Get the lyrics of the current playing song or search for lyrics.",
+    description: "Get lyrics for the current track or search for specific lyrics",
     options: [{
         name: 'search',
         description: 'Search for lyrics by song title or artist',
@@ -10,186 +16,184 @@ export const Command = {
         required: false,
     }],
     run: async (client, interaction) => {
-        await interaction.deferReply();
-        
+        await interaction.deferReply({ });
+
         const player = client.aqua.players.get(interaction.guildId);
-        if (!player) return await interaction.editReply({ 
-            embeds: [createEmbed('❌ Error', "No player found for this guild.", 0x992D22)] 
-        });
-        
+        if (!player) {
+            return interaction.editReply({
+                embeds: [createErrorEmbed("No player found for this guild")]
+            });
+        }
+
         try {
             const searchQuery = interaction.options.getString('search');
-            const lyricsResult = await (searchQuery ? player.searchLyrics(searchQuery) : player.lyrics());
-            
-            if (!lyricsResult?.text) {
-                return await interaction.editReply({ 
-                    embeds: [createEmbed('❌ Error', "No lyrics found.", 0x992D22)] 
+            const lyricsResult = await (searchQuery ? 
+                player.searchLyrics(searchQuery) : 
+                player.lyrics()
+            );
+
+            if (!lyricsResult?.text && !lyricsResult?.lines) {
+                return interaction.editReply({
+                    embeds: [createErrorEmbed("No lyrics found for this track")]
                 });
             }
-            
-            const { text: lyrics, track, provider, source, lines } = lyricsResult;
-            const title = track ? `${track.title} - ${track.author}` : "Current Track";
-            const image = track?.albumArt?.url || client.user.avatarURL();
-            const author = provider || source || 'Unknown';
-            
-            // Determine if we have synced lyrics or not
-            const hasSyncedLyrics = lines && Array.isArray(lines) && lines.length > 0;
-            
-            return await displayLyrics(interaction, lyrics, title, image, author, hasSyncedLyrics ? lines : null, player);
+
+            const { text: lyrics, track, source, lines } = lyricsResult;
+            const hasSyncedLyrics = Array.isArray(lines) && lines.length > 0;
+
+            return displayLyricsUI(interaction, {
+                lyrics: lyrics || "",
+                track,
+                lines: hasSyncedLyrics ? lines : null,
+                source: source || 'Unknown',
+                albumArt: track?.albumArt?.[0]?.url || client.user.displayAvatarURL()
+            });
         } catch (error) {
-            console.error('Lyrics fetch error:', error);
-            
-            const errorMessage = error.message?.includes('missing plugins')
-                ? "This server doesn't have the required lyrics plugins installed."
-                : "An error occurred while fetching the lyrics.";
-            
+            console.error('Lyrics error:', error);
+            const errorMessage = error.message.includes('missing plugins') ? 
+                "Lyrics plugin not installed" : 
+                "Failed to fetch lyrics";
             await interaction.editReply({
-                embeds: [createEmbed('❌ Error', errorMessage, 0x992D22)]
-            }).catch(() => {});
+                embeds: [createErrorEmbed(errorMessage)]
+            });
         }
     },
 };
 
-function createEmbed(title, description, color, footer = null, thumbnail = null) {
-    const embed = new EmbedBuilder()
-        .setTitle(title)
-        .setDescription(description)
-        .setColor(color)
-        .setTimestamp();
-        
-    if (footer) embed.setFooter({ text: footer });
-    if (thumbnail) embed.setThumbnail(thumbnail);
-    
-    return embed;
+function createErrorEmbed(message) {
+    return new EmbedBuilder()
+        .setColor(0xE74C3C)
+        .setTitle('❌ Lyrics Error')
+        .setDescription(message);
 }
 
 function formatTimestamp(ms) {
     const totalSeconds = Math.floor(ms / 1000);
     const minutes = Math.floor(totalSeconds / 60);
     const seconds = totalSeconds % 60;
-    return `${minutes}:${seconds < 10 ? '0' + seconds : seconds}`;
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
 }
 
-function formatLyricsWithTimestamps(lines, rawLyrics) {
-    if (!lines || !Array.isArray(lines) || lines.length === 0) {
-        return rawLyrics;
-    }
-    
+function formatLyrics(lines, plainText) {
+    if (!lines) return plainText;
     return lines.map(line => {
-        const timestamp = line.range ? formatTimestamp(line.range.start) : '';
-        return timestamp ? `[${timestamp}] ${line.line}` : line.line;
+        const timestamp = line.range ? `\`[${formatTimestamp(line.range.start)}]\`` : '';
+        const content = `**${line.line.trim()}**`;  // bold the synced line
+        return `${timestamp} ${content}`.trim();
     }).join('\n');
 }
 
-async function displayLyrics(interaction, lyrics, title, image, author, lines, player) {
-    const formattedLyrics = lines ? formatLyricsWithTimestamps(lines, lyrics) : lyrics;
-    const chunks = splitText(formattedLyrics, 1024);
-    const pages = chunks.map((chunk, i) => 
-        createEmbed(
-            `🎵 ${title}`, 
-            chunk, 
-            0x0a1929, 
-            `${interaction.user.tag} • ${author} • ${i+1}/${chunks.length}`,
-            image
-        )
+function chunkContent(content, maxLength = 1800) {
+    const lineSeparator = '\n';
+    const lines = content.split(lineSeparator);
+    const chunks = [];
+    let currentChunk = [];
+
+    for (const line of lines) {
+        if ((currentChunk.join(lineSeparator).length + line.length) >= maxLength) {
+            chunks.push(currentChunk.join(lineSeparator));
+            currentChunk = [];
+        }
+        currentChunk.push(line);
+    }
+    if (currentChunk.length > 0) chunks.push(currentChunk.join(lineSeparator));
+    return chunks;
+}
+
+function createNavigationRow(currentPage, totalPages) {
+    return new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+            .setCustomId('lyrics_first')
+            .setEmoji('⏮️')
+            .setStyle(ButtonStyle.Secondary)
+            .setDisabled(currentPage === 0),
+        new ButtonBuilder()
+            .setCustomId('lyrics_prev')
+            .setEmoji('◀️')
+            .setStyle(ButtonStyle.Primary)
+            .setDisabled(currentPage === 0),
+        new ButtonBuilder()
+            .setCustomId('lyrics_page')
+            .setLabel(`${currentPage + 1}/${totalPages}`)
+            .setStyle(ButtonStyle.Secondary)
+            .setDisabled(true),
+        new ButtonBuilder()
+            .setCustomId('lyrics_next')
+            .setEmoji('▶️')
+            .setStyle(ButtonStyle.Primary)
+            .setDisabled(currentPage === totalPages - 1),
+        new ButtonBuilder()
+            .setCustomId('lyrics_close')
+            .setEmoji('🗑️')
+            .setStyle(ButtonStyle.Danger)
     );
-    
+}
+
+async function displayLyricsUI(interaction, { lyrics, track, lines, source, albumArt }) {
+    const formattedLyrics = formatLyrics(lines, lyrics);
+    const chunks = chunkContent(formattedLyrics);
+    const totalPages = chunks.length;
     let currentPage = 0;
-    const hasSyncedLyrics = lines && Array.isArray(lines) && lines.length > 0;
-    
-    const getButtons = (page, total) => {
-        const buttons = [
-            { id: 'first', emoji: '⏮️', style: ButtonStyle.Secondary, disabled: page === 0 },
-            { id: 'prev', emoji: '◀️', style: ButtonStyle.Primary, disabled: page === 0 },
-            { id: 'next', emoji: '▶️', style: ButtonStyle.Primary, disabled: page === total - 1 },
-            { id: 'last', emoji: '⏭️', style: ButtonStyle.Secondary, disabled: page === total - 1 }
-        ];
-        
-        return new ActionRowBuilder().addComponents(
-            buttons.map(btn => 
-                new ButtonBuilder()
-                    .setCustomId(`lyrics_${btn.id}`)
-                    .setEmoji(btn.emoji)
-                    .setStyle(btn.style)
-                    .setDisabled(btn.disabled)
-            )
-        );
+
+    const createEmbed = (page) => {
+        const embed = new EmbedBuilder()
+            .setColor(0)
+            .setTitle(track ? `🎵 ${track.title}` : '🎶 Current Track Lyrics')
+            .setDescription(chunks[page])
+            .setThumbnail(albumArt)
+            .setFooter({ 
+                text: [
+                    source,
+                    track?.author ? `Artist: ${track.author}` : '',
+                    lines ? 'Synced Lyrics' : 'Text Lyrics',
+                    `Page ${page + 1}/${totalPages}`
+                ].filter(Boolean).join(' • ')
+            });
+
+        if (track?.album) {
+            embed.addFields({ 
+                name: 'Album', 
+                value: track.album, 
+                inline: true 
+            });
+        }
+
+        return embed;
     };
-    
-    // Add a source indicator in the footer
-    const sourceIndicator = hasSyncedLyrics ? "Synced Lyrics" : "Genius Lyrics";
-    
-    const updatedPages = pages.map(page => {
-        const footer = page.data.footer.text;
-        page.data.footer.text = `${footer} • ${sourceIndicator}`;
-        return page;
-    });
-    
+
     const response = await interaction.editReply({
-        embeds: [updatedPages[0]],
-        components: pages.length > 1 ? [getButtons(0, pages.length)] : []
+        embeds: [createEmbed(0)],
+        components: totalPages > 1 ? [createNavigationRow(0, totalPages)] : []
     });
-    
-    if (pages.length <= 1) return response;
-    
-    const collector = response.createMessageComponentCollector({ 
+
+    if (totalPages <= 1) return;
+
+    const collector = response.createMessageComponentCollector({
         componentType: ComponentType.Button,
         time: 300000
     });
-    
+
     collector.on('collect', async (i) => {
         if (i.user.id !== interaction.user.id) {
-            return i.reply({ content: 'This pagination is not for you.', flags: 64 });
+            return i.reply({ content: "❌ These controls aren't for you", flags: 64 });
         }
-        
-        const navMap = {
-            'lyrics_first': 0,
-            'lyrics_prev': Math.max(0, currentPage - 1),
-            'lyrics_next': Math.min(pages.length - 1, currentPage + 1),
-            'lyrics_last': pages.length - 1
-        };
-        
-        const newPage = navMap[i.customId];
-        
-        if (newPage !== undefined && newPage !== currentPage) {
-            currentPage = newPage;
-            await i.update({ 
-                embeds: [updatedPages[currentPage]], 
-                components: [getButtons(currentPage, pages.length)]
-            }).catch(() => {});
-        } else {
-            await i.deferUpdate().catch(() => {});
-        }
-    });
-    
-    collector.on('end', async () => {
-        try {
-            await interaction.deleteReply().catch(() => {});
-        } catch (error) {
-            // Silently ignore errors when removing components
-        }
-    });
-    
-    return response;
-}
 
-function splitText(text, maxLength) {
-    const chunks = [];
-    let currentPosition = 0;
-    
-    while (currentPosition < text.length) {
-        let chunkEnd = Math.min(currentPosition + maxLength, text.length);
-        
-        if (chunkEnd < text.length) {
-            const lastNewline = text.lastIndexOf('\n', chunkEnd);
-            if (lastNewline > currentPosition) {
-                chunkEnd = lastNewline + 1;
-            }
+        switch (i.customId) {
+            case 'lyrics_first': currentPage = 0; break;
+            case 'lyrics_prev': currentPage = Math.max(0, currentPage - 1); break;
+            case 'lyrics_next': currentPage = Math.min(totalPages - 1, currentPage + 1); break;
+            case 'lyrics_close': 
+                collector.stop();
+                return i.update({ components: [] });
         }
-        
-        chunks.push(text.substring(currentPosition, chunkEnd));
-        currentPosition = chunkEnd;
-    }
-    
-    return chunks;
+
+        await i.update({
+            embeds: [createEmbed(currentPage)],
+            components: [createNavigationRow(currentPage, totalPages)]
+        });
+    });
+
+    collector.on('end', () => {
+        interaction.editReply({ components: [] }).catch(() => {});
+    });
 }
