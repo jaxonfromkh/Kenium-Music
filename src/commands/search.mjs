@@ -45,7 +45,7 @@ class SearchCommandHandler {
         const currentPlatform = MusicPlatform.get(DEFAULT_PLATFORM);
         
         try {
-            const tracks = await this.searchTracks(query, currentPlatform.source, interaction.member);
+            const tracks = await this.searchTracks(query, currentPlatform.source, interaction.user);
             if (!tracks.length) {
                 return interaction.reply({ content: MESSAGES.NO_RESULTS(currentPlatform.name), flags: 64 });
             }
@@ -162,7 +162,7 @@ class SearchCommandHandler {
                 const newPlatform = MusicPlatform.get(platformKey);
                 
                 try {
-                    const newTracks = await this.searchTracks(query, newPlatform.source, interaction.member);
+                    const newTracks = await this.searchTracks(query, newPlatform.source, interaction.user);
                     
                     if (newTracks.length) {
                         tracks.length = 0;
