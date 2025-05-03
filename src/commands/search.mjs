@@ -1,7 +1,8 @@
 import { 
     ActionRowBuilder, 
-    EmbedBuilder, 
-    ButtonBuilder, 
+    EmbedBuilder,
+    ButtonBuilder,
+    ContainerBuilder
 } from "discord.js";
 
 const MusicPlatform = new Map([
@@ -50,7 +51,11 @@ class SearchCommandHandler {
                 return interaction.reply({ content: MESSAGES.NO_RESULTS(currentPlatform.name), flags: 64 });
             }
             
-            const message = await this.createSearchMessage(interaction, query, tracks, currentPlatform);
+            const searchContainer = this.createSearchContainer(interaction, query, tracks, currentPlatform);
+            const message = await interaction.reply({
+                components: [searchContainer],
+                flags: ["32768", "64"] // components v2 lol
+            });
             this.setupInteractionCollector(message, interaction, player, query, tracks, currentPlatform);
         } catch (error) {
             console.error('Search error:', error);
@@ -79,61 +84,95 @@ class SearchCommandHandler {
         return result.tracks?.slice(0, MAX_RESULTS) || [];
     }
 
-    createSearchEmbed(interaction, query, tracks, platform) {
+    createTrackListContent(tracks, platform) {
         const trackList = [];
         for (let i = 0; i < tracks.length; i++) {
-            trackList.push(`${i + 1}. ${platform.emoji} [\`${tracks[i].info.title}\`](${tracks[i].info.uri})`);
+            trackList.push(`**${i + 1}.** ${platform.emoji} [**\`${tracks[i].info.title}\`**](${tracks[i].info.uri})`);
         }
-
-        return new EmbedBuilder()
-            .setColor(platform.color)
-            .setTitle(`🔍 Search Results: ${query}`)
-            .setDescription(trackList.join('\n'))
-            .setThumbnail(this.client.user.displayAvatarURL())
-            .setFooter({ text: `Powered by ${platform.name}`, iconURL: interaction.user.displayAvatarURL() })
-            .setTimestamp();
+        return trackList.join('\n');
     }
 
-    createPlatformButtons() {
+    createSearchContainer(interaction, query, tracks, platform) {
+        const trackListContent = this.createTrackListContent(tracks, platform);
+        
+        return new ContainerBuilder({
+            components: [
+                {
+                    type: 9, 
+                    components: [
+                        {
+                            type: 10,
+                            content: `## 🔍 Search Results: ${query}\n\n${trackListContent}`
+                        }
+                    ],
+                    accessory: {
+                        type: 11,
+                        media: {
+                            url: this.client.user.displayAvatarURL()
+                        }
+                    }
+                },
+                {
+                    type: 14,
+                    divider: true,
+                    spacing: 2
+                },
+                {
+                    type: 1,
+                    components: this.createSelectionButtonsV2(tracks)
+                },
+                {
+                    type: 14,
+                    divider: true,
+                    spacing: 2
+                },
+                {
+                    type: 1,
+                    components: this.createPlatformButtonsV2()
+                }
+            ],
+            accent_color: platform.color
+        });
+    }
+
+    createPlatformButtonsV2() {
         const components = [];
         for (const [key, platform] of MusicPlatform.entries()) {
-            components.push(
-                new ButtonBuilder()
-                    .setCustomId(`platform_${key.toLowerCase()}`)
-                    .setLabel(platform.name)
-                    .setEmoji(platform.icon)
-                    .setStyle(platform.style)
-            );
+            let emoji = undefined;
+            if (typeof platform.emoji === "string" && platform.emoji.startsWith("<:")) {
+                const match = platform.emoji.match(/^<:([a-zA-Z0-9_]+):(\d+)>$/);
+                if (match) {
+                    emoji = { name: match[1], id: match[2] };
+                }
+            }
+            else if (typeof platform.icon === "string") {
+                emoji = { name: platform.icon };
+            }
+
+            components.push({
+                type: 2,
+                custom_id: `platform_${key.toLowerCase()}`,
+                label: platform.name,
+                ...(emoji && { emoji }),
+                style: platform.style
+            });
         }
-        return new ActionRowBuilder().addComponents(components);
+        return components;
     }
 
-    createSelectionButtons(tracks, platformName) {
+    createSelectionButtonsV2(tracks) {
         const components = [];
-        const lowerPlatform = platformName.toLowerCase();
         
         for (let i = 0; i < tracks.length; i++) {
-            components.push(
-                new ButtonBuilder()
-                    .setCustomId(`select_${i}_${lowerPlatform}`)
-                    .setLabel(`${i + 1}`)
-                    .setStyle(BUTTON_STYLE_SELECTION)
-            );
+            components.push({
+                type: 2,
+                custom_id: `select_${i}`,
+                label: `${i + 1}`,
+                style: BUTTON_STYLE_SELECTION
+            });
         }
         
-        return new ActionRowBuilder().addComponents(components);
-    }
-
-    async createSearchMessage(interaction, query, tracks, platform) {
-        const embed = this.createSearchEmbed(interaction, query, tracks, platform);
-        const selectionButtons = this.createSelectionButtons(tracks, platform.name);
-        const platformButtons = this.createPlatformButtons();
-        
-        return interaction.reply({
-            embeds: [embed],
-            components: [selectionButtons, platformButtons],
-            flags: 64
-        });
+        return components;
     }
 
     setupInteractionCollector(message, interaction, player, query, tracks, currentPlatform) {
@@ -168,11 +207,8 @@ class SearchCommandHandler {
                         tracks.length = 0;
                         newTracks.forEach(track => tracks.push(track));
                         
-                        const embed = this.createSearchEmbed(interaction, query, tracks, newPlatform);
-                        const selectionButtons = this.createSelectionButtons(tracks, newPlatform.name);
-                        const platformButtons = this.createPlatformButtons();
-                        
-                        await message.edit({ embeds: [embed], components: [selectionButtons, platformButtons] });
+                        const searchContainer = this.createSearchContainer(interaction, query, tracks, newPlatform);
+                        await i.editReply({ components: [searchContainer],                 flags: ["32768", "64"]  });
                     } else {
                         await i.followUp({ content: MESSAGES.NO_RESULTS(newPlatform.name), flags: 64 });
                     }
@@ -184,10 +220,14 @@ class SearchCommandHandler {
         });
 
         collector.on('end', () => {
-            if (message.deletable) {
-                message.delete().catch(() => {});
-            } else {
-                message.edit({ components: [] }).catch(() => {});
+            try {
+                if (message.deletable) {
+                    message.delete().catch(() => {});
+                } else {
+                    interaction.editReply({ components: [] }).catch(() => {});
+                }
+            } catch (error) {
+                console.error("Failed to clean up search message:", error);
             }
         });
     }
