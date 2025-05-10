@@ -171,7 +171,7 @@ function createTrackEmbed(client, player, track) {
         accessory: {
           type: 11,
           media: {
-            url: track.thumbnail || client.user.displayAvatarURL()
+            url: track.thumbnail || client.user.avatarURL({ dynamic: true }),
           }
         }
       },
@@ -184,7 +184,7 @@ function createTrackEmbed(client, player, track) {
         type: 1,
         components: [
           {
-            type: 2, 
+            type: 2,
             label: "🔉",
             style: 1,
             custom_id: "volume_down"
@@ -208,7 +208,7 @@ function createTrackEmbed(client, player, track) {
             custom_id: "skip"
           },
           {
-            type: 2, 
+            type: 2,
             label: "🔊",
             style: 1,
             custom_id: "volume_up"
@@ -238,15 +238,9 @@ function createErrorEmbed(track, payload) {
           },
           {
             type: 10,
-            content: `Error playing: **${track.title}**\n\`${payload.exception.message}\``
+            content: `Error playing: **${track.title}**\n\`${payload}\``
           }
         ],
-        accessory: {
-          type: 2,
-          label: "Report",
-          style: 4,
-          custom_id: "report_error"
-        }
       }
     ]
   });
@@ -285,13 +279,13 @@ aqua.on("trackStart", async (player, track) => {
   try {
     const embed = createTrackEmbed(client, player, track);
     player.cachedEmbed = embed;
-    
+
     player.nowPlayingMessage = await channel.send({
       components: [embed],
       flags: ["4096", "32768"]
     });
 
-    ChannelManager.updateVoiceStatus(player.voiceChannel, `⭐ ${track.info.title} - Kenium 3.3.1`, token);
+    ChannelManager.updateVoiceStatus(player.voiceChannel, `⭐ ${track.info.title} - Kenium 3.4.2`, token);
   } catch (error) {
     console.error("Track start error:", error);
   }
@@ -334,6 +328,15 @@ client.on('interactionCreate', async (interaction) => {
   if (!interaction.isButton()) return;
 
   const { customId } = interaction;
+
+  if (interaction.customId.startsWith('suggest_')) {
+    await handleSuggestionButton(interaction);
+    return;
+  }
+
+  if (!['volume_down', 'previous', 'pause', 'resume', 'skip', 'volume_up'].includes(customId)) {
+    return;
+  }
   const player = aqua.players.get(interaction.guildId);
 
   if (!player) {
