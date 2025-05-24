@@ -5,6 +5,8 @@ import { dirname } from "node:path";
 import https from "node:https";
 import { createRequire } from "node:module";
 
+import { handleSuggestionButton, handleSuggestionModalSubmit } from './src/commands/suggest.mjs';
+
 const require = createRequire(import.meta.url);
 const { Aqua } = require('aqualink');
 
@@ -226,25 +228,6 @@ function truncateText(text, maxLength) {
 }
 
 
-function createErrorEmbed(track, payload) {
-  return new ContainerBuilder({
-    components: [
-      {
-        type: 9, // Section
-        components: [
-          {
-            type: 10,
-            content: `# ❌ Track Error`
-          },
-          {
-            type: 10,
-            content: `Error playing: **${track.title}**\n\`${payload}\``
-          }
-        ],
-      }
-    ]
-  });
-}
 
 function debounce(func, wait) {
   let timeout;
@@ -296,10 +279,11 @@ aqua.on("trackError", async (player, track, payload) => {
   const channel = ChannelManager.getChannel(client, player.textChannel);
   if (!channel) return;
 
+  console.log(player, track, payload);
+
   try {
     await channel.send({
-      embeds: [createErrorEmbed(track, payload)],
-      flags: 64
+      content: `❌ An error occurred while playing **${track.info.title}**:\n\`${payload.exception.message}\``,
     });
   } catch (error) {
     console.error("Error sending track error:", error);
@@ -329,7 +313,10 @@ client.on('interactionCreate', async (interaction) => {
 
   const { customId } = interaction;
 
-
+  if (interaction.customId.startsWith('suggest_')) {
+    await handleSuggestionButton(interaction);
+    return;
+  }
   if (!['volume_down', 'previous', 'pause', 'resume', 'skip', 'volume_up'].includes(customId)) {
     return;
   }
