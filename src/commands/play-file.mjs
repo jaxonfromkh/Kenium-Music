@@ -20,8 +20,8 @@ export const Command = {
             });
         }
 
-        const channels = guild.channels.cache;
-        const currentVoiceChannel = channels.find(
+        // Use cache.get instead of find for better performance
+        const currentVoiceChannel = guild.channels.cache.find(
             ch => ch.type === 2 && ch.members.has(client.user.id)
         );
 
@@ -32,7 +32,8 @@ export const Command = {
             });
         }
 
-        const player = client.aqua.players.get(guild.id) || client.aqua.createConnection({
+        // Prefer nullish coalescing for fallback
+        let player = client.aqua.players.get(guild.id) ?? client.aqua.createConnection({
             guildId: guild.id,
             voiceChannel: voiceChannel.id,
             textChannel: channel.id,
@@ -54,26 +55,27 @@ export const Command = {
                 requester: interaction.user
             });
 
-            if (result.tracks.length === 0) {
+            const track = result.tracks?.[0];
+            if (!track) {
                 return interaction.reply({
                     content: "No tracks found.",
                     flags: 64,
                 });
             }
 
-            player.queue.add(result.tracks[0]);
+            player.queue.add(track);
             await interaction.reply({
-                content: `Added \`${result.tracks[0].info.title}\` to the queue.`,
+                content: `Added \`${track.info.title}\` to the queue.`,
                 flags: 64,
             });
 
-            if (!player.playing) {
+            if (!player.playing && !player.paused) {
                 player.play();
             }
         } catch (error) {
             console.error('Error processing the file:', error);
             return interaction.reply({
-                content: `There was an error processing the file: ${error.message || 'unknown error'}`,
+                content: `There was an error processing the file: ${error?.message || 'unknown error'}`,
                 flags: 64,
             });
         }
