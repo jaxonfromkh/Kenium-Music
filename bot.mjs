@@ -5,8 +5,6 @@ import { dirname } from "node:path";
 import https from "node:https";
 import { createRequire } from "node:module";
 
-import { handleSuggestionButton, handleSuggestionModalSubmit } from './src/commands/suggest.mjs';
-
 const require = createRequire(import.meta.url);
 const { Aqua } = require('aqualink');
 
@@ -313,10 +311,6 @@ client.on('interactionCreate', async (interaction) => {
 
   const { customId } = interaction;
 
-  if (interaction.customId.startsWith('suggest_')) {
-    await handleSuggestionButton(interaction);
-    return;
-  }
   if (!['volume_down', 'previous', 'pause', 'resume', 'skip', 'volume_up'].includes(customId)) {
     return;
   }
