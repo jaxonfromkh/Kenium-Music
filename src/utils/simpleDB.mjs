@@ -9,10 +9,8 @@ class SimpleDB {
     this.collections = new Map();
     this.collectionInstances = new Map();
     
-    // Create DB directory if it doesn't exist
     !existsSync(this.dbPath) && mkdirSync(this.dbPath, { recursive: true });
     
-    // Initialize collections asynchronously
     this.initPromise = this.init();
   }
 
@@ -42,16 +40,16 @@ class Collection {
   constructor(name, filePath) {
     this.name = name;
     this.filePath = filePath;
-    this.data = [];
-    this.indices = new Map();
+    this.data = new Map(); // _id to doc
+    this.indices = new Map(); // field to (value to Set<_id>)
     this.dirty = false;
     this._saveTimer = null;
     this._saveDelay = 50; // Reduced save delay for better performance
     
-    // Add default _id index
-    this.indices.set('_id', new Map());
+    // Ensure _id index
+    this.ensureIndex('_id');
     
-    // Load data immediately (not async for simplicity)
+    // Load data immediately
     this.load();
   }
 
@@ -59,14 +57,18 @@ class Collection {
     try {
       if (existsSync(this.filePath)) {
         const fileData = readFileSync(this.filePath, 'utf8');
-        this.data = JSON.parse(fileData);
-        // Rebuild only _id index for now - other indices built on demand
-        this.data.forEach((doc, idx) => {
-          if (doc._id) this.indices.get('_id').set(doc._id, idx);
+        const docs = JSON.parse(fileData);
+        docs.forEach(doc => {
+          if (doc._id) {
+            this.data.set(doc._id, doc);
+          } else {
+            console.error('Document without _id:', doc);
+          }
         });
       }
-    } catch {
-      this.data = [];
+    } catch (err) {
+      console.error('Error loading collection:', err);
+      this.data = new Map();
     }
     return this;
   }
@@ -76,7 +78,8 @@ class Collection {
     
     this._saveTimer && clearTimeout(this._saveTimer);
     this._saveTimer = setTimeout(() => {
-      writeFileSync(this.filePath, JSON.stringify(this.data));
+      const docs = Array.from(this.data.values());
+      writeFileSync(this.filePath, JSON.stringify(docs));
       this.dirty = false;
       this._saveTimer = null;
     }, this._saveDelay);
@@ -84,47 +87,43 @@ class Collection {
     return true;
   }
 
-  // Lazily create index for a field only when needed
   ensureIndex(field) {
     if (this.indices.has(field)) return;
     
-    const index = new Map();
-    this.data.forEach((doc, idx) => {
-      doc[field] !== undefined && index.set(doc[field], idx);
+    const indexMap = new Map(); // value to Set<_id>
+    this.data.forEach((doc, _id) => {
+      const value = doc[field];
+      if (value !== undefined) {
+        if (!indexMap.has(value)) {
+          indexMap.set(value, new Set());
+        }
+        indexMap.get(value).add(_id);
+      }
     });
     
-    this.indices.set(field, index);
-  }
-
-  // More efficient index update - only update what changed
-  updateIndex(field, value, idx) {
-    const index = this.indices.get(field);
-    if (index) index.set(value, idx);
-  }
-
-  // Rebuild indices for docs after a deletion
-  reindexFrom(startIdx) {
-    for (let i = startIdx; i < this.data.length; i++) {
-      const doc = this.data[i];
-      this.indices.forEach((index, field) => {
-        doc[field] !== undefined && index.set(doc[field], i);
-      });
-    }
+    this.indices.set(field, indexMap);
   }
 
   insert(docs) {
     const items = Array.isArray(docs) ? docs : [docs];
-    const idIndex = this.indices.get('_id');
-    
     items.forEach(doc => {
-      // Generate ID if not present
-      if (!doc._id) doc._id = randomBytes(12).toString('hex');
+      if (!doc._id) {
+        doc._id = randomBytes(12).toString('hex');
+      }
+      if (this.data.has(doc._id)) {
+        throw new Error('Duplicate _id: ' + doc._id);
+      }
+      this.data.set(doc._id, doc);
       
-      const idx = this.data.push(doc) - 1;
-      
-      // Update indices
-      this.indices.forEach((index, field) => {
-        doc[field] !== undefined && index.set(doc[field], idx);
+      // Update all existing indices
+      this.indices.forEach((indexMap, field) => {
+        const value = doc[field];
+        if (value !== undefined) {
+          if (!indexMap.has(value)) {
+            indexMap.set(value, new Set());
+          }
+          indexMap.get(value).add(doc._id);
+        }
       });
     });
 
@@ -134,219 +133,126 @@ class Collection {
   }
 
   find(query = {}) {
-    // Fast path: empty query returns all data
-    if (!Object.keys(query).length) return [...this.data];
-
-    // Fast path: query by _id
-    if (query._id && typeof query._id === 'string') {
-      const idx = this.indices.get('_id').get(query._id);
-      return idx !== undefined ? [this.data[idx]] : [];
+    if (!Object.keys(query).length) {
+      return Array.from(this.data.values());
     }
 
-    // Check if we can use an index for a simple single-field query
     const fields = Object.keys(query);
-    if (fields.length === 1) {
+    if (fields.length === 1 && typeof query[fields[0]] !== 'object') {
       const field = fields[0];
       const value = query[field];
-      
-      if (typeof value !== 'object') {
-        this.ensureIndex(field);
-        if (this.indices.has(field)) {
-          const idx = this.indices.get(field).get(value);
-          return idx !== undefined ? [this.data[idx]] : [];
+      this.ensureIndex(field);
+      if (this.indices.has(field)) {
+        const indexMap = this.indices.get(field);
+        if (indexMap.has(value)) {
+          const ids = indexMap.get(value);
+          return Array.from(ids).map(_id => this.data.get(_id));
+        } else {
+          return [];
         }
       }
     }
 
-    // Fallback to full scan with optimized matching
-    return this.data.filter(doc => this.matchDocument(doc, query));
+    // Fallback to full scan
+    return Array.from(this.data.values()).filter(doc => this.matchDocument(doc, query));
   }
 
   findOne(query = {}) {
-    // Fast path: query by _id
-    if (query._id && typeof query._id === 'string') {
-      const idx = this.indices.get('_id').get(query._id);
-      return idx !== undefined ? this.data[idx] : null;
-    }
-
-    // Check if we can use an index for a simple single-field query
-    const fields = Object.keys(query);
-    if (fields.length === 1) {
-      const field = fields[0];
-      const value = query[field];
-      
-      if (typeof value !== 'object') {
-        this.ensureIndex(field);
-        if (this.indices.has(field)) {
-          const idx = this.indices.get(field).get(value);
-          return idx !== undefined ? this.data[idx] : null;
-        }
-      }
-    }
-
-    // Fallback to find first match
-    return this.data.find(doc => this.matchDocument(doc, query)) || null;
+    const results = this.find(query);
+    return results.length > 0 ? results[0] : null;
   }
 
   findById(id) {
-    const idx = this.indices.get('_id').get(id);
-    return idx !== undefined ? this.data[idx] : null;
+    return this.data.get(id) || null;
   }
 
   update(query, updates) {
-    // Fast path: update by _id
-    if (query._id && typeof query._id === 'string') {
-      const idx = this.indices.get('_id').get(query._id);
-      if (idx !== undefined) {
-        const doc = this.data[idx];
-        
-        // Remove old index entries
-        this.indices.forEach((index, field) => {
-          if (field in doc && field in updates && doc[field] !== updates[field]) {
-            index.delete(doc[field]);
-          }
-        });
-        
-        // Update document
-        Object.assign(doc, updates);
-        
-        // Update indices with new values
-        this.indices.forEach((index, field) => {
-          doc[field] !== undefined && index.set(doc[field], idx);
-        });
-        
-        this.dirty = true;
-        this.save();
-        return 1;
-      }
-      return 0;
-    }
-
-    // Find matching documents
-    const matches = [];
-    this.data.forEach((doc, idx) => {
-      this.matchDocument(doc, query) && matches.push(idx);
-    });
-
-    if (!matches.length) return 0;
-
-    // Update all matches
-    matches.forEach(idx => {
-      const doc = this.data[idx];
-      
-      // Remove old index entries
-      this.indices.forEach((index, field) => {
-        if (field in doc && field in updates && doc[field] !== updates[field]) {
-          index.delete(doc[field]);
-        }
-      });
-      
-      // Update document
+    const matchingDocs = this.find(query);
+    let count = 0;
+    matchingDocs.forEach(doc => {
+      const oldDoc = { ...doc };
       Object.assign(doc, updates);
       
       // Update indices
-      this.indices.forEach((index, field) => {
-        doc[field] !== undefined && index.set(doc[field], idx);
+      Object.keys(updates).forEach(field => {
+        if (this.indices.has(field)) {
+          const oldVal = oldDoc[field];
+          const newVal = doc[field];
+          if (oldVal !== newVal) {
+            // Remove from oldVal
+            if (oldVal !== undefined) {
+              const indexMap = this.indices.get(field);
+              if (indexMap.has(oldVal)) {
+                const set = indexMap.get(oldVal);
+                set.delete(doc._id);
+                if (set.size === 0) {
+                  indexMap.delete(oldVal);
+                }
+              }
+            }
+            // Add to newVal
+            if (newVal !== undefined) {
+              const indexMap = this.indices.get(field);
+              if (!indexMap.has(newVal)) {
+                indexMap.set(newVal, new Set());
+              }
+              indexMap.get(newVal).add(doc._id);
+            }
+          }
+        }
       });
+      count++;
     });
 
     this.dirty = true;
     this.save();
-    return matches.length;
+    return count;
   }
 
   delete(query) {
-    // Fast path: delete by _id
-    if (query._id && typeof query._id === 'string') {
-      const idx = this.indices.get('_id').get(query._id);
-      if (idx !== undefined) {
-        const doc = this.data[idx];
-        
-        // Remove index entries
-        this.indices.forEach(index => {
-          Object.keys(doc).forEach(field => {
-            doc[field] !== undefined && index.delete(doc[field]);
-          });
-        });
-        
-        // Remove document
-        this.data.splice(idx, 1);
-        
-        // Fix indices for documents after the deleted one
-        this.reindexFrom(idx);
-        
-        this.dirty = true;
-        this.save();
-        return 1;
-      }
-      return 0;
-    }
-
-    // Find documents to delete
-    const toDelete = [];
-    this.data.forEach((doc, idx) => {
-      this.matchDocument(doc, query) && toDelete.push(idx);
-    });
-    
-    if (!toDelete.length) return 0;
-
-    // Delete in reverse order to avoid index shifting issues
-    toDelete.sort((a, b) => b - a);
-    
-    let lowestIdx = this.data.length;
-    toDelete.forEach(idx => {
-      const doc = this.data[idx];
+    const matchingDocs = this.find(query);
+    let count = 0;
+    matchingDocs.forEach(doc => {
+      this.data.delete(doc._id);
       
-      // Remove index entries
-      this.indices.forEach(index => {
-        Object.keys(doc).forEach(field => {
-          doc[field] !== undefined && index.delete(doc[field]);
-        });
+      // Remove from all indices
+      this.indices.forEach((indexMap, field) => {
+        const value = doc[field];
+        if (value !== undefined && indexMap.has(value)) {
+          const set = indexMap.get(value);
+          set.delete(doc._id);
+          if (set.size === 0) {
+            indexMap.delete(value);
+          }
+        }
       });
-      
-      // Remove document
-      this.data.splice(idx, 1);
-      lowestIdx = Math.min(lowestIdx, idx);
+      count++;
     });
-    
-    // Fix indices for documents after the deleted ones
-    this.reindexFrom(lowestIdx);
-    
+
     this.dirty = true;
     this.save();
-    return toDelete.length;
+    return count;
   }
 
-  // Optimized document matching
   matchDocument(doc, query) {
     for (const key in query) {
       if (!(key in doc)) return false;
-      
       const queryVal = query[key];
-      
-      // Fast path for common cases
-      if (queryVal === null) {
-        if (doc[key] !== null) return false;
-        continue;
-      }
-      
       if (typeof queryVal !== 'object') {
         if (doc[key] !== queryVal) return false;
-        continue;
-      }
-      
-      // Handle operators
-      for (const op in queryVal) {
-        const val = queryVal[op];
-        
-        switch (op) {
-          case '$gt': if (!(doc[key] > val)) return false; break;
-          case '$gte': if (!(doc[key] >= val)) return false; break;
-          case '$lt': if (!(doc[key] < val)) return false; break;
-          case '$lte': if (!(doc[key] <= val)) return false; break;
-          case '$ne': if (doc[key] === val) return false; break;
-          case '$in': if (!Array.isArray(val) || !val.includes(doc[key])) return false; break;
-          default: return false;
+      } else {
+        // Handle operators
+        for (const op in queryVal) {
+          const val = queryVal[op];
+          switch (op) {
+            case '$gt': if (!(doc[key] > val)) return false; break;
+            case '$gte': if (!(doc[key] >= val)) return false; break;
+            case '$lt': if (!(doc[key] < val)) return false; break;
+            case '$lte': if (!(doc[key] <= val)) return false; break;
+            case '$ne': if (doc[key] === val) return false; break;
+            case '$in': if (!Array.isArray(val) || !val.includes(doc[key])) return false; break;
+            default: return false;
+          }
         }
       }
     }
@@ -354,36 +260,28 @@ class Collection {
   }
 
   count(query = {}) {
-    // Fast path: count all
-    if (!Object.keys(query).length) return this.data.length;
+    if (!Object.keys(query).length) return this.data.size;
     
-    // Fast path: count by _id
-    if (query._id && typeof query._id === 'string') {
-      return this.indices.get('_id').has(query._id) ? 1 : 0;
-    }
-
-    // Check if we can use an index for a simple single-field query
     const fields = Object.keys(query);
-    if (fields.length === 1) {
+    if (fields.length === 1 && typeof query[fields[0]] !== 'object') {
       const field = fields[0];
       const value = query[field];
-      
-      if (typeof value !== 'object') {
-        this.ensureIndex(field);
-        if (this.indices.has(field)) {
-          return this.indices.get(field).has(value) ? 1 : 0;
+      this.ensureIndex(field);
+      if (this.indices.has(field)) {
+        const indexMap = this.indices.get(field);
+        if (indexMap.has(value)) {
+          return indexMap.get(value).size;
+        } else {
+          return 0;
         }
       }
     }
     
-    // Fallback to filtering
-    return this.data.filter(doc => this.matchDocument(doc, query)).length;
+    return this.find(query).length;
   }
 
   createIndex(field) {
-    if (this.indices.has(field)) return false;
-    this.ensureIndex(field);
-    return true;
+    return this.ensureIndex(field);
   }
 
   bulkWrite(operations) {
