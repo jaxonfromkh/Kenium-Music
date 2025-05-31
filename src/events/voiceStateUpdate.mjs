@@ -13,31 +13,23 @@ export const Event = {
 
         const guildId = oldState.guild.id;
         const player = client.aqua.players.get(guildId);
+        const botMember = oldState.guild.members.me;    
 
         if (!eventListenersRegistered) {
             registerEventListeners(client);
+            eventListenersRegistered = true;
         }
 
-        if (!player) {
-            await checkAndRejoin(client, guildId);
-            return;
-        }
-
-        const botMember = oldState.guild.members.cache.get(client.user?.id);
-        if (!botMember?.voice?.channelId) {
-            await checkAndRejoin(client, guildId);
-            return;
-        }
-
-        if (oldState.id === client.user.id && oldState.channelId && !newState.channelId) {
+        if (!player || !botMember?.voice?.channelId || 
+            (oldState.id === client.user.id && oldState.channelId && !newState.channelId)) {
             await checkAndRejoin(client, guildId);
             return;
         }
 
         const voiceChannel = botMember.voice.channel;
+        const is247Enabled = isTwentyFourSevenEnabled(guildId);
+
         if (voiceChannel && voiceChannel.members.filter(m => !m.user.bot).size === 0) {
-            const is247Enabled = isTwentyFourSevenEnabled(guildId);
-            
             if (!is247Enabled) {
                 startNoSongAddedTimeout(client, guildId, player);
             }
@@ -45,12 +37,8 @@ export const Event = {
             clearNoSongAddedTimeout(guildId);
         }
 
-        if (player && !player.playing && !player.paused) {
-            const is247Enabled = isTwentyFourSevenEnabled(guildId);
-            
-            if (!is247Enabled) {
-                startNoSongAddedTimeout(client, guildId, player);
-            }
+        if (player && !player.playing && !player.paused && !is247Enabled) {
+            startNoSongAddedTimeout(client, guildId, player);
         } else if (player && player.playing) {
             clearNoSongAddedTimeout(guildId);
         }
@@ -58,83 +46,77 @@ export const Event = {
 };
 
 function registerEventListeners(client) {
-    client.aqua.on('trackStart', (player) => {
+    const aqua = client.aqua;
+    
+    aqua.on('trackStart', (player) => {
         clearNoSongAddedTimeout(player.guild);
     });
     
-    client.aqua.on('queueEnd', (player) => {
-        const is247Enabled = isTwentyFourSevenEnabled(player.guild);
-        
-        if (!is247Enabled) {
+    aqua.on('queueEnd', (player) => {
+        if (!isTwentyFourSevenEnabled(player.guild)) {
             startNoSongAddedTimeout(client, player.guild, player);
         }
     });
     
-    client.aqua.on('playerDestroy', async (player) => {
+    aqua.on('playerDestroy', async (player) => {
+        if (!player?.guild || !player?.voiceChannel || !player?.textChannel) return;
         await rejoinOnDestroy(client, player.guild, player.voiceChannel, player.textChannel);
     });
-    
-    eventListenersRegistered = true;
 }
 
 async function rejoinOnDestroy(client, guildId, voiceChannelId, textChannelId) {
+    if (!isTwentyFourSevenEnabled(guildId)) return;
+
     try {
-        const is247Enabled = isTwentyFourSevenEnabled(guildId);
-        
-        if (is247Enabled) {
-            let player = client.aqua.players.get(guildId);
-            
-            if (!player) {
-                if (!voiceChannelId || !textChannelId) {
-                    const channelIds = getChannelIds(guildId);
-                    if (channelIds) {
-                        voiceChannelId = channelIds.voiceChannelId;
-                        textChannelId = channelIds.textChannelId;
-                    } else {
-                        console.error(`No channel IDs found for guild ${guildId}`);
-                        return;
-                    }
-                }
-                
-                const guild = client.guilds.cache.get(guildId);
-                if (!guild) {
-                    console.error(`Guild ${guildId} not found`);
-                    return;
-                }
-                
-                const voiceChannel = await guild.channels.fetch(voiceChannelId).catch(() => null);
-                if (!voiceChannel) {
-                    console.error(`Voice channel ${voiceChannelId} not found in guild ${guildId}`);
-                    return;
-                }
-                
-                await new Promise(resolve => setTimeout(resolve, 5000));
-                
-                player = await client.aqua.createConnection({
-                    guildId: guildId,
-                    voiceChannel: voiceChannelId,
-                    textChannel: textChannelId,
-                    deaf: true,
-                    defaultVolume: 65,
-                });
+        let player = client.aqua.players.get(guildId);
+        if (player) return; 
+
+        if (!voiceChannelId || !textChannelId) {
+            const channelIds = getChannelIds(guildId);
+            if (!channelIds?.voiceChannelId || !channelIds?.textChannelId) {
+                console.error(`No valid channel IDs for guild ${guildId}`);
+                return;
             }
+            voiceChannelId = channelIds.voiceChannelId;
+            textChannelId = channelIds.textChannelId;
         }
+
+        const guild = client.guilds.cache.get(guildId);
+        if (!guild) {
+            console.error(`Guild ${guildId} not found`);
+            return;
+        }
+
+        const voiceChannel = await guild.channels.fetch(voiceChannelId).catch(() => null);
+        if (!voiceChannel?.joinable) {
+            console.error(`Voice channel ${voiceChannelId} not found or unjoinable in guild ${guildId}`);
+            return;
+        }
+
+        await new Promise(resolve => setTimeout(resolve, 5000));
+
+        await client.aqua.createConnection({
+            guildId,
+            voiceChannel: voiceChannelId,
+            textChannel: textChannelId,
+            deaf: true,
+            defaultVolume: 65,
+        });
     } catch (error) {
         console.error(`Failed to rejoin voice channel in guild ${guildId}:`, error);
     }
 }
 
 async function checkAndRejoin(client, guildId) {
-    const is247Enabled = isTwentyFourSevenEnabled(guildId);
-    
-    if (is247Enabled) {
-        const channelIds = getChannelIds(guildId);
-        if (channelIds) {
-            await rejoinOnDestroy(client, guildId, channelIds.voiceChannelId, channelIds.textChannelId);
-        } else {
-            console.error(`No channel IDs found for guild ${guildId} despite 24/7 mode being enabled`);
-        }
+    if (!isTwentyFourSevenEnabled(guildId)) return;
+
+    const channelIds = getChannelIds(guildId);
+    if (!channelIds?.voiceChannelId || !channelIds?.textChannelId) {
+        console.error(`No valid channel IDs for guild ${guildId} despite 24/7 mode`);
+        return;
     }
+
+    await rejoinOnDestroy(client, guildId, channelIds.voiceChannelId, channelIds.textChannelId);
 }
 
 function clearNoSongAddedTimeout(guildId) {
@@ -146,52 +128,48 @@ function clearNoSongAddedTimeout(guildId) {
 }
 
 async function startNoSongAddedTimeout(client, guildId, player) {
-    clearNoSongAddedTimeout(guildId);
-    
-    noSongAddedTimeouts.set(guildId, setTimeout(async () => {
+    clearNoSongAddedTimeout(guildId); 
+
+    const timeoutId = setTimeout(async () => {
         try {
-            const is247Enabled = isTwentyFourSevenEnabled(guildId);
-            
-            if (is247Enabled) {
+            if (isTwentyFourSevenEnabled(guildId)) {
                 clearNoSongAddedTimeout(guildId);
                 return;
             }
-            
+
             const currentPlayer = client.aqua?.players?.get(guildId);
-            if (!currentPlayer) return;
-            
-            if (currentPlayer.playing) {
+            if (!currentPlayer || currentPlayer.playing) {
                 clearNoSongAddedTimeout(guildId);
                 return;
             }
-            
+
             if (!currentPlayer.textChannel) {
                 currentPlayer.destroy();
                 return;
             }
-            
+
             const textChannel = await client.channels.fetch(currentPlayer.textChannel).catch(() => null);
             if (textChannel?.isTextBased()) {
                 const embed = new EmbedBuilder()
                     .setColor(0)
                     .setDescription("No song added in 3 minutes, disconnecting...\nUse the `/24_7` command to keep the bot in voice channel.")
                     .setFooter({ text: "Automatically destroying player" });
-                    
+
                 const message = await textChannel.send({ embeds: [embed] }).catch(() => null);
-                
                 if (message) {
-                    setTimeout(() => {
-                        message.delete().catch(() => {});
-                    }, 10000);
+                    setTimeout(() => message.delete().catch(() => {}), 10000);
                 }
             }
-            
+
             currentPlayer.destroy();
+            noSongAddedTimeouts.delete(guildId);
         } catch (error) {
             console.error(`Error in timeout handler for guild ${guildId}:`, error);
-            if (client.aqua?.players?.get(guildId)) {
-                client.aqua.players.get(guildId).destroy();
-            }
+            const player = client.aqua?.players?.get(guildId);
+            if (player) player.destroy();
+            noSongAddedTimeouts.delete(guildId);
         }
-    }, NO_SONG_ADDED_TIMEOUT));
+    }, NO_SONG_ADDED_TIMEOUT);
+
+    noSongAddedTimeouts.set(guildId, timeoutId);
 }
