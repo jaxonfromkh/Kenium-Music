@@ -10,7 +10,7 @@ Tired of bots that nickel-and-dime you for basic features or demand votes like a
 - **No paywalls**, no "premium" tiers, no ads. Play tracks from YouTube, Spotify, SoundCloud, or Vimeo—**zero cash needed**.  
 
 ⏱️ **24/7 Uptime, Zero Downtime**  
-- Hosted on **Diva Hosting** for rock-solid reliability. Your music never stops.  
+- Hosted on **Galact Hosting** for rock-solid reliability. Your music never stops.  
 
 🤖 **Simplicity Over Complexity**  
 - Type `/play [song]` and **boom**—music starts. No labyrinthine commands.  
@@ -65,6 +65,9 @@ Start the bot:
 
 node bot.mjs     
 ````
+
+**Setup guide in video: https://www.youtube.com/watch?v=5etqxAG9tVg**
+
 
 # Contribute
 
