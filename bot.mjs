@@ -266,7 +266,7 @@ aqua.on("trackStart", async (player, track) => {
       flags: ["4096", "32768"]
     });
 
-    ChannelManager.updateVoiceStatus(player.voiceChannel, `⭐ ${track.info.title} - Kenium 3.4.2`, token);
+    ChannelManager.updateVoiceStatus(player.voiceChannel, `⭐ ${track.info.title} - Kenium 3.5.0`, token);
   } catch (error) {
     console.error("Track start error:", error);
   }
@@ -277,7 +277,7 @@ aqua.on("trackError", async (player, track, payload) => {
   const channel = ChannelManager.getChannel(client, player.textChannel);
   if (!channel) return;
 
-  console.log(player, track, payload);
+  console.log(payload.exception.message);
 
   try {
     await channel.send({
@@ -312,7 +312,7 @@ client.on('interactionCreate', async (interaction) => {
   const { customId } = interaction;
 
   if (!['volume_down', 'previous', 'pause', 'resume', 'skip', 'volume_up'].includes(customId)) {
-    return;
+    return 
   }
   const player = aqua.players.get(interaction.guildId);
 
