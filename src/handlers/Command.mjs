@@ -11,6 +11,7 @@ class CommandHandler {
         this.rootPath = rootPath;
         this.rest = new REST({ version: "10" }).setToken(token);
         this.commandsDir = `${rootPath}/src/commands`;
+        this.messageCommandsDir = `${rootPath}/src/messagecmds`;
     }
 
     async loadCommands() {
@@ -19,7 +20,6 @@ class CommandHandler {
             absolute: true,
             onlyFiles: true,
             followSymbolicLinks: false,
-            concurrency: 50
         });
 
         const commands = [];
@@ -29,6 +29,9 @@ class CommandHandler {
             const cmd = await this.loadCommand(file);
             if (cmd) commands.push(cmd);
         }
+
+        // Load message commands as well
+        await this.loadMessageCommands();
 
         return commands;
     }
@@ -50,6 +53,27 @@ class CommandHandler {
         } catch (err) {
             console.error(`Error loading command from ${commandFile}:`, err);
             return null;
+        }
+    }
+
+    async loadMessageCommands() {
+        const files = await glob('**/*.mjs', {
+            cwd: this.messageCommandsDir,
+            absolute: true,
+            onlyFiles: true,
+            followSymbolicLinks: false,
+        });
+
+        this.client.messageCommands = new Map();
+
+        for (const file of files) {
+            try {
+                const { Command } = await import(`file://${file}`);
+                if (!Command?.name || Command?.ignore) continue;
+                this.client.messageCommands.set(Command.name, Command);
+            } catch (err) {
+                console.error(`Error loading message command from ${file}:`, err);
+            }
         }
     }
 
