@@ -1,6 +1,6 @@
 {
 	"dependencies": {
-		"aqualink": "2.6.0",
+		"aqualink": "2.6.1-fix",
 		"discord.js": "^14.19.1",
 		"dotenv": "^16.5.0",
 		"tiny-glob": "^0.2.9",
