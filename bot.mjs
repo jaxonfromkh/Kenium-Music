@@ -18,8 +18,9 @@ const client = new Client({
     GatewayIntentBits.Guilds,
     GatewayIntentBits.GuildMessages,
     GatewayIntentBits.DirectMessages,
-    GatewayIntentBits.GuildVoiceStates
-  ]
+    GatewayIntentBits.GuildVoiceStates,
+    process.env.PREFIX_ENABLED === 'true' ? GatewayIntentBits.MessageContent : undefined
+  ].filter(Boolean)
 });
 
 const aqua = new Aqua(client, [{
