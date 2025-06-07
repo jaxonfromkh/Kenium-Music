@@ -14,7 +14,7 @@ export const Command = {
   run: async (client, message) => { 
     const player = client.aqua.players.get(message.guildId);
     if (!player || !message.member.voice.channel || message.guild.members.me.voice.channelId !== message.member.voice.channelId) return;
-    const volume = message.options.getInteger("volume", true);
+    const volume = Number(message.content.split(" ")[1]) || 100;
     if (volume < 0 || volume > 200) {
       return message.reply({
         embeds: [
