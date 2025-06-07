@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync, writeFileSync, readFileSync } from 'fs';
 import { join } from 'path';
 import { randomBytes } from 'crypto';
-import tinyGlob from 'tiny-glob';
+import fg from 'fast-glob';
 
 class SimpleDB {
   constructor(options = {}) {
@@ -15,7 +15,7 @@ class SimpleDB {
   }
 
   async init() {
-    const files = await tinyGlob('*.json', { cwd: this.dbPath });
+    const files = await fg('*.json', { cwd: this.dbPath });
     files.forEach(file => this.collections.set(file.replace('.json', ''), true));
     return this;
   }

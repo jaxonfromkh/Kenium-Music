@@ -9,7 +9,7 @@ export const Event = {
     run: async (client) => {
         client.aqua.init(client.user.id);
 
-        client.user.setActivity({ name: "🌊 Kenium", type: 2 });
+        client.user.setActivity({ name: "🌊 Kenium", type: 4 });
  
         client.user.setStatus("idle");
         console.log(`logged in ${client.user.tag}`)
@@ -38,7 +38,7 @@ export const Event = {
                                 deaf: true,
                                 defaultVolume: 65,
                             });
-                            
+    
                             
                             const botMember = guild.members.me;
                             if (botMember && !botMember.nickname?.includes("[24/7]")) {

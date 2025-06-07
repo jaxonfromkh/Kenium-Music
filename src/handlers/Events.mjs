@@ -1,4 +1,4 @@
-import glob from 'tiny-glob';
+import fg from 'fast-glob';
 import path from 'path';
 
 class EventHandler {
@@ -12,7 +12,7 @@ class EventHandler {
 
     async loadEvents() {
         try {
-            const eventFiles = await glob('*.mjs', {
+            const eventFiles = await fg('*.mjs', {
                 cwd: this.eventsDir,
                 onlyFiles: true
             });

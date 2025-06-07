@@ -50,6 +50,7 @@ export const Command = {
         }
 
         try {
+            // Await only what's necessary, avoid unnecessary awaits
             const result = await client.aqua.resolve({
                 query: file.url,
                 requester: interaction.user

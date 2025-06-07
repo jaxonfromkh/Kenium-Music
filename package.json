@@ -1,14 +1,15 @@
 {
 	"dependencies": {
-		"aqualink": "2.6.1-fix",
-		"discord.js": "^14.19.1",
+		"@discordjs/ws": "^2.0.2",
+		"aqualink": "2.6.0",
+		"discord.js": "^14.19.2",
 		"dotenv": "^16.5.0",
-		"tiny-glob": "^0.2.9",
+		"fast-glob": "^3.3.3",
 		"zlib-sync": "^0.1.9"
 	},
 	"main": "bot.mjs",
 	"name": "toddys-music",
-	"version": "3.3.0",
+	"version": "3.5.0",
 	"type": "module",
 	"scripts": {
 		"start": "node bot.mjs"
@@ -19,5 +20,10 @@
 	},
 	"optionalDependencies": {
 		"bufferutil": "^4.0.9"
+	},
+	"pnpm": {
+		"ignoredBuiltDependencies": [
+			"zlib-sync"
+		]
 	}
 }

@@ -62,10 +62,8 @@ export const Command = {
         player.queue.splice(trackIndex, 1);
         
         const embed = new EmbedBuilder()
-            .setTitle('🗑️ Track Removed')
-            .setDescription(`Removed [${removedTrack.info.title}](${removedTrack.info.uri}) from the queue.`)
-            .setColor(15548997)
-            .setTimestamp();
+            .setColor(0)
+            .setDescription(`🗑️ **Removed:** [${removedTrack.info.title}](${removedTrack.info.uri})`);
         
         return interaction.reply({ embeds: [embed] });
     },

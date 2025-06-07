@@ -1,6 +1,6 @@
     import 'dotenv/config';
     import { REST, Routes } from "discord.js";
-    import glob from 'tiny-glob';
+    import fg from 'fast-glob';
 
     const token = process.env.token;
     const id = process.env.id;
@@ -15,7 +15,7 @@
         }
 
         async loadCommands() {
-            const files = await glob('**/*.mjs', {
+            const files = await fg('**/*.mjs', {
                 cwd: this.commandsDir,
                 absolute: true,
                 onlyFiles: true,
@@ -59,7 +59,7 @@
         async loadMessageCommands() {
             if (process.env.PREFIX_ENABLED !== 'true') return console.log("Message commands loading is disabled.");
             console.log("Loading message commands...");
-            const files = await glob('**/*.mjs', {
+            const files = await fg('**/*.mjs', {
                 cwd: this.messageCommandsDir,
                 absolute: true,
                 onlyFiles: true,

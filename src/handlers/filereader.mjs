@@ -1,8 +1,8 @@
-import glob from 'tiny-glob';
+import fg from 'fast-glob';
 
 export async function* FilereaderGenerator(dir) {
     try {
-        const files = await glob('**/*.mjs', {
+        const files = await fg('**/*.mjs', {
             cwd: dir,
             absolute: true,
             onlyFiles: true,

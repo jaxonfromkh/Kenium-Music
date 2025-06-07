@@ -1,6 +1,5 @@
 import { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
 
-// Configuration object with all settings
 const CONFIG = {
     GITHUB: {
         API_URL: 'https://api.github.com/repos/ToddyTheNoobDud/Kenium-Music/commits',
@@ -9,12 +8,14 @@ const CONFIG = {
         ISSUES_URL: 'https://github.com/ToddyTheNoobDud/Kenium-Music/issues/new',
     },
     BOT: {
-        VERSION: '3.2.1',
+        VERSION: '3.5.0',
         DEVELOPER: "mushroom0162",
         CHANGELOG: [
-            "✨ Rewrited All of the playlists to be better looking, faster and more efficient.",
-            "✨ Updated to aqualink 2.6.0",
-            "🚀 Fixed vc status not beign cleaned on queue end.",
+            `✨ Rewrited the playlist system, it's now much more efficient.`,
+            `🐛 Improved the play-file command performance.`,        
+            `🐛 Fixed some body errors returned by discord.`,
+            `✨ Rewrited the database handler, it's now much more efficient and faster.`,
+            `Released at: <t:1748636520:R>`
         ]
     },
     COLORS: { 

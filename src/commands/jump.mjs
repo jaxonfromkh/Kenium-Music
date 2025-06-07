@@ -27,6 +27,7 @@ export const Command = {
         const focusedValue = focusedOption.value.toLowerCase();
         const results = [];
 
+        // Handle position option
         if (focusedOption.name === "position") {
             for (let i = 0; i < player.queue.length && results.length < 25; i++) {
                 const title = player.queue[i].info.title;
@@ -36,7 +37,7 @@ export const Command = {
                 }
             }
         }
-
+        // Handle name option
         else if (focusedOption.name === "name") {
             for (let i = 0; i < player.queue.length && results.length < 25; i++) {
                 const title = player.queue[i].info.title;
@@ -55,12 +56,14 @@ export const Command = {
 
         if (!player || interaction.guild.members.me.voice.channelId !== interaction.member.voice.channelId) return;
         
+        // Check if either position or name is provided
         if (!position && !name) {
             return interaction.reply({ content: "Please provide either a position or a song name", flags: 64 });
         }
 
         const queueLength = player.queue.length;
         
+        // Handle position-based jumping
         if (position) {
             if (position < 1 || position > queueLength) {
                 return interaction.reply({ content: `Position must be between 1 and ${queueLength}`, flags: 64 });
@@ -70,6 +73,7 @@ export const Command = {
             return interaction.reply({ content: `Jumped to song ${position}`, flags: 64 });
         }
         
+        // Handle name-based jumping
         if (name) {
             const songIndex = player.queue.findIndex(song => song.info.title === name);
             
