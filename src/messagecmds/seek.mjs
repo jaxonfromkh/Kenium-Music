@@ -14,13 +14,21 @@ export const Command = {
         const vc = member?.voice?.channel;
         if (!vc || guild.members.me.voice.channelId !== vc.id) return;
 
+        const args = message.content.split(" ").slice(1);
+        if (args.length === 0) {
+            return message.reply({ content: "Please provide a position in seconds to seek to", flags: 64 });
+        }
+
         const player = client.aqua.players.get(guild.id);
         if (!player) return;
 
-        const position = message.options.getInteger("position");
+        const position = Number(args[0]);
+        if (isNaN(position)) return message.reply({ content: "Invalid position", flags: 64 });
+
         player.seek(position * 1000);
 
         return message.reply({ content: `Seeked to ${position} seconds`, flags: 64 });
     }
 }
+
 
