@@ -1,5 +1,5 @@
 import 'dotenv/config';
-import { Client, GatewayIntentBits, ContainerBuilder } from "discord.js";
+import { Client, GatewayIntentBits, ContainerBuilder, Options, Partials } from "discord.js";
 import { fileURLToPath } from "node:url";
 import { dirname } from "node:path";
 import https from "node:https";
@@ -20,7 +20,74 @@ const client = new Client({
     GatewayIntentBits.DirectMessages,
     GatewayIntentBits.GuildVoiceStates,
     process.env.PREFIX_ENABLED === 'true' ? GatewayIntentBits.MessageContent : undefined
-  ].filter(Boolean)
+  ].filter(Boolean),
+  
+  makeCache: Options.cacheWithLimits({
+    MessageManager: {
+      maxSize: 100,
+      keepOverLimit: (message) => message.author.id === client.user?.id
+    },
+    ThreadManager: 50,
+    UserManager: 200,
+    GuildMemberManager: 100,
+    PresenceManager: 0,
+    ReactionManager: 25,
+    StageInstanceManager: 0,
+    GuildBanManager: 0,
+    GuildInviteManager: 0,
+    ApplicationCommandManager: 25,
+    BaseGuildEmojiManager: 50,
+    GuildEmojiManager: 50,
+    GuildStickerManager: 25
+  }),
+  
+  sweepers: {
+    messages: {
+      interval: 300,
+      lifetime: 1800
+    },
+    users: {
+      interval: 300,
+      filter: (user) => user?.bot && (!client.user || user.id !== client.user.id)
+    },
+    threads: {
+      interval: 300,
+      lifetime: 3600
+    }
+  },
+  
+  partials: [
+    Partials.Channel,
+    Partials.Message
+  ],
+  
+  rest: {
+    timeout: 15000,
+    retries: 2,
+    rejectOnRateLimit: ['global'],
+    restRequestTimeout: 10000
+  },
+  
+  ws: {
+    compress: true,
+    identifyProperties: {
+      browser: "Discord iOS",
+      device: "Discord iOS",
+    },
+    presence: {
+      status: 'idle',
+      activities: []
+    }
+  },
+  
+  allowedMentions: {
+    parse: ['users'],
+    repliedUser: false
+  },
+  
+  failIfNotExists: false,
+  
+  closeTimeout: 5000
 });
 
 const aqua = new Aqua(client, [{
