@@ -108,6 +108,8 @@ export const Command = {
       ['import', (i, id) => importPlaylist(i, id, client)]
     ]);
 
+    if (interaction.guild.members.me.voice.channelId !== interaction.member.voice.channelId) return;
+
     const handler = commandHandlers.get(subcommand);
     return handler ? await handler(interaction, userId) : await interaction.reply({ embeds: [createErrorEmbed("Unknown subcommand")], flags: 64 });
   },
