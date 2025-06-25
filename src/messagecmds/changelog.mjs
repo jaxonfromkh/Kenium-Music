@@ -8,7 +8,7 @@ const CONFIG = {
         ISSUES_URL: 'https://github.com/ToddyTheNoobDud/Kenium-Music/issues/new',
     },
     BOT: {
-        VERSION: '3.5.0',
+        VERSION: '3.6.0',
         DEVELOPER: "mushroom0162",
         CHANGELOG: [
             `✨ Rewrited the playlist system, it's now much more efficient.`,

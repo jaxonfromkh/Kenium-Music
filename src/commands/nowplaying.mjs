@@ -39,7 +39,7 @@ export const Command = {
         const embed = new EmbedBuilder()
             .setColor(0)
             .setAuthor({
-                name: '🎵 Kenium 3.5.0',
+                name: '🎵 Kenium 3.6.0',
                 iconURL: client.user.displayAvatarURL(),
                 url: 'https://github.com/ToddyTheNoobDud/Kenium-Music'
             })

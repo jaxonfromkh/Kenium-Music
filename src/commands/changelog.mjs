@@ -8,14 +8,17 @@ const CONFIG = {
         ISSUES_URL: 'https://github.com/ToddyTheNoobDud/Kenium-Music/issues/new',
     },
     BOT: {
-        VERSION: '3.5.0',
+        VERSION: '3.6.0',
         DEVELOPER: "mushroom0162",
         CHANGELOG: [
-            `✨ Rewrited the playlist system, it's now much more efficient.`,
-            `🐛 Improved the play-file command performance.`,        
-            `🐛 Fixed some body errors returned by discord.`,
-            `✨ Rewrited the database handler, it's now much more efficient and faster.`,
-            `Released at: <t:1748636520:R>`
+            `✨ Kenium 3.6.0 Improved the voice performance (makes the bot reconnect, check for events, etc. Much faster for the voiceStateUpdate)`,
+            `🐛 Improved 24/7 performance (makes it read the DB and edit way faster)`,
+            `✨ Added all prefix commands, total 32 files (my hands are gone 🔥), gotta wait for discord to get me message content access`,
+            `✨ Added help command.`,
+            `✨ Converted from tiny-glob to fast-glob, for way faster file reading, and less memory hogging`,
+            `✨ Implemented an experimental optimization on djs settings (Improving startup, bot daily usage, etc)`,
+            `✨ Updated all packages to the latest version`,
+            `Updated on: <t:1749582840:R>`
         ]
     },
     COLORS: { 

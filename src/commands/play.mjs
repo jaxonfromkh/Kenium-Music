@@ -246,6 +246,7 @@ export const Command = {
         embed.setDescription(
           `Added [${result.playlistInfo.name}](${query}) playlist (${result.tracks.length} tracks) to the queue.`
         );
+        embed.setThumbnail(result.playlistInfo.thumbnail);
         break;
       }
       default:

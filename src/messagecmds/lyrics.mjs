@@ -182,7 +182,7 @@ async function displayLyricsUI(replyMsg, author, { lyrics, track, lines, source,
 
     collector.on('collect', async (i) => {
         if (i.user.id !== author.id) {
-            return i.reply({ content: "❌ These controls aren't for you", ephemeral: true });
+            return i.reply({ content: "❌ These controls aren't for you", flags: 64 });
         }
 
         switch (i.customId) {

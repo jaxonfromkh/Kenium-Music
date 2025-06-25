@@ -1,4 +1,4 @@
-import glob from 'tiny-glob';
+import fg from 'fast-glob';
 import { join, dirname } from 'path';
 import { fileURLToPath, pathToFileURL } from 'url';
 import { 
@@ -52,7 +52,7 @@ async function getCommands() {
     return commandsCache;
   }
   
-  const files = await glob('*.mjs', { cwd: commandsDir });
+  const files = await fg('*.mjs', { cwd: commandsDir });
   const commandFiles = files.filter(file => file !== 'help.mjs');
   
   const commands = await Promise.all(
@@ -230,7 +230,7 @@ export const Command = {
         if (interaction.user.id !== message.author.id) {
           await interaction.reply({
             content: 'Only the command user can interact with this menu.',
-            ephemeral: true
+            flags: 64
           });
           return;
         }
@@ -249,7 +249,7 @@ export const Command = {
         if (interaction.user.id !== message.author.id) {
           await interaction.reply({
             content: 'Only the command user can interact with this menu.',
-            ephemeral: true
+            flags: 64
           });
           return;
         }

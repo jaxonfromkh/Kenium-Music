@@ -34,7 +34,7 @@ Ain't nobody got time for cash-grabbing bots or democracy-for-a-playlist schemes
         `.trim())
         .setTimestamp()
         .setFooter({
-            text: 'By mushroom0162 | Kenium v3.5.0',
+            text: 'By mushroom0162 | Kenium v3.6.0',
             iconURL: client.user.displayAvatarURL()
         })
         .setThumbnail(client.user.displayAvatarURL());

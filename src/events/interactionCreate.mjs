@@ -1,3 +1,5 @@
+
+
 export const Event = {
     name: "interactionCreate",
     async run(client, interaction) {
@@ -6,6 +8,14 @@ export const Event = {
                 const command = client.slashCommands.get(interaction.commandName);
                 if (command?.autocomplete) {
                     await command.autocomplete(client, interaction);
+                }
+                return;
+            }
+
+            if (interaction.isModalSubmit()) {
+                const modal = client.modals.get(interaction.customId);
+                if (modal) {
+                    await modal.run(client, interaction);
                 }
                 return;
             }
@@ -21,3 +31,4 @@ export const Event = {
         }
     },
 };
+

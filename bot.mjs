@@ -1,9 +1,10 @@
 import 'dotenv/config';
-import { Client, GatewayIntentBits, ContainerBuilder, Options, Partials } from "discord.js";
+import { Client, GatewayIntentBits, ContainerBuilder, Options, Partials, Collection } from "discord.js";
 import { fileURLToPath } from "node:url";
 import { dirname } from "node:path";
 import https from "node:https";
 import { createRequire } from "node:module";
+import { PlaylistButtonHandler } from "./src/commands/playlist.mjs";
 
 const require = createRequire(import.meta.url);
 const { Aqua } = require('aqualink');
@@ -12,7 +13,6 @@ const { token, NODE_HOST, NODE_PASSWORD, NODE_PORT, NODE_NAME } = process.env;
 const UPDATE_INTERVAL_MS = 10_000;
 const __dirname = dirname(fileURLToPath(import.meta.url));
 export const rootPath = __dirname;
-
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
@@ -48,7 +48,15 @@ const client = new Client({
     },
     users: {
       interval: 300,
-      filter: (user) => user?.bot && (!client.user || user.id !== client.user.id)
+      filter: () => {
+        // Return a function that will be called for each user
+        return (user) => {
+          // Only sweep bot users, but never sweep the client user itself
+          if (!user?.bot) return false;
+          if (!client.user) return false; // Don't sweep if client isn't ready
+          return user.id !== client.user.id;
+        };
+      }
     },
     threads: {
       interval: 300,
@@ -101,15 +109,16 @@ const aqua = new Aqua(client, [{
   restVersion: "v4",
   shouldDeleteMessage: true,
   infiniteReconnects: true,
-  autoResume: true,
+  autoResume: false,
   leaveOnEnd: false,
 });
 
 client.aqua = aqua;
-client.slashCommands = new Map();
-client.events = new Map();
-client.selectMenus = new Map();
-client.buttons = new Map();
+client.slashCommands = new Collection();
+client.events = new Collection();
+client.selectMenus = new Collection();
+client.buttons = new Collection();
+client.modals = new Collection();
 
 class LRUCache {
   constructor(maxSize = 500) {
@@ -214,7 +223,6 @@ class ChannelManager {
 function createTrackEmbed(client, player, track) {
   const { position, volume, loop } = player;
   const { title, uri, length } = track;
-
 
   const progress = Math.min(12, Math.max(0, Math.round((position / length) * 12)));
   const progressBar = PROGRESS_BARS[progress];
@@ -334,7 +342,7 @@ aqua.on("trackStart", async (player, track) => {
       flags: ["4096", "32768"]
     });
 
-    ChannelManager.updateVoiceStatus(player.voiceChannel, `⭐ ${track.info.title} - Kenium 3.5.0`, token);
+    ChannelManager.updateVoiceStatus(player.voiceChannel, `⭐ ${track.info.title} - Kenium 3.6.0`, token);
   } catch (error) {
     console.error("Track start error:", error);
   }
@@ -378,6 +386,8 @@ client.on('interactionCreate', async (interaction) => {
   if (!interaction.isButton()) return;
 
   const { customId } = interaction;
+
+    await PlaylistButtonHandler.run(client, interaction);
 
   if (!['volume_down', 'previous', 'pause', 'resume', 'skip', 'volume_up'].includes(customId)) {
     return 
@@ -448,6 +458,13 @@ client.on('interactionCreate', async (interaction) => {
     interaction.reply({ content: '❌ An error occurred', flags: 64 }).catch(() => { });
   }
 });
+
+process.on('SIGINT', async () => {
+  console.log('SIGINT received, shutting down...');
+  await aqua.savePlayer();
+  process.exit(0);
+})
+
 
 aqua.on('nodeError', (node, error) => console.error(`Node error: ${error.message}`));
 aqua.on('nodeConnect', (node) => console.log(`Node connected: ${node.name}`));
