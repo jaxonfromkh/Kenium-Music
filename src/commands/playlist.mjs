@@ -228,7 +228,7 @@ export const Command = {
       add: () => addTrackToPlaylist(interaction, userId, client),
       remove: () => removeTrackFromPlaylist(interaction, userId),
       view: () => viewPlaylists(interaction, userId),
-      play: () => playPlaylist(client, interaction, userId, interaction.options.getString("playlist"), interaction.options.getBoolean("shuffle") || false),
+      play: () => playPlaylist(client, interaction, userId, interaction.options.getString("name"), interaction.options.getBoolean("shuffle") || false),
       delete: () => deletePlaylist(interaction, userId),
       export: () => exportPlaylist(interaction, userId),
       import: () => importPlaylist(interaction, userId, client),
@@ -376,8 +376,8 @@ function createEmbed(type, title, description = null, fields = []) {
     .setTitle(`${icons[type] || icons.default} ${title}`)
     .setTimestamp()
     .setFooter({
-      text: `${ICONS.diamond} Kenium Music • Advanced Playlist System`,
-      iconURL: 'https://cdn.discordapp.com/emojis/1234567890123456789.png'
+      text: `${ICONS.diamond} Kenium Music • Playlist System`,
+      iconURL: 'https://toddythenoobdud.github.io/0a0f3c0476c8b495838fa6a94c7e88c2.png'
     });
 
   if (description) {
@@ -1182,6 +1182,13 @@ async function showPlaylistDetails(interaction, userId, playlistName) {
 }
 
 async function playPlaylist(client, interaction, userId, playlistName, shuffle) {
+
+  if (!playlistName) {
+    return await interaction.reply({
+      embeds: [createEmbed('error', 'No Playlist Selected', 'You must specify a playlist to play.')],
+      flags: 64
+    });
+  }
 
   const playlist = playlistsCollection.findOne({ userId, name: playlistName });
   if (!playlist) {
