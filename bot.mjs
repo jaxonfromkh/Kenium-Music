@@ -79,7 +79,6 @@ Object.assign(client, {
 
 const channelCache = new Map();
 const lastUpdates = new Map();
-const lyricsMessages = new Map();
 const PROGRESS_CHARS = ['', '█', '██', '███', '████', '█████', '██████', '███████', '████████', '█████████', '██████████', '███████████', '████████████'];
 
 const formatTime = ms => {
@@ -216,7 +215,7 @@ aqua.on("trackStart", async (player, track) => {
     const embed = createEmbed(player, track);
     player.cachedEmbed = embed;
     player.nowPlayingMessage = await channel.send({ components: [embed], flags: ["4096", "32768"] });
-    updateVoiceStatus(player.voiceChannel, `⭐ ${track.info.title} - Kenium 3.7.1`);
+    updateVoiceStatus(player.voiceChannel, `⭐ ${track.info.title} - Kenium 3.70`);
   } catch (e) {
     console.error("Track start error:", e);
   }
@@ -235,15 +234,11 @@ aqua.on("trackError", async (player, track, payload) => {
 aqua.on("playerDestroy", player => {
   updateVoiceStatus(player._lastVoiceChannel || player.voiceChannel, null);
   player.nowPlayingMessage = null;
-  lyricsMessages.delete(player.guildId);
-  player.unsubscribeLiveLyrics?.();
 });
 
 aqua.on("queueEnd", player => {
   updateVoiceStatus(player.voiceChannel, null);
   player.nowPlayingMessage = null;
-  lyricsMessages.delete(player.guildId);
-  player.unsubscribeLiveLyrics?.();
 });
 
 client.on('interactionCreate', async interaction => {
@@ -306,60 +301,6 @@ client.on('interactionCreate', async interaction => {
     interaction.reply({ content: '❌ Error occurred', flags: 64 }).catch(() => {});
   }
 });
-aqua.on("lyricsLine", (player, track, payload) => {
-  const channel = getChannel(player.textChannel);
-  if (!channel?.send) return;
-
-  const { lineIndex, line } = payload;
-  const embed = {
-    title: `Lyrics: ${track.info.title}`,
-    description: `**${line.line}**\n\n\`${formatTime(line.timestamp)} / ${formatTime(track.info.length)}\` (Line ${lineIndex + 1})`,
-    color: 0
-  };
-
-  let msgs = lyricsMessages.get(player.guildId);
-
-  if (Array.isArray(msgs) && msgs.length > 0 && msgs[0]._lastLineIndex !== undefined && Math.abs(lineIndex - msgs[0]._lastLineIndex) > 1) {
-    for (const m of msgs) m.delete().catch(() => {});
-    lyricsMessages.delete(player.guildId);
-    msgs = null;
-  }
-
-  const lastContent = Array.isArray(msgs) && msgs.length > 0 ? msgs[0]?.embeds?.[0]?.description : undefined;
-  if (lastContent === embed.description) return;
-
-  if (Array.isArray(msgs) && msgs.length > 0) {
-    Promise.all(msgs.map(msg =>
-      msg.edit({ embeds: [embed] })
-        .then(edited => { edited._lastLineIndex = lineIndex; return edited; })
-        .catch(() => null)
-    )).then(editedMsgs => {
-      lyricsMessages.set(player.guildId, editedMsgs.filter(Boolean));
-    });
-  } else {
-    channel.send({ embeds: [embed] })
-      .then(sent => {
-        sent._lastLineIndex = lineIndex;
-        lyricsMessages.set(player.guildId, [sent]);
-      })
-      .catch(() => lyricsMessages.delete(player.guildId));
-  }
-});
-
-aqua.on("trackEnd", player => lyricsMessages.delete(player.guildId) && player.unsubscribeLiveLyrics?.() );
-aqua.on("lyricsFound", (player, track, payload) => console.log(`Lyrics found: ${track.info.title}`));
-aqua.on("lyricsNotFound", (player, track) => {
-  const channel = getChannel(player.textChannel);
-  if (!channel?.send) return;
-
-  const messageContent = `❌ No lyrics found for **${track.info.title}**`;
-  const timeout = setTimeout(() => channel.send({ content: messageContent })
-    .then(m => m.delete().catch(() => {}))
-    .catch(() => {}), 8000);
-  clearTimeout(updateTimeout);
-  updateTimeout = timeout;
-  player.unsubscribeLiveLyrics?.();
-});
 
 process.on('SIGINT', async () => {
   console.log('Shutting down...');
@@ -369,6 +310,7 @@ process.on('SIGINT', async () => {
 
 aqua.on('nodeError', (node, error) => console.error(`Node error: ${error.message}`));
 aqua.on('nodeConnect', node => console.log(`Node connected: ${node.name}`));
+aqua.on("debug", message => console.debug(`[Aqua/Debug] ${message}`));
 
 Promise.all([
   import("./src/handlers/Command.mjs").then(({ CommandHandler }) => new CommandHandler(client, rootPath).refreshCommands()),
