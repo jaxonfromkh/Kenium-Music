@@ -346,7 +346,17 @@ aqua.on("lyricsLine", (player, track, payload) => {
 
 aqua.on("trackEnd", player => lyricsMessages.delete(player.guildId) );
 aqua.on("lyricsFound", (player, track, payload) => console.log(`Lyrics found: ${track.info.title}`));
-aqua.on("lyricsNotFound", (player, track, payload) => console.log(`Lyrics not found: ${track.info.title}`));
+aqua.on("lyricsNotFound", (player, track) => {
+  const channel = getChannel(player.textChannel);
+  if (!channel?.send) return;
+
+  const messageContent = `❌ No lyrics found for **${track.info.title}**`;
+  const timeout = setTimeout(() => channel.send({ content: messageContent })
+    .then(m => m.delete().catch(() => {}))
+    .catch(() => {}), 8000);
+  clearTimeout(updateTimeout);
+  updateTimeout = timeout;
+});
 
 process.on('SIGINT', async () => {
   console.log('Shutting down...');
