@@ -236,12 +236,14 @@ aqua.on("playerDestroy", player => {
   updateVoiceStatus(player._lastVoiceChannel || player.voiceChannel, null);
   player.nowPlayingMessage = null;
   lyricsMessages.delete(player.guildId);
+  player.unsubscribeLiveLyrics?.();
 });
 
 aqua.on("queueEnd", player => {
   updateVoiceStatus(player.voiceChannel, null);
   player.nowPlayingMessage = null;
   lyricsMessages.delete(player.guildId);
+  player.unsubscribeLiveLyrics?.();
 });
 
 client.on('interactionCreate', async interaction => {
@@ -344,7 +346,7 @@ aqua.on("lyricsLine", (player, track, payload) => {
   }
 });
 
-aqua.on("trackEnd", player => lyricsMessages.delete(player.guildId) );
+aqua.on("trackEnd", player => lyricsMessages.delete(player.guildId) && player.unsubscribeLiveLyrics?.() );
 aqua.on("lyricsFound", (player, track, payload) => console.log(`Lyrics found: ${track.info.title}`));
 aqua.on("lyricsNotFound", (player, track) => {
   const channel = getChannel(player.textChannel);
@@ -356,6 +358,7 @@ aqua.on("lyricsNotFound", (player, track) => {
     .catch(() => {}), 8000);
   clearTimeout(updateTimeout);
   updateTimeout = timeout;
+  player.unsubscribeLiveLyrics?.();
 });
 
 process.on('SIGINT', async () => {
