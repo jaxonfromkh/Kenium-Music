@@ -1,3 +1,4 @@
+/*  
 export const Command = {
     name: "live-lyrics",
     description: "Enable or disable live lyrics for the current music session.",
@@ -42,3 +43,4 @@ export const Command = {
         }
     }
 };
+ */ 
