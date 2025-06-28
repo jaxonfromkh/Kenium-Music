@@ -1,6 +1,6 @@
 {
 	"dependencies": {
-		"aqualink": "^2.6.4-rc2",
+		"aqualink": "^2.6.4-r2",
 		"discord.js": "^14.21.0",
 		"dotenv": "^17.0.0",
 		"fast-glob": "^3.3.3",
