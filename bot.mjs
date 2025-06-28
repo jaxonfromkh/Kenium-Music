@@ -77,6 +77,64 @@ Object.assign(client, {
   modals: new Collection()
 });
 
+// Global shutdown flag to prevent multiple shutdown attempts
+let isShuttingDown = false;
+
+// Enhanced shutdown function
+const gracefulShutdown = async (signal) => {
+  if (isShuttingDown) return;
+  isShuttingDown = true;
+  
+  console.log(`Process ${signal} received - graceful shutdown initiated`, "warn");
+  
+  try {
+    // Set a timeout to force exit if graceful shutdown takes too long
+    const forceExitTimeout = setTimeout(() => {
+      console.log("Force exit due to timeout", "error");
+      process.exit(1);
+    }, 8000); // 8 seconds timeout
+    
+    // Save players first
+    console.log("Saving players...");
+    await aqua.savePlayer();
+    console.log("Players saved successfully");
+    
+    // Destroy all players
+    console.log("Destroying players...");
+    aqua.players.forEach(player => {
+      try {
+        player.destroy();
+      } catch (e) {
+        console.error("Error destroying player:", e);
+      }
+    });
+    
+    // Disconnect from Discord
+    console.log("Disconnecting from Discord...");
+    client.destroy();
+    
+    clearTimeout(forceExitTimeout);
+    console.log("Graceful shutdown completed");
+    process.exit(0);
+  } catch (error) {
+    console.error("Error during graceful shutdown:", error);
+    process.exit(1);
+  }
+};
+
+if (process.env.ANTI_DOCKER === 'true') {
+  const savePlayersInterval = setInterval(async () => {
+    if (isShuttingDown) return;
+    
+    try {
+      await aqua.savePlayer();
+      console.log("Periodic player save completed");
+    } catch (error) {
+      console.error("Error during periodic save:", error);
+    }
+  }, 30000);
+}
+
 const channelCache = new Map();
 const lastUpdates = new Map();
 const PROGRESS_CHARS = ['', '█', '██', '███', '████', '█████', '██████', '███████', '████████', '█████████', '██████████', '███████████', '████████████'];
@@ -302,10 +360,21 @@ client.on('interactionCreate', async interaction => {
   }
 });
 
-process.on('SIGINT', async () => {
-  console.log('Shutting down...');
-  await aqua.savePlayer();
-  process.exit(0);
+const signals = ['SIGINT', 'SIGTERM', 'SIGUSR2', 'SIGHUP'];
+signals.forEach(signal => {
+  process.on(signal, () => gracefulShutdown(signal));
+});
+
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+
+process.on('message', (msg) => {
+  if (msg === 'shutdown') {
+    gracefulShutdown('PM2_SHUTDOWN');
+  }
+});
+
+process.on('exit', () => {
+  clearInterval(savePlayersInterval);
 });
 
 aqua.on('nodeError', (node, error) => console.error(`Node error: ${error.message}`));
