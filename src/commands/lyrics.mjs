@@ -207,7 +207,7 @@ async function displayLyricsUI(interaction, { lyrics, track, lines, source, albu
 
     collector.on('collect', async (i) => {
         if (i.user.id !== interaction.user.id) {
-            return i.reply({ content: "❌ These controls are not for you.", ephemeral: true });
+            return i.reply({ content: "❌ These controls are not for you.", flags: 64 });
         }
 
         switch (i.customId) {
