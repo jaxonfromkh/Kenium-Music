@@ -72,7 +72,7 @@ const aqua = new Aqua(client, [{
     restVersion: "v4",
     shouldDeleteMessage: true,
     infiniteReconnects: true,
-    autoResume: false,
+    autoResume: true,
     leaveOnEnd: false,
 });
 
@@ -254,8 +254,8 @@ aqua.on("trackError", async (player, track, payload) => {
 });
 
 const cleanupPlayer = (player) => {
-    if (player.voiceChannel) {
-        client.channels.setVoiceStatus(player.voiceChannel, null)
+    if (player.voiceChannel || player._lastVoiceChannel) {
+        client.channels.setVoiceStatus(player.voiceChannel || player._lastVoiceChannel , null)
             .catch(() => { });
     }
     player.nowPlayingMessage = null;
@@ -274,7 +274,11 @@ aqua.on('nodeConnect', (node) => {
     client.logger.debug(`Node [${node.name}] connected`);
 });
 
-const gracefulShutdown = () => {
+const gracefulShutdown = async () => {
+    console.log("Saving players...");
+    await aqua.savePlayer();
+    console.log("Players saved successfully");
+    
     channelCache.clear();
     lastUpdates.clear();
     timeFormatCache.clear();
