@@ -1,5 +1,6 @@
 import { createEvent } from 'seyfert';
 import { SimpleDB } from '../utils/simpleDB';
+import { updatePresence } from '../../index';
 
 const db = new SimpleDB();
 const settingsCollection = db.collection('guildSettings');
@@ -13,6 +14,7 @@ export default createEvent({
   data: { once: true, name: 'botReady' },
   run(user, client) {
     client.aqua.init(client.botId);
+    updatePresence(client);
     client.logger.info(`${user.username} is ready`);
     
     handleAutoJoin(client);
