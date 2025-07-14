@@ -11,45 +11,54 @@ const { NODE_HOST, NODE_PASSWORD, NODE_PORT, NODE_NAME, token } = process.env;
 const require = createRequire(import.meta.url);
 const { Aqua } = require('aqualink');
 
-const client = new Client({
-    presence: (shardId) => ({
-        gateway: {
-            properties: {
-                os: 'android',
-                browser: 'Discord Android',
-                device: 'android'
-            }
-        },
-        // @ts-ignore
-        status: "idle",
-        activities: [{
-            name: "⚡ Kenium 4.0.0 ⚡",
-            type: 1,
-            url: "https://www.youtube.com/watch?v=5etqxAG9tVg",
-        }],
-        since: Date.now(),
-        afk: true,
-    }),
+const client = new Client({});
+
+export async function updatePresence(client) {
+    let index = 0;
+    
+    const updateInterval = setInterval(() => {
+        if (!client.me) {
+            return;
+        }
+
+        const guilds = client.cache.guilds?.values() || [];
+        const users = guilds.reduce((a, b) => a + (b.memberCount ?? 0), 0);
+
+        const activities = [
+            { name: "⚡ Kenium 4.0.0 ⚡", type: 1, url: "https://www.youtube.com/watch?v=5etqxAG9tVg" },
+            { name: `${users} users`, type: 1, url: "https://www.youtube.com/watch?v=5etqxAG9tVg" },
+            { name: `${guilds.length} servers`, type: 1, url: "https://www.youtube.com/watch?v=5etqxAG9tVg" },
+        ];
+        const activity = activities[index++ % activities.length];
+
+        client.gateway?.setPresence({ 
+            activities: [activity], 
+            status: 'idle', 
+            since: Date.now(),
+            afk: true
+        })
+    }, 35000);
+}
+
+
+client.setServices({
+    middlewares: middlewares,
     cache: {
+        disabledCache: {
+            bans: true,
+            emojis: true,
+            stickers: true,
+            roles: true,
+            presences: false,
+            stageInstances: true,
+        },
         adapter: new LimitedMemoryAdapter({
             message: {
                 expire: 5 * 60 * 1000,
                 limit: 10,
             },
         }),
-        disabledCache: {
-            bans: true,
-            emojis: true,
-            stickers: true,
-            roles: true,
-            presences: true,
-            stageInstances: true,
-        },
-    },
-});
-
-client.setServices({
-    middlewares: middlewares
+    }
 });
 
 const aqua = new Aqua(client, [{
