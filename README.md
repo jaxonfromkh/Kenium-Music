@@ -1,9 +1,3 @@
-# The old kenium source code.
-
-- will be there, will not be deleted, and will still be updated some times, I loved developing on discord.js... So the javascript version is discountinnued from now. Check the main branch instead
-
-
-
 # Kenium 🎧  
 **Why pay or vote to play music? Hell nah.**  
 
@@ -43,6 +37,9 @@ Tired of bots that nickel-and-dime you for basic features or demand votes like a
 🎛️ **Audio Tweaking**  
 - Crank the bass, slow down tracks, or add filters—**all free**, no premium nonsense.  
 
+🤖 Made fully into typescript and seyfert
+- Performant package, performant bot, non high memory usage and the nonsense
+
 ---
 
 ### **Powered by Aqualink**  
@@ -69,7 +66,7 @@ Copy .env.example → .env and fill in your details.
 Start the bot:
    ```bash
 
-node bot.mjs     
+npm start or pnpm start
 ````
 
 **Setup guide in video: https://www.youtube.com/watch?v=5etqxAG9tVg**
