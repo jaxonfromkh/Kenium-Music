@@ -12,7 +12,7 @@ export default class restartStuff extends Command {
 
             const player = client.aqua.players.get(ctx.guildId!);
 
-            player.restart();
+            player.replay();
 
             await ctx.editOrReply({ embeds: [new Embed().setDescription('Restarted the music').setColor(0)], flags: 64 });
         } catch (error) {
