@@ -25,7 +25,7 @@ export async function updatePresence(client) {
         const users = guilds.reduce((a, b) => a + (b.memberCount ?? 0), 0);
 
         const activities = [
-            { name: "⚡ Kenium 4.0.0 ⚡", type: 1, url: "https://www.youtube.com/watch?v=5etqxAG9tVg" },
+            { name: "⚡ Kenium 4.1.0 ⚡", type: 1, url: "https://www.youtube.com/watch?v=5etqxAG9tVg" },
             { name: `${users} users`, type: 1, url: "https://www.youtube.com/watch?v=5etqxAG9tVg" },
             { name: `${guilds.length} servers`, type: 1, url: "https://www.youtube.com/watch?v=5etqxAG9tVg" },
         ];
@@ -232,7 +232,7 @@ aqua.on("trackStart", async (player, track) => {
             player.nowPlayingMessage = message;
         }
 
-        const voiceStatusText = `⭐ ${truncateText(track.info?.title || track.title, 30)} - Kenium 4.0.0`;
+        const voiceStatusText = `⭐ ${truncateText(track.info?.title || track.title, 30)} - Kenium 4.1.0`;
         client.channels.setVoiceStatus(player.voiceChannel, voiceStatusText)
             .catch(err => console.error("Voice status error:", err.message));
 
@@ -262,10 +262,12 @@ const cleanupPlayer = (player) => {
     player.cachedEmbed = null;
 };
 
-aqua.on("playerDestroy", cleanupPlayer);
-aqua.on("queueEnd", cleanupPlayer);
-aqua.on("trackEnd", cleanupPlayer);
-
+aqua.on("playerDestroy", (player) => cleanupPlayer(player));
+aqua.on("queueEnd", (player) => cleanupPlayer(player));
+aqua.on("trackEnd", (player, track) => {
+    player.nowPlayingMessage = null;
+    player.cachedEmbed = null;
+});
 aqua.on('nodeError', (node, error) => {
     client.logger.error(`Node [${node.name}] error: ${error.message}`);
 });
@@ -298,6 +300,7 @@ client.start().then(async () => {
     console.error('Bot startup failed:', error.message);
     process.exit(1);
 });
+
 
 // @ts-ignore
 client.cooldown = new CooldownManager(client);
