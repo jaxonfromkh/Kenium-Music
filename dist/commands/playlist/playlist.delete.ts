@@ -1,16 +1,12 @@
 import { type CommandContext, Declare, SubCommand, Options, createStringOption } from "seyfert";
-import { Embed, ActionRow, Button } from "seyfert";
-import { ButtonStyle } from "seyfert/lib/types";
+import { Embed } from "seyfert";
 import { SimpleDB } from "../../utils/simpleDB";
 
 // Modern Emoji Set
 const ICONS = {
   music: '🎵',
-  playlist: '🎧',
-  add: '➕',
   tracks: '💿',
-  info: 'ℹ️',
-  star: '⭐'
+  delete: '🗑️'
 };
 
 // Modern Black Theme Colors
@@ -56,79 +52,39 @@ function createEmbed(type: string, title: string, description: string | null = n
   return embed;
 }
 
-function createModernButtons(buttonConfigs: Array<{ id: string; label: string; emoji?: string; style?: ButtonStyle; disabled?: boolean }>) {
-  const row = new ActionRow();
-  buttonConfigs.forEach(config => {
-    const button = new Button()
-      .setCustomId(config.id)
-      .setLabel(config.label)
-      .setStyle(config.style || ButtonStyle.Secondary);
-
-    if (config.emoji) button.setEmoji(config.emoji);
-    if (config.disabled) button.setDisabled(true);
-
-    row.addComponents(button);
-  });
-  return row;
-}
-
 @Declare({
-  name: "create",
-  description: "🎧 Create a new playlist"
+  name: "delete",
+  description: "🗑️ Delete a playlist"
 })
 @Options({
-  name: createStringOption({ description: "Playlist name", required: true }),
+  name: createStringOption({ description: "Playlist name", required: true, 
+    autocomplete: async (interaction: any) => {      
+      const userId = interaction.user.id;
+      const playlists = playlistsCollection.find({ userId });
+      const options = playlists.map(playlist => ({ name: playlist.name, value: playlist.name }));
+      if(options.length === 0) options.push({ name: 'No Playlists', value: 'No Playlists' });
+      return interaction.respond(options);
+    }
+   })
 })
-export class CreateCommand extends SubCommand {
+export class DeleteCommand extends SubCommand {
   async run(ctx: CommandContext) {
-    const {name} = ctx.options as { name: string };
+    const { name } = ctx.options as { name: string };
+    const playlistName = name;
     const userId = ctx.author.id;
 
-    if (name.length > 50) {
-       return await ctx.write({
-            embeds: [createEmbed('error', 'Invalid Name', `Playlist name must be less than 50 characters.`)],
-            flags: 64
-        });
-    }
-
-    const existingPlaylists = playlistsCollection.find({ userId });
-    if (existingPlaylists.length >= 6) {
-        return await ctx.write({
-            embeds: [createEmbed('error', 'Playlist Limit Reached', `You can only have a maximum of 6 playlists.`)],
-            flags: 64
-        });
-    }
-
-    const existing = playlistsCollection.findOne({ userId, name });
-    if (existing) {
+    const playlist = playlistsCollection.findOne({ userId, name: playlistName });
+    if (!playlist) {
       return await ctx.write({
-        embeds: [createEmbed('error', 'Playlist Exists', `A playlist named "${name}" already exists!`)],
+        embeds: [createEmbed('error', 'Playlist Not Found', `No playlist named "${playlistName}" exists!`)],
         flags: 64
       });
     }
 
-    const playlist = {
-      userId,
-      name,
-      tracks: [],
-      createdAt: new Date().toISOString(),
-      lastModified: new Date().toISOString(),
-      playCount: 0,
-      totalDuration: 0
-    };
+    playlistsCollection.delete({ userId, name: playlistName });
 
-    playlistsCollection.insert(playlist);
+    const embed = createEmbed('success', 'Playlist Deleted', `Successfully deleted playlist "${playlistName}"`);
 
-    const embed = createEmbed('success', 'Playlist Created', null, [
-      { name: `${ICONS.playlist} Name`, value: `**${name}**`, inline: true },
-      { name: `${ICONS.star} Status`, value: 'Ready for tracks!', inline: true }
-    ]);
-
-    const buttons = createModernButtons([
-      { id: `add_track_${name}_${userId}`, label: 'Add Tracks', emoji: ICONS.add, style: ButtonStyle.Success },
-      { id: `view_playlist_${name}_${userId}`, label: 'View Playlist', emoji: ICONS.playlist, style: ButtonStyle.Primary }
-    ]);
-
-    await ctx.write({ embeds: [embed], components: [buttons], flags: 64 });
+    await ctx.write({ embeds: [embed], flags: 64 });
   }
 }
