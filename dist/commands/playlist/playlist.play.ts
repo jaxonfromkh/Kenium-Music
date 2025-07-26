@@ -76,7 +76,9 @@ export class PlayCommand extends SubCommand {
       }
 
       // Add all tracks at once
-      player.queue.add(...loadedTracks);
+      for (const track of loadedTracks) {
+        player.queue.add(track);
+      }
 
       // Update play count
       playlistsCollection.update(
