@@ -84,6 +84,21 @@ export class CreateCommand extends SubCommand {
     const {name} = ctx.options as { name: string };
     const userId = ctx.author.id;
 
+    if (name.length > 50) {
+       return await ctx.write({
+            embeds: [createEmbed('error', 'Invalid Name', `Playlist name must be less than 50 characters.`)],
+            flags: 64
+        });
+    }
+
+    const existingPlaylists = playlistsCollection.find({ userId });
+    if (existingPlaylists.length >= 6) {
+        return await ctx.write({
+            embeds: [createEmbed('error', 'Playlist Limit Reached', `You can only have a maximum of 6 playlists.`)],
+            flags: 64
+        });
+    }
+
     const existing = playlistsCollection.findOne({ userId, name });
     if (existing) {
       return await ctx.write({
