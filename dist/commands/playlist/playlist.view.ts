@@ -2,84 +2,13 @@ import { type CommandContext, Declare, SubCommand, Options, createStringOption }
 import { Embed, ActionRow, Button, StringSelectMenu } from "seyfert";
 import { ButtonStyle } from "seyfert/lib/types";
 import { SimpleDB } from "../../utils/simpleDB";
+import { createEmbed, createButtons, formatDuration, extractYouTubeId, handlePlaylistAutocomplete } from "../../shared/utils";
+import { ICONS, LIMITS } from "../../shared/constants";
 
-// Modern Emoji Set
-const ICONS = {
-  music: '🎵',
-  playlist: '🎧',
-  add: '➕',
-  play: '▶️',
-  shuffle: '🔀',
-  tracks: '💿',
-  duration: '⏱️',
-  info: 'ℹ️',
-  artist: '🎤',
-  source: '📡',
-  youtube: '🎥',
-  spotify: '🟢',
-  soundcloud: '🟠'
-};
-
-// Modern Black Theme Colors
-const COLORS = {
-  primary: '#000000',
-  error: '#000000',
-  info: '#000000'
-};
-
-const PAGE_SIZE = 8; // Number of tracks per page
 const db = new SimpleDB();
 const playlistsCollection = db.collection('playlists');
 
-function createEmbed(type: string, title: string, description: string | null = null, fields: Array<{ name: string; value: string; inline?: boolean }> = []) {
-  const colors = {
-    default: COLORS.primary,
-    error: COLORS.error,
-    info: COLORS.info
-  };
-
-  const icons = {
-    default: ICONS.music,
-    error: '❌',
-    info: 'ℹ️'
-  };
-
-  const embed = new Embed()
-    .setColor(colors[type] || colors.default)
-    .setTitle(`${icons[type] || icons.default} ${title}`)
-    .setTimestamp()
-    .setFooter({
-      text: `${ICONS.tracks} Kenium Music • Playlist System`,
-      iconUrl: 'https://toddythenoobdud.github.io/0a0f3c0476c8b495838fa6a94c7e88c2.png'
-    });
-
-  if (description) {
-    embed.setDescription(`\`\`\`fix\n${description}\n\`\`\``);
-  }
-
-  if (fields.length > 0) {
-    embed.addFields(fields);
-  }
-
-  return embed;
-}
-
-function createModernButtons(buttonConfigs: Array<{ id: string; label: string; emoji?: string; style?: ButtonStyle; disabled?: boolean }>) {
-  const row = new ActionRow();
-  buttonConfigs.forEach(config => {
-    const button = new Button()
-      .setCustomId(config.id)
-      .setLabel(config.label)
-      .setStyle(config.style || ButtonStyle.Secondary);
-
-    if (config.emoji) button.setEmoji(config.emoji);
-    if (config.disabled) button.setDisabled(true);
-
-    row.addComponents(button);
-  });
-  return row;
-}
-function createSelectMenu(customId, placeholder, options) {
+function createSelectMenu(customId: string, placeholder: string, options) {
   return new ActionRow().addComponents(
     new StringSelectMenu()
       .setCustomId(customId)
@@ -91,26 +20,6 @@ function createSelectMenu(customId, placeholder, options) {
         emoji: opt.emoji || null
       })))
   );
-}
-
-function formatDuration(ms: number): string {
-  if (!ms || ms === 0) return '00:00';
-  const totalSeconds = Math.floor(ms / 1000);
-  const hours = Math.floor(totalSeconds / 3600);
-  const minutes = Math.floor((totalSeconds % 3600) / 60);
-  const seconds = totalSeconds % 60;
-
-  if (hours > 0) {
-    return `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-  }
-  return `${minutes}:${seconds.toString().padStart(2, '0')}`;
-}
-
-function extractYouTubeId(url: string | null): string | null {
-  if (!url) return null;
-  const regex = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/;
-  const match = url.match(regex);
-  return match ? match[1] : null;
 }
 
 function getSourceIcon(uri: string): string {
@@ -127,13 +36,10 @@ function getSourceIcon(uri: string): string {
 })
 @Options({
   playlist: createStringOption({
-    description: "Playlist name", required: true,
-    autocomplete: async (interaction) => {
-      const userId = interaction.user.id;
-      const playlists = playlistsCollection.find({ userId });
-      const options = playlists.map(playlist => ({ name: playlist.name, value: playlist.name }));
-      if(options.length === 0) options.push({ name: 'No Playlists', value: 'No Playlists' });
-      return interaction.respond(options);
+    description: "Playlist name",
+    required: true,
+    autocomplete: async (interaction: any) => {
+      return handlePlaylistAutocomplete(interaction, playlistsCollection);
     }
   })
 })
@@ -143,6 +49,7 @@ export class ViewCommand extends SubCommand {
     const userId = ctx.author.id;
 
     if (!playlistName) {
+      // Show all playlists
       const playlists = playlistsCollection.find({ userId });
 
       if (playlists.length === 0) {
@@ -150,14 +57,14 @@ export class ViewCommand extends SubCommand {
           { name: `${ICONS.info} Getting Started`, value: 'Use `/playlist create` to make your first playlist!' }
         ]);
 
-        const button = createModernButtons([
+        const button = createButtons([
           { id: `create_playlist_${userId}`, label: 'Create Playlist', emoji: ICONS.add, style: ButtonStyle.Success }
         ]);
 
-        return await ctx.write({ embeds: [embed], components: [button], flags: 64 });
+        return ctx.write({ embeds: [embed], components: [button], flags: 64 });
       }
 
-      const embed = createEmbed('default', 'Your Playlists', `You have **${playlists.length}** playlist${playlists.length !== 1 ? 's' : ''}`);
+      const embed = createEmbed('primary', 'Your Playlists', `You have **${playlists.length}** playlist${playlists.length !== 1 ? 's' : ''}`);
 
       playlists.slice(0, 10).forEach(playlist => {
         const duration = formatDuration(playlist.totalDuration || 0);
@@ -177,17 +84,17 @@ export class ViewCommand extends SubCommand {
         emoji: ICONS.playlist
       }));
 
-      const components = [];
-      if (selectOptions.length > 0) {
-        components.push(createSelectMenu(`select_playlist_${userId}`, 'Choose a playlist to view...', selectOptions));
-      }
+      const components = selectOptions.length > 0 
+        ? [createSelectMenu(`select_playlist_${userId}`, 'Choose a playlist to view...', selectOptions)]
+        : [];
 
-      await ctx.write({ embeds: [embed], components, flags: 64 });
+      return ctx.write({ embeds: [embed], components, flags: 64 });
     } else {
+      // Show specific playlist
       const playlist = playlistsCollection.findOne({ userId, name: playlistName });
 
       if (!playlist) {
-        return await ctx.write({
+        return ctx.write({
           embeds: [createEmbed('error', 'Playlist Not Found', `No playlist named "${playlistName}" exists!`)],
           flags: 64
         });
@@ -198,47 +105,43 @@ export class ViewCommand extends SubCommand {
           { name: `${ICONS.info} Description`, value: playlist.description || 'No description' }
         ]);
 
-        const button = createModernButtons([
+        const button = createButtons([
           { id: `add_track_${playlistName}_${userId}`, label: 'Add Tracks', emoji: ICONS.add, style: ButtonStyle.Success }
         ]);
 
-        return await ctx.write({ embeds: [embed], components: [button], flags: 64 });
+        return ctx.write({ embeds: [embed], components: [button], flags: 64 });
       }
 
       const page = 1;
-      const totalPages = Math.ceil(playlist.tracks.length / PAGE_SIZE);
-      const startIdx = (page - 1) * PAGE_SIZE;
-      const endIdx = Math.min(startIdx + PAGE_SIZE, playlist.tracks.length);
+      const totalPages = Math.ceil(playlist.tracks.length / LIMITS.PAGE_SIZE);
+      const startIdx = (page - 1) * LIMITS.PAGE_SIZE;
+      const endIdx = Math.min(startIdx + LIMITS.PAGE_SIZE, playlist.tracks.length);
       const tracks = playlist.tracks.slice(startIdx, endIdx);
 
-      const embed = createEmbed('default', `${ICONS.playlist} ${playlistName}`, null, [
+      const embed = createEmbed('primary', `${ICONS.playlist} ${playlistName}`, undefined, [
         { name: `${ICONS.info} Info`, value: playlist.description || 'No description', inline: false },
         { name: `${ICONS.tracks} Tracks`, value: playlist.tracks.length.toString(), inline: true },
         { name: `${ICONS.duration} Duration`, value: formatDuration(playlist.totalDuration || 0), inline: true },
         { name: `${ICONS.info} Plays`, value: playlist.playCount?.toString() || '0', inline: true }
       ]);
 
-      let trackList = '';
-      tracks.forEach((track: any, idx: number) => {
-        const position = startIdx + idx + 1;
-        const duration = formatDuration(track.duration);
-        const source = getSourceIcon(track.uri);
-        trackList += `\`${position.toString().padStart(2, '0')}.\` **${track.title}**\n`;
-        trackList += `     ${ICONS.artist} ${track.author || 'Unknown'} • ${ICONS.duration} ${duration} ${source}\n\n`;
-      });
+      if (tracks.length > 0) {
+        const trackList = tracks.map((track: any, idx: number) => {
+          const position = startIdx + idx + 1;
+          const duration = formatDuration(track.duration || 0);
+          const source = getSourceIcon(track.uri);
+          return `\`${position.toString().padStart(2, '0')}.\` **${track.title}**\n     ${ICONS.artist} ${track.author || 'Unknown'} • ${ICONS.duration} ${duration} ${source}`;
+        }).join('\n\n');
 
-      if (trackList) {
         embed.addFields({ name: `${ICONS.music} Tracks (Page ${page}/${totalPages})`, value: trackList, inline: false });
-      }
 
-      if (tracks[0]) {
         const videoId = extractYouTubeId(tracks[0].uri);
         if (videoId) {
           embed.setThumbnail(`https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`);
         }
       }
 
-      const actionButtons = createModernButtons([
+      const actionButtons = createButtons([
         { id: `play_playlist_${playlistName}_${userId}`, label: 'Play', emoji: ICONS.play, style: ButtonStyle.Success },
         { id: `shuffle_playlist_${playlistName}_${userId}`, label: 'Shuffle', emoji: ICONS.shuffle, style: ButtonStyle.Primary },
         { id: `manage_playlist_${playlistName}_${userId}`, label: 'Manage', emoji: '⚙️', style: ButtonStyle.Secondary }
@@ -247,14 +150,14 @@ export class ViewCommand extends SubCommand {
       const components = [actionButtons];
 
       if (totalPages > 1) {
-        const navButtons = createModernButtons([
+        const navButtons = createButtons([
           { id: `playlist_prev_${page}_${playlistName}_${userId}`, label: 'Previous', emoji: '◀️', disabled: page === 1 },
           { id: `playlist_next_${page}_${playlistName}_${userId}`, label: 'Next', emoji: '▶️', disabled: page === totalPages }
         ]);
         components.push(navButtons);
       }
 
-      await ctx.write({ embeds: [embed], components, flags: 64 });
+      return ctx.write({ embeds: [embed], components, flags: 64 });
     }
   }
 }
