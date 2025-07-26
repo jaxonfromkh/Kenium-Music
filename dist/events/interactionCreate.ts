@@ -1,49 +1,50 @@
 import { createEvent, Container } from 'seyfert';
 
+// Constants optimized for performance
 const PROGRESS_CHARS = ['', '█', '██', '███', '████', '█████', '██████', '███████', '████████', '█████████', '██████████', '███████████', '████████████'];
 const MAX_TITLE_LENGTH = 60;
 const VOLUME_STEP = 10;
 const MAX_VOLUME = 100;
 const MIN_VOLUME = 0;
 
+// Pre-compiled regex for better performance
 const EXCLUDED_INTERACTIONS = /^(?:queue_|select_|platform_|lyrics_|add_more_|add_track_|edit_description_|remove_track_|playlist_(?:next|prev)_|(?:create|manage|view|shuffle|play)_playlist_)/;
 
+// Optimized constants
 const VOLUME_ICONS = ['🔇', '🔈', '🔉', '🔊'];
-const LOOP_ICONS = { track: '🔂', queue: '🔁', none: '▶️' };
+const LOOP_ICONS = Object.freeze({ track: '🔂', queue: '🔁', none: '▶️' });
 
+// Optimized time formatting with bitwise operations
 const formatTime = (ms) => {
-    const totalSeconds = ms / 1000 | 0;
-    const hours = totalSeconds / 3600 | 0;
-    const minutes = (totalSeconds % 3600) / 60 | 0;
+    const totalSeconds = (ms / 1000) | 0;
+    const hours = (totalSeconds / 3600) | 0;
+    const minutes = ((totalSeconds % 3600) / 60) | 0;
     const seconds = totalSeconds % 60;
     
     return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
 };
 
-
+// Optimized text truncation
 const truncateText = (text, length = MAX_TITLE_LENGTH) => 
-    (!text || text.length <= length) ? text : `${text.slice(0, length - 3)}...`;
+    text?.length > length ? `${text.slice(0, length - 3)}...` : text || '';
 
-const getVolumeIcon = (volume) => {
-    if (volume === 0) return VOLUME_ICONS[0];
-    if (volume < 30) return VOLUME_ICONS[1];
-    if (volume < 70) return VOLUME_ICONS[2];
-    return VOLUME_ICONS[3];
-};
+// Optimized volume icon selection
+const getVolumeIcon = (volume) => 
+    VOLUME_ICONS[volume === 0 ? 0 : volume < 30 ? 1 : volume < 70 ? 2 : 3];
 
-
+// Optimized embed creation with minimal object allocation
 const createEmbed = (player, track, client) => {
     const { position, volume, loop } = player;
     const { title, uri, length } = track;
     
-    const progress = Math.min(12, Math.max(0, (position / length * 12) | 0));
+    const progress = Math.min(12, Math.max(0, ((position / length) * 12) | 0));
     const progressBar = PROGRESS_CHARS[progress];
     const remainingBar = '▬'.repeat(12 - progress);
-    const bar = `\`[${progressBar}⦿${remainingBar}]\``;
     
     const volIcon = getVolumeIcon(volume);
     const loopIcon = LOOP_ICONS[loop] || '▶️';
     const requester = track.requester?.username || 'Unknown';
+    const isPaused = player.paused;
 
     return new Container({
         components: [
@@ -56,7 +57,7 @@ const createEmbed = (player, track, client) => {
                     },
                     {
                         type: 10,
-                        content: `\`${formatTime(position)}\` ${bar} \`${formatTime(length)}\`\n\n${volIcon} \`${volume}%\` ${loopIcon} \`${requester}\``
+                        content: `\`${formatTime(position)}\` \`[${progressBar}⦿${remainingBar}]\` \`${formatTime(length)}\`\n\n${volIcon} \`${volume}%\` ${loopIcon} \`${requester}\``
                     }
                 ],
                 accessory: {
@@ -88,9 +89,9 @@ const createEmbed = (player, track, client) => {
                     },
                     {
                         type: 2,
-                        label: player.paused ? "▶️" : "⏸️",
-                        style: player.paused ? 3 : 1,
-                        custom_id: player.paused ? "resume" : "pause"
+                        label: isPaused ? "▶️" : "⏸️",
+                        style: isPaused ? 3 : 1,
+                        custom_id: isPaused ? "resume" : "pause"
                     },
                     {
                         type: 2,
@@ -103,15 +104,16 @@ const createEmbed = (player, track, client) => {
                         label: "🔊",
                         style: 1,
                         custom_id: "volume_up"
-                    },
-                ],
-            },
+                    }
+                ]
+            }
         ],
         accent_color: 0
     });
 };
 
-const actionHandlers = {
+// Optimized action handlers with early returns
+const actionHandlers = Object.freeze({
     volume_down: (player) => {
         const newVolume = Math.max(MIN_VOLUME, player.volume - VOLUME_STEP);
         player.setVolume(newVolume);
@@ -119,14 +121,9 @@ const actionHandlers = {
     },
 
     previous: (player) => {
-        if (!player.previous) {
-            return '❌ No previous track available';
-        }
+        if (!player.previous) return '❌ No previous track available';
         
-        if (player.current) {
-            player.queue.unshift(player.current);
-        }
-        
+        if (player.current) player.queue.unshift(player.current);
         player.queue.unshift(player.previous);
         player.stop();
         
@@ -134,7 +131,7 @@ const actionHandlers = {
     },
 
     resume: async (player) => {
-        await player.pause(false);
+        await player.pause(false);  
         return "▶️ Resumed playback.";
     },
 
@@ -144,9 +141,7 @@ const actionHandlers = {
     },
 
     skip: async (player) => {
-        if (player.queue.length === 0) {
-            return "❌ No tracks in queue to skip to.";
-        }
+        if (player.queue.length === 0) return "❌ No tracks in queue to skip to.";
         
         await player.skip();
         return "⏭️ Skipped to the next track.";
@@ -157,81 +152,74 @@ const actionHandlers = {
         player.setVolume(newVolume);
         return `🔊 Volume set to ${newVolume}%`;
     }
-};
+});
 
+// Optimized embed update with error recovery
 const updateNowPlayingEmbed = async (player, client) => {
     if (!player.nowPlayingMessage || !player.current) return;
 
     try {
         const updatedEmbed = createEmbed(player, player.current, client);
-        
         await player.nowPlayingMessage.edit({ 
             components: [updatedEmbed], 
             flags: 4096 | 32768
         });
-        
-        player.cachedEmbed = updatedEmbed;
-        
     } catch (error) {
-        console.error("Error updating now playing message:", error);
+        // Clean up on failure
         player.nowPlayingMessage = null;
-        player.cachedEmbed = null;
+        console.error("Failed to update now playing message:", error.message);
     }
 };
 
-const sendErrorResponse = async (interaction, message) => {
-    try {
-        await interaction.editOrReply({ content: message });
-    } catch (error) {
-        console.error('Error sending response:', error);
-    }
-};
+// Optimized error response
+const sendErrorResponse = (interaction, message) => 
+    interaction.editOrReply({ content: message }).catch(err => 
+        console.error('Response error:', err.message));
 
 export default createEvent({
-    data: {
-        name: 'interactionCreate',
-    },
+    data: { name: 'interactionCreate' },
     run: async (interaction, client) => {
-        if (!interaction.isButton()) return;
-        if (EXCLUDED_INTERACTIONS.test(interaction.customId)) return;
+        // Early returns for performance
+        if (!interaction.isButton() || 
+            EXCLUDED_INTERACTIONS.test(interaction.customId) || 
+            !interaction.customId || 
+            !interaction.guildId) return;
         
-        const { customId, guildId } = interaction;
-        if (!customId || !guildId) return;
+        const player = client.aqua.players.get(interaction.guildId);
         
-        const player = client.aqua.players.get(guildId);
-        if (!player || !player.current) {
-            try {
-                await interaction.write({ 
-                    content: "❌ There is no music playing right now.",
-                    flags: 64
-                });
-            } catch (error) {
-                console.error('Error sending no music response:', error);
-            }
-            return;
+        // Handle no player/track case
+        if (!player?.current) {
+            return interaction.write({ 
+                content: "❌ There is no music playing right now.",
+                flags: 64
+            }).catch(err => console.error('No music response error:', err.message));
         }
+
+        // Defer reply with error handling
         try {
             await interaction.deferReply(64);
         } catch (error) {
-            console.error('Error deferring reply:', error);
+            console.error('Defer error:', error.message);
             return;
         }
 
-        const handler = actionHandlers[customId];
+        const handler = actionHandlers[interaction.customId];
         if (!handler) {
-            await sendErrorResponse(interaction, "❌ This button action is not recognized.");
-            return;
+            return sendErrorResponse(interaction, "❌ This button action is not recognized.");
         }
 
         try {
-            const responseContent = await handler(player, interaction);
+            const responseContent = await handler(player);
             
-            await interaction.followup({ content: responseContent });
-            await updateNowPlayingEmbed(player, client);
+            // Parallel execution for better performance
+            await Promise.all([
+                interaction.followup({ content: responseContent }),
+                updateNowPlayingEmbed(player, client)
+            ]);
             
         } catch (error) {
-            console.error(`Error handling ${customId} action:`, error);
-            await sendErrorResponse(interaction, `❌ An error occurred while processing your request. Please try again.`);
+            console.error(`Action ${interaction.customId} failed:`, error.message);
+            await sendErrorResponse(interaction, "❌ An error occurred. Please try again.");
         }
-    },
+    }
 });
