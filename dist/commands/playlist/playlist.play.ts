@@ -1,4 +1,5 @@
 import { type CommandContext, Declare, SubCommand, Options, createStringOption, createBooleanOption, Middlewares } from "seyfert";
+import { CooldownType, Cooldown } from "@slipher/cooldown";
 import { SimpleDB } from "../../utils/simpleDB";
 import { createEmbed, formatDuration, handlePlaylistAutocomplete, shuffleArray } from "../../shared/utils";
 import { ICONS } from "../../shared/constants";
@@ -20,7 +21,15 @@ const playlistsCollection = db.collection('playlists');
   }),
   shuffle: createBooleanOption({ description: "Shuffle the playlist", required: false })
 })
-@Middlewares(["checkVoice"])
+@Cooldown({
+    type: CooldownType.User,
+    interval: 20000, // 20 seconds
+    uses: {
+        default: 2
+    },
+})
+
+@Middlewares(["checkVoice", "cooldown"])
 export class PlayCommand extends SubCommand {
   async run(ctx: CommandContext) {
     const { playlist: playlistName, shuffle = false } = ctx.options as { playlist: string; shuffle: boolean };
@@ -41,7 +50,7 @@ export class PlayCommand extends SubCommand {
     const member = ctx.member;
     const voiceChannel = await member?.voice();
 
-    await ctx.deferReply();
+    await ctx.deferReply(true);
 
     try {
       const player = ctx.client.aqua.createConnection({
@@ -98,7 +107,7 @@ export class PlayCommand extends SubCommand {
         { name: `${ICONS.shuffle} Mode`, value: shuffle ? 'Shuffled' : 'Sequential', inline: true }
       ]);
 
-      return ctx.editOrReply({ embeds: [embed] });
+      return ctx.editOrReply({ embeds: [embed], flags: 64 });
     } catch (error) {
       console.error("Play playlist error:", error);
       return ctx.editOrReply({
