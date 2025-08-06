@@ -3,6 +3,7 @@
 		"@slipher/cooldown": "^0.0.5",
 		"aqualink": "2.9.2",
 		"dotenv": "^17.2.1",
+		"p-limit": "^6.2.0",
 		"fast-glob": "^3.3.3",
 		"seyfert": "3.2.5",
 		"typescript": "^5.9.2",
