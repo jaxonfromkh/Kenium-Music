@@ -19,7 +19,7 @@ async function getFetch() {
 
 interface LyricsData {
     text: string | null;
-    lines: { range: { start: number }, line: string }[] | null
+    lines: { range: { start: number }, line: string }[] | null;
     track: {
         title: string;
         author: string;
@@ -144,6 +144,18 @@ export class Musixmatch {
             .join('\n');
     }
 
+    private parseSubtitles(subtitleBody: string): { range: { start: number }, line: string }[] | null {
+        try {
+            const subtitleData = JSON.parse(subtitleBody);
+            return subtitleData.map((item: any) => ({
+                range: { start: item.time.total * 1000 },
+                line: item.text
+            }));
+        } catch {
+            return null;
+        }
+    }
+
     private async searchTrack(title: string, token: string): Promise<any> {
         const url = `${this.ENDPOINTS.SEARCH}&q_track=${encodeURIComponent(title)}&usertoken=${token}`;
         const data = await this.apiGet(url);
@@ -154,14 +166,15 @@ export class Musixmatch {
         const url = `${this.ENDPOINTS.ALT_LYRICS}&usertoken=${token}&q_artist=${encodeURIComponent(artist)}&q_track=${encodeURIComponent(title)}`;
         const data = await this.apiGet(url);
         const calls = data?.message?.body?.macro_calls || {};
-
-        return {
+        const result = {
             lyrics: calls['track.lyrics.get']?.message?.body?.lyrics?.lyrics_body,
-            track: calls['matcher.track.get']?.message?.body?.track
+            track: calls['matcher.track.get']?.message?.body?.track,
+            subtitles: calls['track.subtitles.get']?.message?.body?.subtitle_list?.[0]?.subtitle?.subtitle_body
         };
+        return result;
     }
 
- private parseQuery(query: string): { artist?: string, title: string } {
+    private parseQuery(query: string): { artist?: string, title: string } {
         const cleanedQuery = query
             .replace(/\b(VEVO|Official Music Video|Lyrics)\b/gi, '')
             .trim();
@@ -185,48 +198,50 @@ export class Musixmatch {
         return { title: cleanedQuery };
     }
 
-     public async findLyrics(query: string): Promise<LyricsData | null> {
+    public async findLyrics(query: string): Promise<LyricsData | null> {
         const token = await this.getToken();
         const parsed = this.parseQuery(query);
 
-        console.log('Parsed query:', parsed);
-
         if (parsed.artist) {
             const altResult = await this.getAltLyrics(parsed.title, parsed.artist, token);
-            if (altResult?.lyrics && altResult?.track) {
-                return this.formatResult(altResult.lyrics, altResult.track);
+            if (altResult?.subtitles || altResult?.lyrics) {
+                return this.formatResult(altResult.subtitles, altResult.lyrics, altResult.track);
             }
         }
 
         const trackResult = await this.searchTrack(query, token);
         if (trackResult) {
-            const lyrics = await this.getLyricsFromTrack(trackResult, token);
-            if (lyrics) return this.formatResult(lyrics, trackResult);
+            const lyricsData = await this.getLyricsFromTrack(trackResult, token);
+            if (lyricsData?.subtitles || lyricsData?.lyrics) {
+                return this.formatResult(lyricsData.subtitles, lyricsData.lyrics, trackResult);
+            }
         }
 
         const titleOnlyResult = await this.getAltLyrics(parsed.title, '', token);
-        if (titleOnlyResult?.lyrics && titleOnlyResult?.track) {
-            return this.formatResult(titleOnlyResult.lyrics, titleOnlyResult.track);
+        if (titleOnlyResult?.subtitles || titleOnlyResult?.lyrics) {
+            return this.formatResult(titleOnlyResult.subtitles, titleOnlyResult.lyrics, titleOnlyResult.track);
         }
 
         return null;
     }
 
-    private async getLyricsFromTrack(trackData: any, token: string): Promise<string | null> {
+    private async getLyricsFromTrack(trackData: any, token: string): Promise<{ subtitles?: string, lyrics?: string } | null> {
         try {
             const url = `${this.ENDPOINTS.LYRICS}&track_id=${trackData.track_id}&usertoken=${token}`;
             const data = await this.apiGet(url);
-            const lyrics = data?.message?.body?.subtitle?.subtitle_body;
-            return lyrics ? this.cleanLyrics(lyrics) : null;
+            const subtitles = data?.message?.body?.subtitle?.subtitle_body;
+            return { subtitles, lyrics: subtitles ? this.cleanLyrics(subtitles) : null };
         } catch {
             return null;
         }
     }
 
-    private formatResult(lyrics: string, trackData: any): LyricsData {
+    private formatResult(subtitles: string | null, lyrics: string | null, trackData: any): LyricsData {
+        const lines = subtitles ? this.parseSubtitles(subtitles) : null;
+
         return {
-            text: lyrics,
-            lines: null,
+            text: lyrics || null,
+            lines: lines || null,
             track: {
                 title: trackData.track_name,
                 author: trackData.artist_name,
