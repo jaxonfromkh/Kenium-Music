@@ -1,13 +1,12 @@
 import { createEvent, Container } from 'seyfert';
 
-const PROGRESS_CHARS = ['', '█', '██', '███', '████', '█████', '██████', '███████', '████████', '█████████', '██████████', '███████████', '████████████'];
 const MAX_TITLE_LENGTH = 60;
 const VOLUME_STEP = 10;
 const MAX_VOLUME = 100;
 const MIN_VOLUME = 0;
 
 
-const EXCLUDED_INTERACTIONS = /^(?:queue_|select_|platform_|lyrics_|add_more_|add_track_|edit_description_|remove_track_|playlist_(?:next|prev)_|(?:create|manage|view|shuffle|play)_playlist_)/;
+const EXCLUDED_PREFIXES = new Set(['queue_', 'select_', 'platform_', 'lyrics_', 'add_more_', 'add_track_', 'edit_description_', 'remove_track_', 'playlist_next_', 'playlist_prev_', 'create_playlist_', 'manage_playlist_', 'view_playlist_', 'shuffle_playlist_', 'play_playlist_']);
 
 const MUSIC_PLATFORMS = Object.freeze({
     YOUTUBE: Object.freeze({
@@ -44,12 +43,18 @@ const MUSIC_PLATFORMS = Object.freeze({
     })
 });
 
+const PLATFORM_PATTERNS = [
+  { pattern: /youtube|youtu\.be/i, platform: MUSIC_PLATFORMS.YOUTUBE },
+  { pattern: /soundcloud/i, platform: MUSIC_PLATFORMS.SOUNDCLOUD },
+  { pattern: /spotify/i, platform: MUSIC_PLATFORMS.SPOTIFY },
+  { pattern: /deezer/i, platform: MUSIC_PLATFORMS.DEEZER }
+];
+
 function getPlatform(uri) {
-    if (/youtube|youtu\.be/i.test(uri)) return MUSIC_PLATFORMS.YOUTUBE;
-    if (/soundcloud/i.test(uri)) return MUSIC_PLATFORMS.SOUNDCLOUD;
-    if (/spotify/i.test(uri)) return MUSIC_PLATFORMS.SPOTIFY;
-    if (/deezer/i.test(uri)) return MUSIC_PLATFORMS.DEEZER;
-    return MUSIC_PLATFORMS.YOUTUBE; // Default fallback
+  for (const { pattern, platform } of PLATFORM_PATTERNS) {
+    if (pattern.test(uri)) return platform;
+  }
+  return MUSIC_PLATFORMS.YOUTUBE;
 }
 function formatTime(ms) {
   const totalSeconds = Math.floor(ms / 1000)
@@ -68,8 +73,8 @@ function createEmbed(player, track, client) {
     const { title, uri, length, requester } = track;
     const platform = getPlatform(uri);
 
-    const progress = Math.min(10, Math.max(0, Math.floor((position / length) * 10)));
-    const progressBar = `[${PROGRESS_CHARS[progress]}⦿${'▬'.repeat(10 - progress)}]`;
+  const progress = Math.min(10, Math.floor((position / length) * 10));
+  const progressBar = `[${'█'.repeat(progress)}⦿${'▬'.repeat(10 - progress)}]`;
 
     const volumeIcon = volume === 0 ? '🔇' : volume < 50 ? '🔈' : '🔊';
     const loopIcon = loop === 'track' ? '🔂' : loop === 'queue' ? '🔁' : '▶️';
@@ -183,10 +188,11 @@ const sendErrorResponse = (interaction, message) =>
 export default createEvent({
     data: { name: 'interactionCreate' },
     run: async (interaction, client) => {
-        if (!interaction.isButton() ||
-            EXCLUDED_INTERACTIONS.test(interaction.customId) ||
-            !interaction.customId ||
-            !interaction.guildId) return;
+         if (!interaction.isButton() || !interaction.customId || !interaction.guildId) return;
+
+             for (const prefix of EXCLUDED_PREFIXES) {
+      if (interaction.customId.startsWith(prefix)) return;
+    }
 
         const player = client.aqua.players.get(interaction.guildId);
 
@@ -215,7 +221,7 @@ export default createEvent({
             await interaction.followup({ content: result.message });
 
             if (result.shouldUpdate && player.current) {
-                setTimeout(() => updateNowPlayingEmbed(player, client), 100);
+                queueMicrotask(() => updateNowPlayingEmbed(player, client));
             }
 
         } catch (error) {
