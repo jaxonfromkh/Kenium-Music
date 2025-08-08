@@ -1,10 +1,14 @@
+import process from 'node:process'
+import { createRequire } from 'node:module'
+
+import 'dotenv/config'
 import { Client, HttpClient, ParseClient, Container, LimitedMemoryAdapter, ParseMiddlewares } from 'seyfert'
 import { CooldownManager } from '@slipher/cooldown'
-import { createRequire } from 'node:module'
+
 import { middlewares } from './dist/middlewares/middlewares'
-import'dotenv/config';
-const aqualinkRequire = createRequire(__filename);
-const { Aqua } = aqualinkRequire('aqualink');
+
+const aqualinkRequire = createRequire(__filename)
+const { Aqua } = aqualinkRequire('aqualink')
 
 const {
   NODE_HOST,
@@ -16,42 +20,8 @@ const {
 const PRESENCE_UPDATE_INTERVAL = 60000
 const MAX_TITLE_LENGTH = 45
 const VOICE_STATUS_LENGTH = 30
-
-const client = new Client({})
-const aqua = new Aqua(
-  client,
-  [{
-    host: NODE_HOST,
-    password: NODE_PASSWORD,
-    port: NODE_PORT,
-    secure: false,
-    name: NODE_NAME
-  }],
-  {
-    defaultSearchPlatform: 'ytsearch',
-    restVersion: 'v4',
-    shouldDeleteMessage: true,
-    infiniteReconnects: true,
-    autoResume: true,
-    leaveOnEnd: false
-  }
-)
-
-Object.assign(client, { aqua })
-
-function formatTime(ms) {
-  const totalSeconds = Math.floor(ms / 1000)
-  const hours = Math.floor(totalSeconds / 3600)
-  const minutes = Math.floor((totalSeconds % 3600) / 60)
-  const seconds = totalSeconds % 60
-
-  return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
-}
-
-function truncateText(text, maxLength = MAX_TITLE_LENGTH) {
-  if (!text || text.length <= maxLength) return text || ''
-  return text.slice(0, maxLength - 3) + '...'
-}
+const VOICE_STATUS_THROTTLE = 5000
+const ERROR_LOG_THROTTLE = 5000
 
 const MUSIC_PLATFORMS = {
   youtube: {
@@ -80,27 +50,61 @@ const MUSIC_PLATFORMS = {
   }
 }
 
-function getPlatform(uri) {
-  const lowerUri = uri.toLowerCase()
+const client = new Client({})
+const aqua = new Aqua(
+  client,
+  [{
+    host: NODE_HOST,
+    password: NODE_PASSWORD,
+    port: NODE_PORT,
+    secure: false,
+    name: NODE_NAME
+  }],
+  {
+    defaultSearchPlatform: 'ytsearch',
+    restVersion: 'v4',
+    shouldDeleteMessage: true,
+    infiniteReconnects: true,
+    autoResume: true,
+    leaveOnEnd: false
+  }
+)
 
+Object.assign(client, { aqua })
+
+const formatTime = ms => {
+  const totalSeconds = Math.floor((ms || 0) / 1000)
+  const hours = Math.floor(totalSeconds / 3600)
+  const minutes = Math.floor((totalSeconds % 3600) / 60)
+  const seconds = totalSeconds % 60
+  const pad = n => n.toString().padStart(2, '0')
+  return `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`
+}
+
+const truncateText = (text, maxLength = MAX_TITLE_LENGTH) => {
+  if (!text || text.length <= maxLength) return text || ''
+  return text.slice(0, maxLength - 3) + '...'
+}
+
+const getPlatform = uri => {
+  const lowerUri = (uri || '').toLowerCase()
   if (lowerUri.includes('youtu')) return MUSIC_PLATFORMS.youtube
   if (lowerUri.includes('soundcloud')) return MUSIC_PLATFORMS.soundcloud
   if (lowerUri.includes('spotify')) return MUSIC_PLATFORMS.spotify
   if (lowerUri.includes('deezer')) return MUSIC_PLATFORMS.deezer
-
   return MUSIC_PLATFORMS.youtube
 }
 
-function createProgressBar(position, length) {
-  const progress = Math.min(10, Math.floor((position / length) * 10))
+const createProgressBar = (position, length) => {
+  const total = length > 0 ? length : 1
+  const progress = Math.min(10, Math.floor((position / total) * 10))
   return `[${'█'.repeat(progress)}⦿${'▬'.repeat(10 - progress)}]`
 }
 
-function createEmbed(player, track) {
+const createEmbed = (player, track) => {
   const { position, volume, loop, paused } = player
   const { title, uri, length, requester } = track
   const platform = getPlatform(uri)
-
   const progressBar = createProgressBar(position, length)
   const volumeIcon = volume === 0 ? '🔇' : volume < 50 ? '🔈' : '🔊'
   const loopIcon = loop === 'track' ? '🔂' : loop === 'queue' ? '🔁' : '▶️'
@@ -140,7 +144,7 @@ function createEmbed(player, track) {
   })
 }
 
-function cleanupPlayer(player) {
+const cleanupPlayer = player => {
   const voiceChannel = player.voiceChannel || player._lastVoiceChannel
   if (voiceChannel) {
     client.channels.setVoiceStatus(voiceChannel, null).catch(() => null)
@@ -150,7 +154,7 @@ function cleanupPlayer(player) {
 
 let presenceInterval = null
 
-export async function updatePresence(client) {
+export const updatePresence = async clientInstance => {
   if (presenceInterval) {
     clearInterval(presenceInterval)
   }
@@ -158,18 +162,33 @@ export async function updatePresence(client) {
   let activityIndex = 0
 
   presenceInterval = setInterval(() => {
-    if (!client.me?.id) return;
+    if (!clientInstance.me?.id) return;
 
-    const guilds = client.cache.guilds?.values() || [];
-    const userCount = guilds.reduce((total, guild) => total + (guild.memberCount || 0), 0);
+    let guildCount = 0
+    let userCount = 0
+
+    const guilds = clientInstance.cache?.guilds
+    if (guilds?.size != null) {
+      guildCount = guilds.size
+      if (typeof guilds.forEach === 'function') {
+        guilds.forEach(g => {
+          userCount += g?.memberCount || 0
+        })
+      } else if (typeof guilds.values === 'function') {
+        for (const g of guilds.values()) {
+          userCount += g?.memberCount || 0
+          guildCount++
+        }
+      }
+    }
 
     const activities = [
       { name: '⚡ Kenium 4.3.0 ⚡', type: 1, url: 'https://www.youtube.com/watch?v=7aIjwQCEox8' },
       { name: `${userCount} users`, type: 1, url: 'https://www.youtube.com/watch?v=7aIjwQCEox8' },
-      { name: `${guilds.length} servers`, type: 1, url: 'https://www.youtube.com/watch?v=7aIjwQCEox8' }
+      { name: `${guildCount} servers`, type: 1, url: 'https://www.youtube.com/watch?v=7aIjwQCEox8' }
     ]
 
-    client.gateway?.setPresence({
+    clientInstance.gateway?.setPresence({
       activities: [activities[activityIndex++ % activities.length]],
       status: 'idle',
       since: Date.now(),
@@ -199,27 +218,33 @@ client.setServices({
 })
 
 let lastVoiceStatusUpdate = 0
-const VOICE_STATUS_THROTTLE = 5000
+let lastErrorLog = 0
 
 aqua.on('trackStart', async (player, track) => {
   try {
     const channel = client.cache.channels.get(player.textChannel)
     if (!channel) return;
 
-    let isValidMessage = false
-    if (player.nowPlayingMessage?.id) {
-      isValidMessage = await channel.client.messages.fetch(player.nowPlayingMessage.id, channel.id)
-        .then(() => true)
-        .catch(() => false)
-    }
+    const embed = createEmbed(player, track)
 
-    if (!isValidMessage) {
-      const embed = createEmbed(player, track)
+    if (player.nowPlayingMessage?.id && player.nowPlayingMessage.edit) {
+      try {
+        await player.nowPlayingMessage.edit({
+          components: [embed],
+          flags: 4096 | 32768
+        })
+      } catch {
+        const message = await channel.client.messages.write(channel.id, {
+          components: [embed],
+          flags: 4096 | 32768
+        }).catch(() => null)
+        if (message) player.nowPlayingMessage = message
+      }
+    } else {
       const message = await channel.client.messages.write(channel.id, {
         components: [embed],
         flags: 4096 | 32768
       }).catch(() => null)
-
       if (message) player.nowPlayingMessage = message
     }
 
@@ -252,9 +277,6 @@ aqua.on('trackEnd', player => {
   player.nowPlayingMessage = null
 })
 
-let lastErrorLog = 0
-const ERROR_LOG_THROTTLE = 5000
-
 aqua.on('nodeError', (node, error) => {
   const now = Date.now()
   if (now - lastErrorLog > ERROR_LOG_THROTTLE) {
@@ -283,19 +305,13 @@ aqua.on('nodeDisconnect', (_, reason) => {
 
 const shutdown = async () => {
   console.log('Shutting down...')
-
-  if (presenceInterval) {
-    clearInterval(presenceInterval)
-  }
-
+  if (presenceInterval) clearInterval(presenceInterval)
   await aqua.savePlayer().catch(console.error)
-
   process.exit(0)
 }
 
 process.once('SIGTERM', shutdown)
 process.once('SIGINT', shutdown)
-
 
 client.start()
   .then(async () => {
@@ -305,14 +321,16 @@ client.start()
     console.error('Startup failed:', error.message)
     process.exit(1)
   })
+
 // @ts-ignore
 client.cooldown = new CooldownManager(client)
+
 declare module 'seyfert' {
   interface UsingClient extends ParseClient<Client<true>>, ParseClient<HttpClient> {
     aqua: InstanceType<typeof Aqua>
   }
-    interface Client<Ready extends boolean> {
-      cooldown: CooldownManager
-    }
-  interface RegisteredMiddlewares extends ParseMiddlewares<typeof middlewares> { }
+  interface Client<Ready extends boolean> {
+    cooldown: CooldownManager
+  }
+  interface RegisteredMiddlewares extends ParseMiddlewares<typeof middlewares> {}
 }

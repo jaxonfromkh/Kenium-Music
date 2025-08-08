@@ -10,55 +10,55 @@ const CPU_CACHE = {
 const formatters = {
   uptime: (() => {
     const cache = new Map();
-    
+
     return (ms) => {
       const cacheKey = Math.floor(ms / 1000);
       if (cache.has(cacheKey)) return cache.get(cacheKey);
-      
+
       const seconds = Math.floor(ms / 1000);
       const days = Math.floor(seconds / 86400);
       const hours = Math.floor((seconds % 86400) / 3600);
       const minutes = Math.floor((seconds % 3600) / 60);
       const secs = seconds % 60;
-      
+
       const result = [
         days > 0 && `${days}d`,
         hours > 0 && `${hours}h`,
         minutes > 0 && `${minutes}m`,
         `${secs}s`
       ].filter(Boolean).join(' ');
-      
+
       cache.set(cacheKey, result);
       if (cache.size > 100) {
         const firstKey = cache.keys().next().value;
         cache.delete(firstKey);
       }
-      
+
       return result;
     };
   })(),
-  
+
   memory: (() => {
     const cache = new Map();
     const GB = 1073741824;
     const MB = 1048576;
-    
+
     return (bytes, inGB = false) => {
       const roundedBytes = Math.round(bytes / MB) * MB;
       const cacheKey = `${roundedBytes}-${inGB}`;
-      
+
       if (cache.has(cacheKey)) return cache.get(cacheKey);
-      
-      const result = inGB 
+
+      const result = inGB
         ? `${(roundedBytes / GB).toFixed(2)} GB`
         : `${(roundedBytes / MB).toFixed(2)} MB`;
-      
+
       cache.set(cacheKey, result);
       if (cache.size > 50) {
         const firstKey = cache.keys().next().value;
         cache.delete(firstKey);
       }
-      
+
       return result;
     };
   })()
@@ -89,7 +89,7 @@ export default class statusCmds extends Command {
     const usedMemory = totalMemory - freeMemory;
     const memoryPercentage = (usedMemory / totalMemory * 100).toFixed(1);
     const processMemory = process.memoryUsage();
-    
+
     const pingTime = Date.now() - interaction.createdTimestamp;
     const nodes = [...client.aqua.nodeMap.values()];
     const isOnline = nodes.some(node => node.connected);
@@ -99,15 +99,15 @@ export default class statusCmds extends Command {
       if (a.connected !== b.connected) return a.connected ? -1 : 1;
       return (a.options?.identifier || '').localeCompare(b.options?.identifier || '');
     });
-    
+
     const activeNode = sortedNodes.find(node => node.connected);
     const { stats = {}, aqua = {} } = activeNode || {};
     const { memory = {}, cpu = {}, players = 0, playingPlayers = 0, uptime = 0 } = stats;
-    
-    const cpuLoad = cpu?.lavalinkLoadPercentage 
-      ? (cpu.lavalinkLoadPercentage * 100).toFixed(1) + '%' 
+
+    const cpuLoad = cpu?.lavalinkLoadPercentage
+      ? (cpu.lavalinkLoadPercentage * 100).toFixed(1) + '%'
       : 'N/A';
-    
+
     const memoryUsed = memory?.used || 0;
     const memoryTotal = memory?.reservable || 0;
     const lavalinkMemoryPercentage = (memoryUsed / memoryTotal * 100).toFixed(1);
@@ -115,7 +115,7 @@ export default class statusCmds extends Command {
     const embed = new Embed()
          .setDescription([
         '```ansi',
-        `\u001b[1;94m┌────────────────── \u001b[1;97mKENIUM 3.6.0\u001b[1;94m ─────────────────┐\u001b[0m`,
+        `\u001b[1;94m┌────────────────── \u001b[1;97mKENIUM 4.3.0\u001b[1;94m ─────────────────┐\u001b[0m`,
         '',
         `\u001b[1;90m SYSTEM METRICS \u001b[0m`,
         `\u001b[1;94m❯\u001b[0m \u001b[1;97mCPU    \u001b[0m ${CPU_CACHE.model}`,
@@ -134,7 +134,7 @@ export default class statusCmds extends Command {
         `\u001b[1;94m└─────────────────────────────────────────────────┘\u001b[0m`,
         '```'
       ].join('\n'))
-            .setColor(0) 
+            .setColor(0)
       .setAuthor({
         name: `System ${isOnline ? '●' : '○'} ${isOnline ? 'Online' : 'Offline'}`,
         iconUrl: client.me.avatarURL(),

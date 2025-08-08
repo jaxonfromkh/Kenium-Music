@@ -24,23 +24,23 @@ export default class exportcmds extends Command {
                 await ctx.editOrReply({ embeds: [new Embed().setDescription('❌ The queue is empty').setColor(0xff0000)], flags: 64 });
                 return;
             }
-            
+
             const platformRegex = {
                 youtube: /youtube\.com|youtu\.be/,
                 soundcloud: /soundcloud\.com/,
                 spotify: /spotify\.com/,
                 web: /^https?:\/\//
             };
-            
+
             const platforms = new Set<string>();
             const queueLines: string[] = [];
-            
+
             for (let i = 0; i < player.queue.length; i++) {
                 const song = player.queue[i];
                 const uri = song.info.uri;
-                
+
                 queueLines.push(`${uri} | ${song.info.title} | ${song.info.author} | ${i + 1}`);
-                
+
                 if (platformRegex.youtube.test(uri)) {
                     platforms.add('youtube');
                 } else if (platformRegex.soundcloud.test(uri)) {
@@ -56,23 +56,23 @@ export default class exportcmds extends Command {
                     }
                 }
             }
-            
+
             const randomId = Math.random().toString(36).substring(2, 10).toUpperCase();
-            
-            const warningHeader = `# DO NOT MODIFY THIS FILE / CAN GET CORRUPTED - KENIUM 4.0.0 - BY mushroom0162\n# Export ID: ${randomId}\n# Generated: ${new Date().toISOString()}\n\n`;
+
+            const warningHeader = `# DO NOT MODIFY THIS FILE / CAN GET CORRUPTED - KENIUM 4.3.0 - BY mushroom0162\n# Export ID: ${randomId}\n# Generated: ${new Date().toISOString()}\n\n`;
             const queueString = warningHeader + queueLines.join('\n');
-            
+
             const platformsString = Array.from(platforms).sort().join('_');
-            
+
             const attachment = new AttachmentBuilder()
                 .setDescription('Queue.txt')
                 .setName(`Kenium_V4_${platformsString}_${randomId}.txt`)
                 .setFile("buffer", Buffer.from(queueString, 'utf8'));
 
-            await ctx.editOrReply({ 
-                embeds: [new Embed().setDescription('Exported the queue with URLs for import').setColor(0)], 
-                files: [attachment], 
-                flags: 64 
+            await ctx.editOrReply({
+                embeds: [new Embed().setDescription('Exported the queue with URLs for import').setColor(0)],
+                files: [attachment],
+                flags: 64
             });
         } catch (error) {
             if (error.code === 10065) return;

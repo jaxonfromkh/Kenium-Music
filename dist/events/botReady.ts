@@ -1,4 +1,5 @@
 import { createEvent } from 'seyfert'
+
 import { SimpleDB } from '../utils/simpleDB'
 import { updatePresence } from '../../index'
 
@@ -10,18 +11,16 @@ const BATCH_DELAY = 500
 
 export default createEvent({
   data: { once: true, name: 'botReady' },
-  run(user, client) {
+  run: (user, client) => {
     client.aqua.init(client.botId)
     updatePresence(client)
     client.logger.info(`${user.username} is ready`)
-
     setTimeout(() => processAutoJoin(client), 6000)
   }
 })
 
-async function processAutoJoin(client) {
+const processAutoJoin = async client => {
   const guildsWithTwentyFourSeven = settingsCollection.find({ twentyFourSevenEnabled: true })
-
   if (!guildsWithTwentyFourSeven.length) return;
 
   for (let i = 0; i < guildsWithTwentyFourSeven.length; i += BATCH_SIZE) {
@@ -37,7 +36,7 @@ async function processAutoJoin(client) {
   }
 }
 
-async function processGuild(client, settings) {
+const processGuild = async (client, settings) => {
   const { guildId, voiceChannelId, textChannelId, _id } = settings
 
   if (!voiceChannelId || !textChannelId) {
@@ -54,7 +53,7 @@ async function processGuild(client, settings) {
 
     const [voiceChannel, textChannel] = await Promise.all([
       guild.channels.fetch(voiceChannelId).catch(() => null),
-      guild.channels.fetch(textChannelId).catch(() => null),
+      guild.channels.fetch(textChannelId).catch(() => null)
     ])
 
     if (!voiceChannel || voiceChannel.type !== 2) {
@@ -83,17 +82,14 @@ async function processGuild(client, settings) {
   }
 }
 
-async function updateNickname(guild) {
+const updateNickname = async guild => {
   const botMember = guild.members.me
   if (!botMember) return;
 
   const currentNick = botMember.nickname || botMember.user.username
-
   if (currentNick.includes('[24/7]')) return;
 
   try {
     await botMember.edit({ nick: currentNick + NICKNAME_SUFFIX })
-  } catch {
-    // Silently fail if no permissions
-  }
+  } catch {}
 }

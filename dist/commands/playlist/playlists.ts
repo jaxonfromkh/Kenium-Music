@@ -11,6 +11,5 @@ import { RemoveCommand } from "./playlist.remove";
 	name: "playlists",
 	description: "Kenium source code on top, im going insane lol"
 })
-// Being in the same folder with @AutoLoad() you can save this step
 @Options([CreateCommand, AddCommand, RemoveCommand, ViewCommand, PlayCommand, DeleteCommand, ExportCommand, ImportCommand])
 export default class Playlists extends Command {}

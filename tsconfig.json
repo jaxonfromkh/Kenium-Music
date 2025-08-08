@@ -3,6 +3,10 @@
         "emitDecoratorMetadata": true,
         "experimentalDecorators": true,
         "downlevelIteration": true,
-        "esModuleInterop": true
-    }
+        "esModuleInterop": true,
+        "module": "nodenext"
+    },
+    "exclude": [
+        "node_modules"
+    ]
 }

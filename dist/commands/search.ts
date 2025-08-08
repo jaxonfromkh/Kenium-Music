@@ -29,7 +29,7 @@ const MUSIC_PLATFORMS = Object.freeze({
     DEEZER: Object.freeze({
         name: 'Deezer',
         source: 'dzsearch',
-        color: 0x8000ff, // purple color
+        color: 0x8000ff,
         emoji: '<:Deezer_New_Icon:1398710505106964632>',
         icon: '🎶',
         style: 1

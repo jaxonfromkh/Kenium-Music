@@ -8,7 +8,6 @@ const PROGRESS_BAR_LENGTH = 10
 const PROGRESS_CHAR = '█'
 const EMPTY_CHAR = '▬'
 
-// Use Map for O(1) lookups instead of Set
 const EXCLUDED_PREFIXES = [
   'queue_', 'select_', 'platform_', 'lyrics_', 'add_more_',
   'add_track_', 'edit_description_', 'remove_track_',
@@ -52,42 +51,39 @@ const MUSIC_PLATFORMS = {
   }
 }
 
-// Single pass platform detection
-function getPlatform(uri) {
-  const lowerUri = uri.toLowerCase()
-
+const getPlatform = uri => {
+  const lowerUri = (uri || '').toLowerCase()
   if (lowerUri.includes('youtu')) return MUSIC_PLATFORMS.youtube
   if (lowerUri.includes('soundcloud')) return MUSIC_PLATFORMS.soundcloud
   if (lowerUri.includes('spotify')) return MUSIC_PLATFORMS.spotify
   if (lowerUri.includes('deezer')) return MUSIC_PLATFORMS.deezer
-
   return MUSIC_PLATFORMS.youtube
 }
 
-function formatTime(ms) {
-  const totalSeconds = Math.floor(ms / 1000)
+const formatTime = ms => {
+  const totalSeconds = Math.floor((ms || 0) / 1000)
   const hours = Math.floor(totalSeconds / 3600)
   const minutes = Math.floor((totalSeconds % 3600) / 60)
   const seconds = totalSeconds % 60
-
-  return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
+  const pad = n => n.toString().padStart(2, '0')
+  return `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`
 }
 
-function truncateText(text, maxLength = MAX_TITLE_LENGTH) {
+const truncateText = (text, maxLength = MAX_TITLE_LENGTH) => {
   if (!text || text.length <= maxLength) return text || ''
   return text.slice(0, maxLength - 3) + '...'
 }
 
-function createProgressBar(position, length) {
-  const progress = Math.min(PROGRESS_BAR_LENGTH, Math.floor((position / length) * PROGRESS_BAR_LENGTH))
+const createProgressBar = (position, length) => {
+  const denom = length > 0 ? length : 1
+  const progress = Math.min(PROGRESS_BAR_LENGTH, Math.floor((position / denom) * PROGRESS_BAR_LENGTH))
   return `[${PROGRESS_CHAR.repeat(progress)}⦿${EMPTY_CHAR.repeat(PROGRESS_BAR_LENGTH - progress)}]`
 }
 
-function createEmbed(player, track, client) {
+const createEmbed = (player, track, client) => {
   const { position, volume, loop, paused } = player
   const { title, uri, length, requester } = track
   const platform = getPlatform(uri)
-
   const progressBar = createProgressBar(position, length)
   const volumeIcon = volume === 0 ? '🔇' : volume < 50 ? '🔈' : '🔊'
   const loopIcon = loop === 'track' ? '🔂' : loop === 'queue' ? '🔁' : '▶️'
@@ -133,38 +129,30 @@ const actionHandlers = {
     player.setVolume(newVolume)
     return { message: `🔉 Volume set to ${newVolume}%`, shouldUpdate: true }
   },
-
   previous: player => {
     if (!player.previous) {
       return { message: '❌ No previous track available', shouldUpdate: false }
     }
-
     if (player.current) player.queue.unshift(player.current)
     player.queue.unshift(player.previous)
     player.stop()
-
     return { message: '⏮️ Playing the previous track.', shouldUpdate: false }
   },
-
   resume: async player => {
     await player.pause(false)
     return { message: '▶️ Resumed playback.', shouldUpdate: true }
   },
-
   pause: async player => {
     await player.pause(true)
     return { message: '⏸️ Paused playback.', shouldUpdate: true }
   },
-
   skip: async player => {
     if (!player.queue.length) {
       return { message: '❌ No tracks in queue to skip to.', shouldUpdate: false }
     }
-
     await player.skip()
     return { message: '⏭️ Skipped to the next track.', shouldUpdate: false }
   },
-
   volume_up: player => {
     const newVolume = Math.min(MAX_VOLUME, player.volume + VOLUME_STEP)
     player.setVolume(newVolume)
@@ -172,7 +160,7 @@ const actionHandlers = {
   }
 }
 
-async function updateNowPlayingEmbed(player, client) {
+const updateNowPlayingEmbed = async (player, client) => {
   if (!player.nowPlayingMessage || !player.current) {
     player.nowPlayingMessage = null
     return;
@@ -192,8 +180,7 @@ async function updateNowPlayingEmbed(player, client) {
   }
 }
 
-// Check if string starts with any excluded prefix
-function isExcludedInteraction(customId) {
+const isExcludedInteraction = customId => {
   for (const prefix of EXCLUDED_PREFIXES) {
     if (customId.startsWith(prefix)) return true
   }
@@ -204,11 +191,9 @@ export default createEvent({
   data: { name: 'interactionCreate' },
   run: async (interaction, client) => {
     if (!interaction.isButton() || !interaction.customId || !interaction.guildId) return;
-
     if (isExcludedInteraction(interaction.customId)) return;
 
     const player = client.aqua.players.get(interaction.guildId)
-
     if (!player?.current) {
       return interaction.write({
         content: '❌ There is no music playing right now.',
@@ -232,7 +217,6 @@ export default createEvent({
     try {
       const result = await handler(player)
       await interaction.followup({ content: result.message })
-
       if (result.shouldUpdate && player.current) {
         queueMicrotask(() => updateNowPlayingEmbed(player, client))
       }

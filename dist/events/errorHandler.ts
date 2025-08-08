@@ -5,8 +5,13 @@ const handleEvent = (type, fn) => {
 const logEvent = (eventType, message) => {
     console.log(`${eventType}: ${message}`);
 };
+handleEvent('unhandledRejection', reason => {
+    if (reason.code === 10065) {
+        return;
+    }
 
-handleEvent('unhandledRejection', reason => logEvent('Unhandled Rejection', reason));
+    logEvent('Unhandled Rejection', reason);
+});
 handleEvent('uncaughtException', error => logEvent('Uncaught Exception', error));
 handleEvent('warning', warning => logEvent('Warning', warning));
 handleEvent('rejectionHandled', promise => logEvent('Rejection Handled', `Promise: ${promise}`));
