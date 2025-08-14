@@ -12,7 +12,7 @@ import {
 import { promises as fsp } from 'node:fs'
 import { join } from 'node:path'
 import { randomBytes } from 'node:crypto'
-import { EventEmitter } from 'node:events'
+import { EventEmitter } from 'tseep'
 import pLimit from 'p-limit'
 
 interface SimpleDBOptions {
