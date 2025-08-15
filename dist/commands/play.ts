@@ -96,12 +96,9 @@ const options = {
         const choices = []
         for (let i = 0; i < Math.min(recent.length, MAX_RESULTS); i++) {
           const uri = recent[i]
-          // Extract title from URI or use simple format
-          const title = uri.includes('youtube') ? 'YouTube' :
-                       uri.includes('spotify') ? 'Spotify' :
-                       'Track'
+
           choices.push({
-            name: `🕘 Recent ${i + 1}: ${title}`,
+            name: `🕘 Recent ${i + 1}: ${uri} `,
             value: uri.slice(0, 100)
           })
         }
@@ -209,7 +206,7 @@ export default class Play extends Command {
         const info = track.info
 
         player.queue.add(track)
-        updateRecent(ctx.interaction.user.id, info.uri)
+        updateRecent(ctx.interaction.user.id, info.title)
 
         embed.setDescription(`Added [**${esc(info.title || 'Track')}**](${info.uri}) to the queue.`)
       }
