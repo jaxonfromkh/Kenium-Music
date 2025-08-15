@@ -213,7 +213,6 @@ function createQueueEmbed(player: any, page: number, precomputedTotalMs?: number
 
   embed.setFooter({
     text: stats.join(" • "),
-    iconUrl: "https://cdn.discordapp.com/emojis/987643956609781781.gif"
   });
 
   if (currentTrack?.info?.artworkUrl || currentTrack?.thumbnail) {
