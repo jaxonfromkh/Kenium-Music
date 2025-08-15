@@ -1,10 +1,10 @@
 {
 	"dependencies": {
 		"@slipher/cooldown": "^0.0.5",
-		"aqualink": "2.11.1",
+		"aqualink": "2.11.2",
 		"dotenv": "^17.2.1",
 		"fetch-cookie": "^3.1.0",
-		"p-limit": "^6.2.0",
+		"p-limit": "^7.0.0",
 		"seyfert": "3.2.5",
 		"tseep": "^1.3.1",
 		"typescript": "^5.9.2"
@@ -14,7 +14,7 @@
 	},
 	"devDependencies": {
 		"@types/better-sqlite3": "^7.6.13",
-		"@types/node": "^24.2.0",
-		"tsx": "^4.20.3"
+		"@types/node": "^24.3.0",
+		"tsx": "^4.20.4"
 	}
 }
