@@ -37,10 +37,10 @@ export class PlayCommand extends SubCommand {
 
     const playlistDb = playlistsCollection.findOne({ userId, name: playlistName });
     if (!playlistDb || playlistDb.tracks.length === 0) {
-      const message = !playlistDb 
+      const message = !playlistDb
         ? `No playlist named "${playlistName}" exists!`
         : 'This playlist has no tracks to play!';
-      
+
       return ctx.write({
         embeds: [createEmbed('error', !playlistDb ? 'Playlist Not Found' : 'Empty Playlist', message)],
         flags: 64

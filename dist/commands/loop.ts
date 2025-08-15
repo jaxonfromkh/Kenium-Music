@@ -23,8 +23,7 @@ export default class LoopCommand extends Command {
             const { loop } = ctx.options as { loop: string };
 
             const player = client.aqua.players.get(ctx.guildId!);
-
-
+            // @ts-ignore
             player.setLoop(loop);
 
             const status = loop === "none" ? "disabled" : player.loop ? "enabled" : "disabled";

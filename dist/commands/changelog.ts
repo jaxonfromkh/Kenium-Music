@@ -10,14 +10,15 @@ const CONFIG = {
         ISSUES_URL: 'https://github.com/ToddyTheNoobDud/Kenium-Music/issues/new',
     },
     BOT: {
-        VERSION: '4.3.0',
+        VERSION: '4.4.0',
         DEVELOPER: "mushroom0162",
-        CHANGELOG: `> Rewrited the whole database, it's now much more efficient, and extremly fast.
+        CHANGELOG: `> Rewrited the whole database, it's now much more efficient, and extremly fast. It's also now more secure and less prone to errors.
 > Rewrited the bot handler for more performance.
-> Made a new UI for the playback system
-> Rewrited the lyrics fetching with musixmatch (OWN implementation)
+> Rewrited the play command, made the resolving around ~0,5 and 1 second faster.
+> Rewrited the interaction handler, this also improves the performance.
 > Optimized the voice handling
-> Fixed a few bugs with button handling`   },
+> Optimized the caching, improving the performance
+> Remake the changelog cmd`   },
     COLORS: {
         PRIMARY: 0,
         ERROR: 0xFF5252

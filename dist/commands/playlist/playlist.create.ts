@@ -29,7 +29,7 @@ export class CreateCommand extends SubCommand {
 
     // Single query for both checks
     const userPlaylists = playlistsCollection.find({ userId });
-    
+
     if (userPlaylists.length >= LIMITS.MAX_PLAYLISTS) {
       return ctx.write({
         embeds: [createEmbed('error', 'Playlist Limit Reached', `You can only have a maximum of ${LIMITS.MAX_PLAYLISTS} playlists.`)],

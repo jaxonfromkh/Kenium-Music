@@ -1,5 +1,4 @@
 import process from 'node:process'
-import { createRequire } from 'node:module'
 
 import 'dotenv/config'
 import { Client, HttpClient, ParseClient, Container, LimitedMemoryAdapter, ParseMiddlewares } from 'seyfert'
@@ -7,8 +6,7 @@ import { CooldownManager } from '@slipher/cooldown'
 
 import { middlewares } from './dist/middlewares/middlewares'
 
-const aqualinkRequire = createRequire(__filename)
-const { Aqua } = aqualinkRequire('aqualink')
+import { Aqua } from 'aqualink';
 
 const {
   NODE_HOST,
@@ -69,7 +67,7 @@ const aqua = new Aqua(
     leaveOnEnd: false
   }
 )
-
+aqua.init(process.env.CLIENT_ID)
 Object.assign(client, { aqua })
 
 const formatTime = ms => {
@@ -164,28 +162,13 @@ export const updatePresence = async clientInstance => {
   presenceInterval = setInterval(() => {
     if (!clientInstance.me?.id) return;
 
-    let guildCount = 0
-    let userCount = 0
 
-    const guilds = clientInstance.cache?.guilds
-    if (guilds?.size != null) {
-      guildCount = guilds.size
-      if (typeof guilds.forEach === 'function') {
-        guilds.forEach(g => {
-          userCount += g?.memberCount || 0
-        })
-      } else if (typeof guilds.values === 'function') {
-        for (const g of guilds.values()) {
-          userCount += g?.memberCount || 0
-          guildCount++
-        }
-      }
-    }
-
+        const guilds = clientInstance.cache.guilds?.values() || [];
+        const userCount = guilds.reduce((total, guild) => total + (guild.memberCount || 0), 0);
     const activities = [
       { name: '⚡ Kenium 4.3.0 ⚡', type: 1, url: 'https://www.youtube.com/watch?v=7aIjwQCEox8' },
       { name: `${userCount} users`, type: 1, url: 'https://www.youtube.com/watch?v=7aIjwQCEox8' },
-      { name: `${guildCount} servers`, type: 1, url: 'https://www.youtube.com/watch?v=7aIjwQCEox8' }
+      { name: `${guilds.length} servers`, type: 1, url: 'https://www.youtube.com/watch?v=7aIjwQCEox8' }
     ]
 
     clientInstance.gateway?.setPresence({
@@ -284,13 +267,6 @@ aqua.on('nodeError', (node, error) => {
     lastErrorLog = now
   }
 })
-
-aqua.on('playerRestore', player => {
-  if (player.nowPlayingMessage) {
-    player.nowPlayingMessage = client.cache.messages.get(player.nowPlayingMessage.id)
-  }
-})
-
 aqua.on('socketClosed', (player, payload) => {
   client.logger.debug(`Socket closed [${player.guildId}], code: ${payload.code}`)
 })

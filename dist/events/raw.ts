@@ -1,6 +1,5 @@
 import { createEvent } from "seyfert";
-
-
+// @ts-nocheck
 export default createEvent({
     data: { name: "raw" },
     async run(data, client) {

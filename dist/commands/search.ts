@@ -2,29 +2,29 @@ import { Command, Declare, type CommandContext, Container, Middlewares, createSt
 
 // Optimized frozen objects with regex patterns
 const MUSIC_PLATFORMS = Object.freeze({
-    YOUTUBE: Object.freeze({ 
-        name: 'YouTube', 
-        source: 'ytsearch', 
-        color: 0xff0000, 
-        emoji: '<:youtube:1326295615017058304>', 
-        icon: '📺', 
-        style: 4 
+    YOUTUBE: Object.freeze({
+        name: 'YouTube',
+        source: 'ytsearch',
+        color: 0xff0000,
+        emoji: '<:youtube:1326295615017058304>',
+        icon: '📺',
+        style: 4
     }),
-    SOUNDCLOUD: Object.freeze({ 
-        name: 'SoundCloud', 
-        source: 'scsearch', 
-        color: 0xff5500, 
-        emoji: '<:soundcloud:1326295646818406486>', 
-        icon: '🎵', 
-        style: 1 
+    SOUNDCLOUD: Object.freeze({
+        name: 'SoundCloud',
+        source: 'scsearch',
+        color: 0xff5500,
+        emoji: '<:soundcloud:1326295646818406486>',
+        icon: '🎵',
+        style: 1
     }),
-    SPOTIFY: Object.freeze({ 
-        name: 'Spotify', 
-        source: 'spsearch', 
-        color: 0x1db954, 
-        emoji: '<:spotify:1326702792269893752>', 
-        icon: '🎧', 
-        style: 3 
+    SPOTIFY: Object.freeze({
+        name: 'Spotify',
+        source: 'spsearch',
+        color: 0x1db954,
+        emoji: '<:spotify:1326702792269893752>',
+        icon: '🎧',
+        style: 3
     }),
     DEEZER: Object.freeze({
         name: 'Deezer',
@@ -109,9 +109,9 @@ export default class SearchCommand extends Command {
     private activeCollectors = new WeakSet<any>();
 
     public override async run(ctx: CommandContext): Promise<void> {
-        const { query, platform = 'youtube' } = ctx.options as { 
-            query: string; 
-            platform?: string; 
+        const { query, platform = 'youtube' } = ctx.options as {
+            query: string;
+            platform?: string;
         };
 
         // Validate and sanitize query

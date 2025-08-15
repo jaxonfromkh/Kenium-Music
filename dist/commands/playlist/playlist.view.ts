@@ -84,7 +84,7 @@ export class ViewCommand extends SubCommand {
         emoji: ICONS.playlist
       }));
 
-      const components = selectOptions.length > 0 
+      const components = selectOptions.length > 0
         ? [createSelectMenu(`select_playlist_${userId}`, 'Choose a playlist to view...', selectOptions)]
         : [];
 
