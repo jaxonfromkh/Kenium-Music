@@ -98,7 +98,7 @@ const options = {
           const uri = recent[i]
 
           choices.push({
-            name: `🕘 Recent ${i + 1}: ${uri} `,
+            name: `🕘 Recent ${i + 1}: ${trunc(uri, 79)}`,
             value: uri.slice(0, 100)
           })
         }
@@ -140,8 +140,9 @@ const options = {
 
           const title = info.title || 'Unknown'
           const author = info.author ? ` - ${trunc(info.author, 20)}` : ''
+          const truncatedTitle = trunc(esc(title), 70)
           choices.push({
-            name: trunc(esc(title) + author, 100),
+            name: `${truncatedTitle}${author}`.slice(0, 100),
             value: info.uri.slice(0, 100)
           })
         }
