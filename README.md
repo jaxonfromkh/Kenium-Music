@@ -72,7 +72,7 @@ Kenium’s the music bot you’ve been waiting for—**free**, **fast**, and **f
 # Stars
 
 
-<a href="https://www.star-history.com/#namidaco/namida&Date">
+<a href="https://www.star-history.com/#ToddyTheNoobDud/Kenium-Music&Date">
  <picture>
    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=ToddyTheNoobDud/Kenium-Music&type=Date&theme=dark" />
    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=ToddyTheNoobDud/Kenium-Music&type=Date" />
