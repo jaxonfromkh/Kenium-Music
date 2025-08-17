@@ -3,11 +3,11 @@ import { createEvent, Embed } from 'seyfert'
 
 import { isTwentyFourSevenEnabled, getChannelIds } from '../utils/db_helper'
 
-const NO_SONG_TIMEOUT = 600000
-const REJOIN_DELAY = 5000
+const NO_SONG_TIMEOUT = 600_000
+const REJOIN_DELAY = 5_000
 
 class TimeoutManager {
-  private timeouts: Map<string, any>
+  private timeouts: Map<string, NodeJS.Timeout>
   constructor() {
     this.timeouts = new Map()
   }
@@ -18,18 +18,17 @@ class TimeoutManager {
       this.timeouts.delete(guildId)
     }
   }
-  set(guildId: string, callback: () => void, delay: number) {
+  set(guildId: string, callback: () => void | Promise<void>, delay: number) {
     this.clear(guildId)
     const timeout = setTimeout(() => {
       this.timeouts.delete(guildId)
-      callback()
+
+      void callback()
     }, delay)
     this.timeouts.set(guildId, timeout)
   }
   clearAll() {
-    for (const timeout of this.timeouts.values()) {
-      clearTimeout(timeout)
-    }
+    for (const timeout of this.timeouts.values()) clearTimeout(timeout)
     this.timeouts.clear()
   }
 }
@@ -37,52 +36,65 @@ class TimeoutManager {
 const timeoutManager = new TimeoutManager()
 let listenersRegistered = false
 
-const registerEventListeners = client => {
-  if (listenersRegistered) return;
+const registerEventListeners = (client: any) => {
+  if (listenersRegistered) return
   listenersRegistered = true
 
   const aqua = client.aqua
 
-  aqua.on('trackStart', player => {
+  aqua.on('trackStart', (player: any) => {
     timeoutManager.clear(player.guildId)
   })
 
-  aqua.on('queueEnd', player => {
+  aqua.on('queueEnd', (player: any) => {
     if (!isTwentyFourSevenEnabled(player.guildId)) {
       handleInactivePlayer(client, player)
     }
   })
 
-  aqua.on('playerDestroy', async player => {
-    if (!player?.guildId || !player?.voiceChannel || !player?.textChannel) return;
+  aqua.on('playerDestroy', (player: any) => {
 
-    if (isTwentyFourSevenEnabled(player.guildId)) {
-      setTimeout(() => {
-        rejoinChannel(client, player.guildId, player.voiceChannel, player.textChannel)
-      }, REJOIN_DELAY)
-    }
+    if (player?.guildId) timeoutManager.clear(player.guildId)
+
+    if (!player?.guildId) return
+    if (!isTwentyFourSevenEnabled(player.guildId)) return
+
+    setTimeout(() => {
+      rejoinChannel(client, player.guildId, player.voiceChannel, player.textChannel)
+    }, REJOIN_DELAY)
   })
 }
 
-const rejoinChannel = async (client, guildId, voiceChannelId, textChannelId) => {
+const rejoinChannel = async (
+  client: any,
+  guildId: string,
+  voiceChannelId?: string | null,
+  textChannelId?: string | null
+) => {
   try {
-    if (client.aqua.players.get(guildId)) return;
 
-    let vId = voiceChannelId
-    let tId = textChannelId
+    if (client.aqua.players.get(guildId)) return
+
+    let vId = voiceChannelId ?? undefined
+    let tId = textChannelId ?? undefined
 
     if (!vId || !tId) {
       const channelIds = getChannelIds(guildId)
-      if (!channelIds?.voiceChannelId || !channelIds?.textChannelId) return;
+      if (!channelIds?.voiceChannelId || !channelIds?.textChannelId) return
       vId = channelIds.voiceChannelId
       tId = channelIds.textChannelId
     }
 
-    const guild = await client.guilds.fetch(guildId).catch(() => null)
-    if (!guild) return;
+    const guild =
+      client.cache.guilds.get(guildId) ||
+      (await client.guilds.fetch?.(guildId).catch(() => null))
+    if (!guild) return
 
-    const voiceChannel = await guild.channels.fetch(vId).catch(() => null)
-    if (!voiceChannel || voiceChannel.type !== 2) return;
+    const voiceChannel =
+      guild.channels?.get?.(vId) ||
+      (await guild.channels?.fetch?.(vId).catch(() => null))
+
+    if (!voiceChannel || voiceChannel.type !== 2) return
 
     await client.aqua.createConnection({
       guildId,
@@ -92,63 +104,76 @@ const rejoinChannel = async (client, guildId, voiceChannelId, textChannelId) => 
       defaultVolume: 65
     })
   } catch (error) {
-    console.error(`Failed to rejoin voice channel in guild ${guildId}:`, error.message)
+    console.error(`Failed to rejoin voice channel in guild ${guildId}:`, error)
   }
 }
 
-const handleInactivePlayer = (client, player) => {
+const handleInactivePlayer = (client: any, player: any) => {
   const guildId = player.guildId
 
-  timeoutManager.set(guildId, async () => {
-    try {
-      const currentPlayer = client.aqua?.players?.get(guildId)
-      if (!currentPlayer || currentPlayer.playing) return;
-      if (isTwentyFourSevenEnabled(guildId)) return;
+  timeoutManager.set(
+    guildId,
+    async () => {
+      try {
+        const currentPlayer = client.aqua?.players?.get(guildId)
+        if (!currentPlayer || currentPlayer.playing) return
+        if (isTwentyFourSevenEnabled(guildId)) return
 
-      if (currentPlayer.textChannel) {
-        const textChannel = await client.channels.fetch(currentPlayer.textChannel).catch(() => null)
-        if (textChannel && textChannel.type === 0) {
-          const embed = new Embed()
-            .setColor(0)
-            .setDescription('No song added in 10 minutes, disconnecting...\nUse the `/24_7` command to keep the bot in voice channel.')
-            .setFooter({ text: 'Automatically destroying player' })
+        if (currentPlayer.textChannel) {
+          const textChannel = await client.channels
+            .fetch(currentPlayer.textChannel)
+            .catch(() => null)
 
-          const message = await client.messages.write(textChannel.id, { embeds: [embed] }).catch(() => null)
-          if (message) {
-            setTimeout(() => message.delete().catch(() => null), 10000)
+          if (textChannel && textChannel.type === 0) {
+            const embed = new Embed()
+              .setColor(0)
+              .setDescription(
+                'No song added in 10 minutes, disconnecting...\nUse the `/24_7` command to keep the bot in voice channel.'
+              )
+              .setFooter({ text: 'Automatically destroying player' })
+
+            const message = await client.messages
+              .write(textChannel.id, { embeds: [embed] })
+              .catch(() => null)
+            if (message) {
+              setTimeout(() => message.delete().catch(() => null), 10_000)
+            }
           }
         }
-      }
 
-      currentPlayer.destroy()
-    } catch (error) {
-      console.error(`Error in timeout handler for guild ${guildId}:`, error.message)
-      const p = client.aqua?.players?.get(guildId)
-      if (p) p.destroy()
-    }
-  }, NO_SONG_TIMEOUT)
+        currentPlayer.destroy()
+      } catch (error) {
+        console.error(`Error in timeout handler for guild ${guildId}:`, error)
+        const p = client.aqua?.players?.get(guildId)
+        if (p) p.destroy()
+      }
+    },
+    NO_SONG_TIMEOUT
+  )
 }
 
 export default createEvent({
   data: { name: 'voiceStateUpdate', once: false },
-  run: async ([newState, oldState], client) => {
-    if (!client.aqua?.players || !oldState?.guildId) return;
 
-    const guildId = oldState.guildId
+  run: async ([oldState, newState]: any[], client: any) => {
+    if (!client.aqua?.players) return
+
+    const guildId = oldState?.guildId ?? newState?.guildId
+    if (!guildId) return
+
     const player = client.aqua.players.get(guildId)
 
     if (!listenersRegistered) {
       registerEventListeners(client)
     }
 
-    const botMember = await client.cache.guilds.get(guildId)?.members.fetch(client.botId).catch(() => null)
+    const is247Enabled = isTwentyFourSevenEnabled(guildId)
 
-    if (
-      !player ||
-      !botMember?.voice()?.channelId ||
-      (oldState.userId === client.botId && oldState.channelId && !newState.channelId)
-    ) {
-      if (isTwentyFourSevenEnabled(guildId)) {
+    const botLeftVoice =
+      oldState?.userId === client.botId && oldState?.channelId && !newState?.channelId
+
+    if (!player || !player.voiceChannel || botLeftVoice) {
+      if (is247Enabled) {
         const channelIds = getChannelIds(guildId)
         if (channelIds?.voiceChannelId && channelIds?.textChannelId) {
           setTimeout(() => {
@@ -156,26 +181,33 @@ export default createEvent({
           }, REJOIN_DELAY)
         }
       }
-      return;
+      return
     }
 
-    const voiceChannel = botMember.voice().channel
-    const is247Enabled = isTwentyFourSevenEnabled(guildId)
+    if (!is247Enabled) {
 
-    if (voiceChannel) {
-      const humanMembers = voiceChannel.members.filter(m => !m.user.bot).size
-      if (humanMembers === 0) {
-        if (!is247Enabled) {
+      const botMember = await client.cache.guilds
+        .get(guildId)
+        ?.members.fetch(client.botId)
+        .catch(() => null)
+
+      const voiceChannel = botMember?.voice()?.channel
+      if (voiceChannel) {
+        const humanMembers = voiceChannel.members.filter((m: any) => !m.user.bot).size
+        if (humanMembers === 0) {
           handleInactivePlayer(client, player)
+        } else {
+          timeoutManager.clear(guildId)
         }
-      } else {
+      }
+
+      if (!player.playing && !player.paused) {
+        handleInactivePlayer(client, player)
+      } else if (player.playing) {
         timeoutManager.clear(guildId)
       }
-    }
+    } else {
 
-    if (player && !player.playing && !player.paused && !is247Enabled) {
-      handleInactivePlayer(client, player)
-    } else if (player && player.playing) {
       timeoutManager.clear(guildId)
     }
   }
