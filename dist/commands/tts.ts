@@ -37,9 +37,10 @@ export default class TTSCommand extends Command {
                 source: 'speak',
                 requester: ctx.interaction.user
             })
-            console.log(resolved)
             player.queue.add((await resolved).tracks[0]);
-            await player.play();
+            if (!player.playing && !player.paused && player.queue.size > 0) {
+                player.play();
+            }
         }
     }
 }
