@@ -69,8 +69,7 @@ Getting Kenium on your server is a breeze:
 ## Why You Need Kenium in 2025 🎉  
 Kenium’s the music bot you’ve been waiting for—**free**, **fast**, and **fun**. No paywalls, no vote scams, just pure music vibes for your Discord server. Whether you’re gaming, chilling, or throwing a virtual party, Kenium’s got you covered with smooth tunes and killer features. Try it out and see why it’s the **last music bot you’ll ever need**! 😎  
 
-# Stars
-
+## Star History
 
 <a href="https://www.star-history.com/#ToddyTheNoobDud/Kenium-Music&Date">
  <picture>
