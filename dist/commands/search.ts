@@ -177,16 +177,16 @@ export default class SearchCommand extends Command {
         return player;
     }
 
-    private async searchTracks(ctx: CommandContext, query: string, source: string): Promise<any[]> {
+    private async searchTracks(ctx: CommandContext, query: string, defaultSearchPlatform: string): Promise<any[]> {
         try {
             const result = await ctx.client.aqua.resolve({
                 query,
-                source,
+                defaultSearchPlatform,
                 requester: ctx.interaction.user
             });
             return result.tracks?.slice(0, CONFIG.MAX_RESULTS) || [];
         } catch (error) {
-            console.error(`Search tracks error for ${source}:`, error);
+            console.error(`Search tracks error for ${defaultSearchPlatform}:`, error);
             return [];
         }
     }

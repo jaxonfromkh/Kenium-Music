@@ -1,5 +1,3 @@
-/*
-
 const { spawn } = require('child_process');
 const path = require('path');
 
@@ -21,6 +19,4 @@ child.on('close', (code) => {
 
 child.on('error', (error) => {
   console.error('Failed to start process:', error);
-
 });
-*/

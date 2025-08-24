@@ -35,7 +35,7 @@ export default class playfile extends Command {
                 defaultVolume: 65,
             });
 
-            const { file } = ctx.options as { file: any };
+            const { file } = ctx.options as { file: { url: string } }
 
             try {
                 const result = await client.aqua.resolve({

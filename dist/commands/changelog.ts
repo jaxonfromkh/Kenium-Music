@@ -18,7 +18,8 @@ const CONFIG = {
 > Rewrited the interaction handler, this also improves the performance.
 > Optimized the voice handling
 > Optimized the caching, improving the performance
-> Remake the changelog cmd`   },
+> Remake the changelog cmd
+> Rewrited the nowplaying and queue command, new ui and better performance.`   },
     COLORS: {
         PRIMARY: 0,
         ERROR: 0xFF5252

@@ -4,7 +4,8 @@
         "experimentalDecorators": true,
         "downlevelIteration": true,
         "esModuleInterop": true,
-        "module": "nodenext"
+        "module": "nodenext",
+        "strict": false
     },
     "exclude": [
         "node_modules"

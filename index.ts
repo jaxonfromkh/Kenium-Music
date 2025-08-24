@@ -25,36 +25,40 @@ const MUSIC_PLATFORMS = {
   youtube: {
     name: 'YouTube',
     emoji: '<:youtube:1326295615017058304>',
-    color: 0xff0000,
-    style: 4
+    color: 0x000000,
+    style: 1//blue button
   },
   soundcloud: {
     name: 'SoundCloud',
     emoji: '<:soundcloud:1326295646818406486>',
-    color: 0xff5500,
+    color: 0x000000,
     style: 1
   },
   spotify: {
     name: 'Spotify',
     emoji: '<:spotify:1326702792269893752>',
-    color: 0x1db954,
-    style: 3
+    color: 0x000000,
+    style: 1
   },
   deezer: {
     name: 'Deezer',
     emoji: '<:Deezer_New_Icon:1398710505106964632>',
-    color: 0x8000ff,
+    color: 0x000000,
     style: 1
   }
 }
 
 const client = new Client({})
+
+
 const aqua = new Aqua(
   client,
   [{
     host: NODE_HOST,
     password: NODE_PASSWORD,
+    // @ts-ignore
     port: NODE_PORT,
+
     secure: false,
     name: NODE_NAME
   }],
@@ -64,12 +68,14 @@ const aqua = new Aqua(
     shouldDeleteMessage: true,
     infiniteReconnects: true,
     autoResume: true,
+    loadBancer: 'random', // cpu, memory, rest: leastLoad, only rest: leastRest, no check: random
     leaveOnEnd: false
   }
 )
+
 aqua.init(process.env.CLIENT_ID)
 Object.assign(client, { aqua })
-
+aqua.on('debug', msg => client.logger.debug(msg))
 const formatTime = ms => {
   const totalSeconds = Math.floor((ms || 0) / 1000)
   const hours = Math.floor(totalSeconds / 3600)
@@ -147,6 +153,7 @@ const cleanupPlayer = player => {
   if (voiceChannel) {
     client.channels.setVoiceStatus(voiceChannel, null).catch(() => null)
   }
+  player.nowPlayingMessage?.delete().catch(() => null)
   player.nowPlayingMessage = null
 }
 
@@ -163,8 +170,8 @@ export const updatePresence = async clientInstance => {
     if (!clientInstance.me?.id) return;
 
 
-        const guilds = clientInstance.cache.guilds?.values() || [];
-        const userCount = guilds.reduce((total, guild) => total + (guild.memberCount || 0), 0);
+    const guilds = clientInstance.cache.guilds?.values() || [];
+    const userCount = guilds.reduce((total, guild) => total + (guild.memberCount || 0), 0);
     const activities = [
       { name: '⚡ Kenium 4.3.0 ⚡', type: 1, url: 'https://www.youtube.com/watch?v=7aIjwQCEox8' },
       { name: `${userCount} users`, type: 1, url: 'https://www.youtube.com/watch?v=7aIjwQCEox8' },
@@ -237,6 +244,7 @@ aqua.on('trackStart', async (player, track) => {
       const status = `⭐ ${truncateText(track.info?.title || track.title, VOICE_STATUS_LENGTH)} - Kenium 4.3.0`
       client.channels.setVoiceStatus(player.voiceChannel, status).catch(() => null)
     }
+
   } catch (error) {
     console.error(`Track error [${player.guildId}]:`, error.message)
   }
@@ -256,9 +264,7 @@ aqua.on('trackError', async (player, track, payload) => {
 
 aqua.on('playerDestroy', cleanupPlayer)
 aqua.on('queueEnd', cleanupPlayer)
-aqua.on('trackEnd', player => {
-  player.nowPlayingMessage = null
-})
+aqua.on('trackEnd', cleanupPlayer)
 
 aqua.on('nodeError', (node, error) => {
   const now = Date.now()
@@ -272,7 +278,7 @@ aqua.on('socketClosed', (player, payload) => {
 })
 
 aqua.on('nodeConnect', node => {
-  client.logger.debug(`Node [${node.name}] connected`)
+  client.logger.debug(`Node [${node.name}] connected, IsNodeSecure: ${node.secure}`)
 })
 
 aqua.on('nodeDisconnect', (_, reason) => {
@@ -282,21 +288,25 @@ aqua.on('nodeDisconnect', (_, reason) => {
 const shutdown = async () => {
   console.log('Shutting down...')
   if (presenceInterval) clearInterval(presenceInterval)
+  // @ts-ignore
   await aqua.savePlayer().catch(console.error)
   process.exit(0)
 }
 
 process.once('SIGTERM', shutdown)
 process.once('SIGINT', shutdown)
+// @ts-ignore
 
 client.start()
   .then(async () => {
     await client.uploadCommands({ cachePath: './commands.json' }).catch(console.error)
   })
+
   .catch(error => {
     console.error('Startup failed:', error.message)
     process.exit(1)
   })
+
 
 // @ts-ignore
 client.cooldown = new CooldownManager(client)
@@ -308,5 +318,5 @@ declare module 'seyfert' {
   interface Client<Ready extends boolean> {
     cooldown: CooldownManager
   }
-  interface RegisteredMiddlewares extends ParseMiddlewares<typeof middlewares> {}
+  interface RegisteredMiddlewares extends ParseMiddlewares<typeof middlewares> { }
 }

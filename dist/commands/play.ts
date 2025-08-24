@@ -2,248 +2,253 @@ import {
   Command,
   createStringOption,
   Declare,
-  type GuildCommandContext,
   Options,
   Embed,
   Middlewares
 } from 'seyfert'
 
-/* =========================
-   Constants
-========================= */
+
 const CACHE_SIZE = 10
+const MAX_USER_CACHE = 200
+const MAX_SEARCH_CACHE = 128
 const MAX_RESULTS = 4
 const THROTTLE_MS = 300
+const SEARCH_TTL_MS = 30_000
+const SWEEP_INTERVAL_MS = 5_000
 const EMBED_COLOR = 0x000000
+
+const URL_RE = /^https?:\/\//i
+const MD_ESCAPE_RE = /([\\`*_\[\]()~`>#+\-=|{}!.])/g
+const esc = s => String(s || '').replace(MD_ESCAPE_RE, '\\$1')
+const trunc = (s, n) => (s.length <= n ? s : s.slice(0, n - 3) + '...')
 
 const ERR = {
   NO_VOICE: 'You must be in a voice channel to use this command.',
   NO_TRACKS: 'No tracks found for the given query.',
-  GENERIC: 'An error occurred. Please try again.',
-} as const
-
-/* =========================
-   Cache - Single global cache with LRU eviction
-========================= */
-const recentCache = new Map<string, string[]>() // userId -> [uri1, uri2, ...]
-const throttle = new Map<string, number>() // userId -> timestamp
-const searchCache = new Map<string, any>() // query -> results (TTL: 30s)
-
-// Compact string truncation
-const trunc = (s: string, n: number) => s.length > n ? s.slice(0, n - 3) + '...' : s
-
-// Fast markdown escape - only common chars
-const esc = (s: string) => {
-  let r = ''
-  for (let i = 0; i < s.length; i++) {
-    const c = s[i]
-    r += (c === '*' || c === '_' || c === '`' || c === '[' || c === ']') ? '\\' + c : c
-  }
-  return r
+  GENERIC: 'An error occurred. Please try again.'
 }
 
-// Update recent tracks (LRU)
-const updateRecent = (userId: string, uri: string) => {
-  let items = recentCache.get(userId)
-  if (!items) {
-    recentCache.set(userId, [uri])
-    // Evict oldest user if cache too large
-    if (recentCache.size > 100) {
-      const firstKey = recentCache.keys().next().value
-      recentCache.delete(firstKey)
+class CacheManager {
+    private map: Map<string, any>;
+  private maxSize: number;
+  private ttl: number;
+  constructor(maxSize = 128, ttl = 30_000) {
+    this.map = new Map()
+    this.maxSize = maxSize
+    this.ttl = ttl
+  }
+
+  get(key) {
+    const entry = this.map.get(key)
+    if (!entry) return undefined
+    if (Date.now() > entry.expires) {
+      this.map.delete(key)
+      return undefined
     }
-    return
+    this.map.delete(key)
+    this.map.set(key, entry)
+    return entry.value
   }
 
-  // Remove duplicate and add to front
-  const idx = items.indexOf(uri)
-  if (idx !== -1) items.splice(idx, 1)
-  items.unshift(uri)
-  if (items.length > CACHE_SIZE) items.length = CACHE_SIZE
+  set(key, value) {
+    if (this.map.size >= this.maxSize && !this.map.has(key)) {
+      const firstKey = this.map.keys().next().value
+      if (firstKey) this.map.delete(firstKey)
+    }
+    this.map.set(key, { value, expires: Date.now() + this.ttl })
+  }
+
+  delete(key) { this.map.delete(key) }
+
+  sweep() {
+    const now = Date.now()
+    for (const [k, v] of this.map) {
+      if (now > v.expires) this.map.delete(k)
+    }
+  }
 }
 
-/* =========================
-   Options with Autocomplete
-========================= */
+class RecentTracks {
+  private map: Map<string, string[]>
+  private maxUsers: number
+  private maxTracks: number
+  constructor(maxUsers = MAX_USER_CACHE, maxTracks = CACHE_SIZE) {
+    this.map = new Map()
+    this.maxUsers = maxUsers
+    this.maxTracks = maxTracks
+  }
+
+  add(userId, uri) {
+    if (!uri) return
+    let arr = this.map.get(userId)
+    if (!arr) {
+      if (this.map.size >= this.maxUsers) {
+        const firstKey = this.map.keys().next().value
+        if (firstKey) this.map.delete(firstKey)
+      }
+      this.map.set(userId, [uri])
+      return
+    }
+
+    const set = new Set(arr)
+    set.delete(uri)
+    const result = [uri]
+    for (const v of set) {
+      if (result.length >= this.maxTracks) break
+      result.push(v)
+    }
+    this.map.set(userId, result)
+  }
+
+  get(userId) {
+    return this.map.get(userId)
+  }
+}
+
+class ThrottleManager {
+  private map: Map<string, number>
+  private retentionMs: number
+  private counter: number
+  private cleanupInterval: number
+  constructor(retentionMs = 60_000, cleanupInterval = 256) {
+    this.map = new Map()
+    this.retentionMs = retentionMs
+    this.counter = 0
+    this.cleanupInterval = cleanupInterval
+  }
+
+  shouldThrottle(userId, ms = THROTTLE_MS) {
+    const now = Date.now()
+    const last = this.map.get(userId) || 0
+    if (now - last < ms) return true
+    this.map.set(userId, now)
+    if (++this.counter >= this.cleanupInterval) {
+      this.counter = 0
+      this.cleanup(now)
+    }
+    return false
+  }
+
+  cleanup(now = Date.now()) {
+    const threshold = now - this.retentionMs
+    for (const [k, v] of this.map) if (v < threshold) this.map.delete(k)
+  }
+}
+
+const searchCache = new CacheManager(MAX_SEARCH_CACHE, SEARCH_TTL_MS)
+const recentTracks = new RecentTracks()
+const throttleManager = new ThrottleManager()
+
+setInterval(() => {
+  searchCache.sweep()
+}, SWEEP_INTERVAL_MS).unref && setInterval(() => {}).unref()
+
 const options = {
   query: createStringOption({
     description: 'The song you want to search for',
     required: true,
-    autocomplete: async (interaction: any) => {
+    autocomplete: async interaction => {
       const uid = interaction.user.id
+      if (throttleManager.shouldThrottle(uid)) return interaction.respond([])
 
-      // Throttle check
-      const now = Date.now()
-      const last = throttle.get(uid) || 0
-      if (now - last < THROTTLE_MS) return interaction.respond([])
-      throttle.set(uid, now)
+      const raw = interaction.getInput()
+      const input = (raw ? String(raw) : '').trim()
 
-      // Clean old throttle entries periodically (every 100 calls)
-      if (throttle.size > 100) {
-        const threshold = now - 60000
-        for (const [k, v] of throttle) {
-          if (v < threshold) throttle.delete(k)
-        }
-      }
-
-      const input = (interaction.getInput() || '').trim()
-
-      // Show recent for empty/short queries
       if (!input || input.length < 2) {
-        const recent = recentCache.get(uid)
+        const recent = recentTracks.get(uid)
         if (!recent?.length) return interaction.respond([])
-
-        const choices = []
-        for (let i = 0; i < Math.min(recent.length, MAX_RESULTS); i++) {
+        const limit = Math.min(recent.length, MAX_RESULTS)
+        const choices = new Array(limit)
+        for (let i = 0; i < limit; i++) {
           const uri = recent[i]
-
-          choices.push({
-            name: `🕘 Recent ${i + 1}: ${trunc(uri, 79)}`,
-            value: uri.slice(0, 100)
-          })
+          choices[i] = { name: `🕘 Recent ${i + 1}: ${trunc(uri, 79)}`, value: uri.slice(0, 100) }
         }
         return interaction.respond(choices)
       }
 
-      // Skip URL autocomplete
-      if (input[0] === 'h' && input.startsWith('http')) {
-        return interaction.respond([])
-      }
+      if (URL_RE.test(input)) return interaction.respond([])
 
       try {
-        // Check search cache first
-        const cacheKey = input.slice(0, 50) // Limit cache key size
-        let results = searchCache.get(cacheKey)
-
+        const key = input.toLowerCase().slice(0, 80)
+        let results = searchCache.get(key)
         if (!results) {
           results = await interaction.client.aqua.search(input, uid)
           if (!Array.isArray(results)) results = []
-
-          // Cache with TTL cleanup
-          searchCache.set(cacheKey, results)
-          setTimeout(() => searchCache.delete(cacheKey), 30000)
-
-          // Limit cache size
-          if (searchCache.size > 50) {
-            const firstKey = searchCache.keys().next().value
-            searchCache.delete(firstKey)
-          }
+          if (results.length) searchCache.set(key, results)
         }
-
         if (!results.length) return interaction.respond([])
 
-        const choices = []
         const len = Math.min(results.length, MAX_RESULTS)
+        const choices = []
         for (let i = 0; i < len; i++) {
           const info = results[i]?.info
           if (!info?.uri) continue
-
-          const title = info.title || 'Unknown'
-          const author = info.author ? ` - ${trunc(info.author, 20)}` : ''
-          const truncatedTitle = trunc(esc(title), 70)
-          choices.push({
-            name: `${truncatedTitle}${author}`.slice(0, 100),
-            value: info.uri.slice(0, 100)
-          })
+          const title = esc(info.title || 'Unknown')
+          const author = info.author ? ` - ${trunc(esc(info.author), 20)}` : ''
+          choices.push({ name: `${trunc(title, 70)}${author}`.slice(0, 100), value: String(info.uri).slice(0, 100) })
         }
-
         return interaction.respond(choices)
-      } catch {
+      } catch (e) {
         return interaction.respond([])
       }
-    },
-  }),
+    }
+  })
 }
 
-/* =========================
-   Command
-========================= */
-@Declare({
-  name: 'play',
-  description: 'Play a song by search query or URL.',
-})
+@Declare({ name: 'play', description: 'Play a song by search query or URL.' })
 @Options(options)
 @Middlewares(['checkVoice'])
 export default class Play extends Command {
-  public override async run(ctx: GuildCommandContext): Promise<void> {
-    const query = (ctx.options as any).query as string
-
+  async run(ctx) {
+    const query = (ctx.options || {}).query
     try {
       await ctx.deferReply(true)
-
-      // Fast voice check
       const voice = await ctx.member.voice()
-      if (!voice?.channelId) {
-        await ctx.editResponse({ content: ERR.NO_VOICE })
-        return
-      }
+      if (!voice?.channelId) return void (await ctx.editResponse({ content: ERR.NO_VOICE }))
 
-      // Get or create player
       const player = ctx.client.aqua.createConnection({
         guildId: ctx.guildId,
         voiceChannel: voice.channelId,
         textChannel: ctx.channelId,
         deaf: true,
-        defaultVolume: 65,
+        defaultVolume: 65
       })
 
-      // Resolve tracks
-      const result = await ctx.client.aqua.resolve({
-        query,
-        requester: ctx.interaction.user,
-      })
-
-      if (!result?.tracks?.length) {
-        await ctx.editResponse({ content: ERR.NO_TRACKS })
-        return
-      }
+      const result = await ctx.client.aqua.resolve({ query, requester: ctx.interaction.user })
+      if (!result?.tracks?.length) return void (await ctx.editResponse({ content: ERR.NO_TRACKS }))
 
       const { loadType, tracks, playlistInfo } = result
       const embed = new Embed().setColor(EMBED_COLOR).setTimestamp()
 
-      // Handle single track or search
+      const safeAddToQueue = async items => {
+        if (!items || !items.length) return
+        for (const it of items) player.queue.add(it)
+      }
+
       if (loadType === 'track' || loadType === 'search') {
         const track = tracks[0]
-        const info = track.info
-
-        player.queue.add(track)
-        updateRecent(ctx.interaction.user.id, info.title)
-
-        embed.setDescription(`Added [**${esc(info.title || 'Track')}**](${info.uri}) to the queue.`)
-      }
-      // Handle playlist
-      else if (loadType === 'playlist' && playlistInfo?.name) {
-        // Batch add tracks
-        for (let i = 0; i < tracks.length; i++) {
-          player.queue.add(tracks[i])
-        }
-
-        if (tracks[0]?.info?.uri) {
-          updateRecent(ctx.interaction.user.id, tracks[0].info.uri)
-        }
-
+        const info = track?.info || {}
+        await safeAddToQueue([track])
+        recentTracks.add(ctx.interaction.user.id, info.uri || query)
+        embed.setDescription(`Added [**${esc(info.title || 'Track')}**](${info.uri || '#'}) to the queue.`)
+      } else if (loadType === 'playlist' && playlistInfo?.name) {
+        await safeAddToQueue(tracks)
+        const firstUri = tracks[0]?.info?.uri
+        if (firstUri) recentTracks.add(ctx.interaction.user.id, firstUri)
         embed.setDescription(`Added **${esc(playlistInfo.name)}** playlist (${tracks.length} tracks) to the queue.`)
         if (playlistInfo.thumbnail) embed.setThumbnail(playlistInfo.thumbnail)
-      }
-      // Unsupported
-      else {
-        await ctx.editResponse({ content: 'Unsupported content type.' })
-        return
+      } else {
+        return void (await ctx.editResponse({ content: 'Unsupported content type.' }))
       }
 
       await ctx.editResponse({ embeds: [embed] })
-
-      // Start playback if needed
       if (!player.playing && !player.paused && player.queue.size > 0) {
-        player.play()
+        try { player.play() } catch (e) { console.error('play start error', e) }
       }
-    } catch (error: any) {
-      if (error?.code !== 10065) {
-        console.error('Play error:', error)
-        try {
-          await ctx.editResponse({ content: ERR.GENERIC })
-        } catch {}
-      }
+    } catch (err) {
+      if (!err || err.code === 10065) return
+      console.error('Play error:', err)
+      try { await ctx.editResponse({ content: ERR.GENERIC }) } catch {}
     }
   }
 }
