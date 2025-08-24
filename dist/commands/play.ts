@@ -29,7 +29,7 @@ const ERR = {
 }
 
 class CacheManager {
-    private map: Map<string, any>;
+  private map: Map<string, any>;
   private maxSize: number;
   private ttl: number;
   constructor(maxSize = 128, ttl = 30_000) {
@@ -68,8 +68,10 @@ class CacheManager {
   }
 }
 
+type RecentItem = { title: string; uri: string }
+
 class RecentTracks {
-  private map: Map<string, string[]>
+  private map: Map<string, RecentItem[]>
   private maxUsers: number
   private maxTracks: number
   constructor(maxUsers = MAX_USER_CACHE, maxTracks = CACHE_SIZE) {
@@ -78,29 +80,26 @@ class RecentTracks {
     this.maxTracks = maxTracks
   }
 
-  add(userId, uri) {
+  add(userId: string, title: string, uri: string) {
     if (!uri) return
+    const item: RecentItem = { title: title || uri, uri }
     let arr = this.map.get(userId)
     if (!arr) {
       if (this.map.size >= this.maxUsers) {
         const firstKey = this.map.keys().next().value
         if (firstKey) this.map.delete(firstKey)
       }
-      this.map.set(userId, [uri])
+      this.map.set(userId, [item])
       return
     }
 
-    const set = new Set(arr)
-    set.delete(uri)
-    const result = [uri]
-    for (const v of set) {
-      if (result.length >= this.maxTracks) break
-      result.push(v)
-    }
+    // remove existing entries with same uri
+    arr = arr.filter(x => x.uri !== uri)
+    const result = [item, ...arr].slice(0, this.maxTracks)
     this.map.set(userId, result)
   }
 
-  get(userId) {
+  get(userId: string): RecentItem[] | undefined {
     return this.map.get(userId)
   }
 }
@@ -160,8 +159,9 @@ const options = {
         const limit = Math.min(recent.length, MAX_RESULTS)
         const choices = new Array(limit)
         for (let i = 0; i < limit; i++) {
-          const uri = recent[i]
-          choices[i] = { name: `🕘 Recent ${i + 1}: ${trunc(uri, 79)}`, value: uri.slice(0, 100) }
+          const title = recent[i].title || recent[i].uri
+          const uri = recent[i].uri
+          choices[i] = { name: `🕘 Recent ${i + 1}: ${trunc(title, 79)}`, value: uri.slice(0, 100) }
         }
         return interaction.respond(choices)
       }
@@ -229,12 +229,13 @@ export default class Play extends Command {
         const track = tracks[0]
         const info = track?.info || {}
         await safeAddToQueue([track])
-        recentTracks.add(ctx.interaction.user.id, info.uri || query)
+        recentTracks.add(ctx.interaction.user.id, info.title || query, info.uri || query)
         embed.setDescription(`Added [**${esc(info.title || 'Track')}**](${info.uri || '#'}) to the queue.`)
       } else if (loadType === 'playlist' && playlistInfo?.name) {
         await safeAddToQueue(tracks)
+        const firstTitle = tracks[0]?.info?.title
         const firstUri = tracks[0]?.info?.uri
-        if (firstUri) recentTracks.add(ctx.interaction.user.id, firstUri)
+        if (firstUri) recentTracks.add(ctx.interaction.user.id, firstTitle || firstUri, firstUri)
         embed.setDescription(`Added **${esc(playlistInfo.name)}** playlist (${tracks.length} tracks) to the queue.`)
         if (playlistInfo.thumbnail) embed.setThumbnail(playlistInfo.thumbnail)
       } else {
