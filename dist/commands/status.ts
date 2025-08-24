@@ -1,5 +1,5 @@
-import { Embed, Declare, Command, type CommandContext} from 'seyfert'
-import { cpus , loadavg, freemem, totalmem} from 'node:os'
+import { Embed, Declare, Command, type CommandContext } from 'seyfert'
+import { cpus, loadavg, freemem, totalmem, uptime } from 'node:os'
 const CPU_CACHE = {
   model: cpus()[0]?.model.replace(/\(R\)|®|\(TM\)|™/g, '').trim().split('@')[0].trim() || 'Unknown',
   cores: cpus().length,
@@ -9,11 +9,11 @@ const CPU_CACHE = {
 
 const formatters = {
   uptime: (() => {
-    const cache = new Map();
+    const cache = new Map<number, string>();
 
-    return (ms) => {
+    return (ms: number): string => {
       const cacheKey = Math.floor(ms / 1000);
-      if (cache.has(cacheKey)) return cache.get(cacheKey);
+      if (cache.has(cacheKey)) return cache.get(cacheKey)!;
 
       const seconds = Math.floor(ms / 1000);
       const days = Math.floor(seconds / 86400);
@@ -39,15 +39,15 @@ const formatters = {
   })(),
 
   memory: (() => {
-    const cache = new Map();
+    const cache = new Map<string, string>();
     const GB = 1073741824;
     const MB = 1048576;
 
-    return (bytes, inGB = false) => {
+    return (bytes: number, inGB = false): string => {
       const roundedBytes = Math.round(bytes / MB) * MB;
       const cacheKey = `${roundedBytes}-${inGB}`;
 
-      if (cache.has(cacheKey)) return cache.get(cacheKey);
+      if (cache.has(cacheKey)) return cache.get(cacheKey)!;
 
       const result = inGB
         ? `${(roundedBytes / GB).toFixed(2)} GB`
@@ -64,21 +64,32 @@ const formatters = {
   })()
 };
 
-const createProgressBar = (used, total, length = 10) => {
+const createProgressBar = (used: number, total: number, length = 10): string => {
+  if (total <= 0) return '▱'.repeat(length);
   const progress = Math.min(Math.round((used / total) * length), length);
   return `${'▰'.repeat(progress)}${'▱'.repeat(length - progress)}`;
 };
+function formatMemoryUsage(bytes: number): string {
+  const units = ["B", "KB", "MB", "GB", "TB"];
+  let i = 0;
 
+  while (bytes >= 1024 && i < units.length - 1) {
+    bytes /= 1024;
+    i++;
+  }
+
+  return `${bytes.toFixed(2)} ${units[i]}`;
+}
 @Declare({
-    name: 'status',
-    description: 'status of the bot',
+  name: 'status',
+  description: 'status of the bot',
 })
 export default class statusCmds extends Command {
-    public override async run(ctx: CommandContext): Promise<void> {
-        const { client, interaction } = ctx
-        await ctx.deferReply()
+  public override async run(ctx: CommandContext): Promise<void> {
+    const { client, interaction } = ctx
+    await ctx.deferReply()
 
-         const now = Date.now();
+    const now = Date.now();
     if (now - CPU_CACHE.lastCheck > 5000) {
       CPU_CACHE.loadAvg = loadavg();
       CPU_CACHE.lastCheck = now;
@@ -88,14 +99,12 @@ export default class statusCmds extends Command {
     const freeMemory = freemem();
     const usedMemory = totalMemory - freeMemory;
     const memoryPercentage = (usedMemory / totalMemory * 100).toFixed(1);
-    const processMemory = process.memoryUsage();
 
     const pingTime = Date.now() - interaction.createdTimestamp;
     const nodes = [...client.aqua.nodeMap.values()];
     const isOnline = nodes.some(node => node.connected);
     const connectedNodes = nodes.filter(node => node.connected).length;
 
-    // @ts-nocheck
 
     const sortedNodes = [...nodes].sort((a, b) => {
       if (a.connected !== b.connected) return a.connected ? -1 : 1;
@@ -104,9 +113,9 @@ export default class statusCmds extends Command {
     });
 
     const activeNode = sortedNodes.find(node => node.connected);
-    const { stats = {}, aqua = {} } = activeNode || {};
-          // @ts-ignore
-    const { memory = {}, cpu = {}, players = 0, playingPlayers = 0, uptime = 0 } = stats;
+    const { stats = {} } = activeNode || {};
+    // @ts-ignore
+    const { memory = {}, cpu = {}, players = 0, playingPlayers = 0, uptime: lavalinkUptime = 0 } = stats;
 
     const cpuLoad = cpu?.lavalinkLoadPercentage
       ? (cpu.lavalinkLoadPercentage * 100).toFixed(1) + '%'
@@ -114,38 +123,33 @@ export default class statusCmds extends Command {
 
     const memoryUsed = memory?.used || 0;
     const memoryTotal = memory?.reservable || 0;
-    const lavalinkMemoryPercentage = (memoryUsed / memoryTotal * 100).toFixed(1);
+    const lavalinkMemoryPercentage = memoryTotal > 0 ? (memoryUsed / memoryTotal * 100).toFixed(1) : '0.0';
+
+    const systemMemoryBar = createProgressBar(usedMemory, totalMemory, 20);
+    const lavalinkMemoryBar = createProgressBar(memoryUsed, memoryTotal, 20);
 
     const embed = new Embed()
-         .setDescription([
-        '```ansi',
-        `\u001b[1;94m┌────────────────── \u001b[1;97mKENIUM 4.3.0\u001b[1;94m ─────────────────┐\u001b[0m`,
-        '',
-        `\u001b[1;90m SYSTEM METRICS \u001b[0m`,
-        `\u001b[1;94m❯\u001b[0m \u001b[1;97mCPU    \u001b[0m ${CPU_CACHE.model}`,
-        `\u001b[1;94m❯\u001b[0m \u001b[1;97mLoad   \u001b[0m [${createProgressBar(CPU_CACHE.loadAvg[0] / CPU_CACHE.cores, 1, 12)}] ${(CPU_CACHE.loadAvg[0] / CPU_CACHE.cores * 100).toFixed(1)}%`,
-        `\u001b[1;94m❯\u001b[0m \u001b[1;97mMemory \u001b[0m [${createProgressBar(usedMemory, totalMemory, 12)}] ${memoryPercentage}% (${formatters.memory(usedMemory, true)})`,
-        `\u001b[1;94m❯\u001b[0m \u001b[1;97mHeap   \u001b[0m ${formatters.memory(processMemory.heapUsed)} / ${formatters.memory(processMemory.heapTotal)}`,
-        `\u001b[1;94m❯\u001b[0m \u001b[1;97mUptime \u001b[0m ${formatters.uptime(process.uptime() * 1000)}`,
-        `\u001b[1;94m❯\u001b[0m \u001b[1;97mPing   \u001b[0m API: ${client.gateway.latency}ms | Gateway: ${pingTime}ms`,
-        '',
-        `\u001b[1;90m LAVALINK \u001b[1;94m${connectedNodes}/${nodes.length}\u001b[0m`,
-        `\u001b[1;94m❯\u001b[0m \u001b[1;97mPlayers \u001b[0m ${playingPlayers} active / ${players} total`,
-        `\u001b[1;94m❯\u001b[0m \u001b[1;97mMemory  \u001b[0m [${createProgressBar(memoryUsed, memoryTotal, 12)}] ${lavalinkMemoryPercentage}% (${formatters.memory(memoryUsed, true)})`,
-        `\u001b[1;94m❯\u001b[0m \u001b[1;97mCPU     \u001b[0m ${cpuLoad} | Uptime: ${formatters.uptime(uptime)}`,
-          // @ts-ignore
-        `\u001b[1;94m❯\u001b[0m \u001b[1;97mVersion \u001b[0m ${aqua?.version || 'Unknown'}`,
-        '',
-        `\u001b[1;94m└─────────────────────────────────────────────────┘\u001b[0m`,
-        '```'
-      ].join('\n'))
-            .setColor(0)
+      .setColor(0)
+      .setDescription(`\`\`\`yaml
+System Uptime     :: ${formatters.uptime(uptime() * 1000)}
+Lavalink Uptime   :: ${formatters.uptime(lavalinkUptime)}
+Lavalink Version  :: ${(ctx.client.aqua as any)?.version || 'N/A'}
+System Memory     :: ${formatters.memory(usedMemory, true)} / ${formatters.memory(totalMemory, true)} (${memoryPercentage}%)
+System Mem Bar    :: ${systemMemoryBar}
+Lavalink Memory   :: ${formatters.memory(memoryUsed, true)} / ${formatters.memory(memoryTotal, true)} (${lavalinkMemoryPercentage}%)
+Lavalink Mem Bar  :: ${lavalinkMemoryBar}
+Lavalink CPU Load :: ${cpuLoad} (${CPU_CACHE.loadAvg[0].toFixed(2)}, ${CPU_CACHE.loadAvg[1].toFixed(2)}, ${CPU_CACHE.loadAvg[2].toFixed(2)}) avg
+Lavalink Players  :: ${playingPlayers} playing / ${players} total
+Lavalink Nodes    :: ${connectedNodes} connected / ${nodes.length} total
+Ping              :: ${pingTime} ms
+Process Memory    :: ${formatMemoryUsage(process.memoryUsage().rss)}
+\`\`\``)
       .setAuthor({
         name: `System ${isOnline ? '●' : '○'} ${isOnline ? 'Online' : 'Offline'}`,
         iconUrl: client.me.avatarURL(),
       })
 
-      await ctx.editOrReply({ embeds: [embed] });
-    }
+    await ctx.editOrReply({ embeds: [embed] });
+  }
 
 }
