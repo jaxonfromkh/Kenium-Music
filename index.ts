@@ -172,10 +172,12 @@ export const updatePresence = async clientInstance => {
 
     const guilds = clientInstance.cache.guilds?.values() || [];
     const userCount = guilds.reduce((total, guild) => total + (guild.memberCount || 0), 0);
+
     const activities = [
-      { name: '⚡ Kenium 4.3.0 ⚡', type: 1, url: 'https://www.youtube.com/watch?v=7aIjwQCEox8' },
+      { name: '⚡ Kenium 4.5.0 ⚡', type: 1, url: 'https://www.youtube.com/watch?v=7aIjwQCEox8' },
       { name: `${userCount} users`, type: 1, url: 'https://www.youtube.com/watch?v=7aIjwQCEox8' },
-      { name: `${guilds.length} servers`, type: 1, url: 'https://www.youtube.com/watch?v=7aIjwQCEox8' }
+      { name: `${guilds.length} servers`, type: 1, url: 'https://www.youtube.com/watch?v=7aIjwQCEox8' },
+      { name: `Sponsor: https://triniumhost.com`, type: 1, url: 'https://www.youtube.com/watch?v=7aIjwQCEox8' }
     ]
 
     clientInstance.gateway?.setPresence({
