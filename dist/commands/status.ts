@@ -131,7 +131,7 @@ export default class statusCmds extends Command {
     const embed = new Embed()
       .setColor(0)
       .setDescription(`\`\`\`yaml
-System Uptime     :: ${formatters.uptime(uptime() * 1000)}
+System Uptime     :: ${formatters.uptime(process.uptime() * 1000)}
 Lavalink Uptime   :: ${formatters.uptime(lavalinkUptime)}
 Lavalink Version  :: ${(ctx.client.aqua as any)?.version || 'N/A'}
 System Memory     :: ${formatters.memory(usedMemory, true)} / ${formatters.memory(totalMemory, true)} (${memoryPercentage}%)
