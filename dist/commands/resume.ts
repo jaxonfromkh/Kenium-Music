@@ -5,7 +5,7 @@ import {Command, Declare, type CommandContext, Embed, Middlewares} from 'seyfert
     description: 'resume the music',
 })
 
-@Middlewares(["checkPlayer", "checkVoice"])
+@Middlewares(['checkPlayer', 'checkVoice', 'checkTrack'])
 export default class resumecmds extends Command {
     public override async run(ctx: CommandContext): Promise<void> {
         try {

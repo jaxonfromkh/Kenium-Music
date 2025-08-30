@@ -4,7 +4,7 @@ import { Command, Declare, type CommandContext, Embed, Middlewares} from 'seyfer
     name: 'autoplay',
     description: 'Toggle autoplay',
 })
-@Middlewares(['checkPlayer', 'checkVoice'])
+@Middlewares(['checkPlayer', 'checkVoice', 'checkTrack'])
 export default class autoPlaycmd extends Command {
     public override async run(ctx: CommandContext): Promise<void> {
         try {
@@ -15,7 +15,7 @@ export default class autoPlaycmd extends Command {
             player.setAutoplay(newState);
 
         const embed = new Embed()
-            .setColor(newState ? "#000000" : "#000000") 
+            .setColor(newState ? "#000000" : "#000000")
             .setTitle("Autoplay Status")
             .setDescription(`Autoplay has been **${newState ? "enabled" : "disabled"}**.`)
             .setFooter({ text: "Autoplay", iconUrl: client.me.avatarURL() })

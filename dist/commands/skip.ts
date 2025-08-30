@@ -4,7 +4,7 @@ import { Declare, Command, type CommandContext, Embed, Middlewares} from 'seyfer
     name: 'skip',
     description: 'skip the music',
 })
-@Middlewares(["checkPlayer", "checkVoice"])
+@Middlewares(['checkPlayer', 'checkVoice', 'checkTrack'])
 export default class skipCmds extends Command {
     public override async run(ctx: CommandContext): Promise<void> {
         try {

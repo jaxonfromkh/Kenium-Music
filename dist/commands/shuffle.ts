@@ -4,7 +4,7 @@ import { Declare, Command, type CommandContext, Embed, Middlewares } from 'seyfe
     name: 'shuffle',
     description: 'shuffle your queue'
 })
-@Middlewares(["checkPlayer", "checkVoice"])
+@Middlewares(['checkPlayer', 'checkVoice', 'checkTrack'])
 export default class shuffleCmds extends Command {
     public override async run(ctx: CommandContext): Promise<void> {
         try {

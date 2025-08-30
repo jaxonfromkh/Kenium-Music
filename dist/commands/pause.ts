@@ -4,14 +4,14 @@ import {Command, Declare, type CommandContext, Embed, Middlewares} from 'seyfert
     name: 'pause',
     description: 'pause the music',
 })
-@Middlewares(['checkPlayer', 'checkVoice'])
+@Middlewares(['checkPlayer', 'checkVoice', 'checkTrack'])
 export default class pauseCmds extends Command {
     public override async run(ctx: CommandContext): Promise<void> {
       try {
-          const { client } = ctx;
+        const { client } = ctx;
 
         const player = client.aqua.players.get(ctx.guildId!);
-        
+
         player.pause(true);
 
         await ctx.editOrReply({ embeds: [new Embed().setDescription('Paused the song').setColor(0)], flags: 64 });

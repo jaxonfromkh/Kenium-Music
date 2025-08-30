@@ -28,7 +28,7 @@ import { Command, Declare, type CommandContext, Embed, Options, createStringOpti
   name: 'filters',
   description: 'apply some filters'
 })
-@Middlewares(['checkPlayer', 'checkVoice'])
+@Middlewares(['checkPlayer', 'checkVoice', 'checkTrack'])
 export default class filtersss extends Command {
   public override async run(ctx: CommandContext) {
     try {

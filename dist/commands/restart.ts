@@ -4,7 +4,7 @@ import { Command, Declare, type CommandContext, Embed , Middlewares} from 'seyfe
     name: 'restart',
     description: 'Restart the music',
 })
-@Middlewares(["checkPlayer", "checkVoice"])
+@Middlewares(['checkPlayer', 'checkVoice', 'checkTrack'])
 export default class restartStuff extends Command {
     public override async run(ctx: CommandContext): Promise<void> {
         try {

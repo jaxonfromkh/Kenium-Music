@@ -12,7 +12,7 @@ import { createIntegerOption } from "seyfert";
     name: 'seek',
     description: 'Seek to a specific position in the song',
 })
-@Middlewares(["checkPlayer", "checkVoice"])
+@Middlewares(['checkPlayer', 'checkVoice', 'checkTrack'])
 export default class Seek extends Command {
     async run(ctx: CommandContext) {
       try {

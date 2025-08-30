@@ -81,10 +81,15 @@ export default class nowplayngcmds extends Command {
       const player = client.aqua.players.get(ctx.guildId!);
       const track = player.current;
 
+      if (!track) {
+        await ctx.editOrReply({content: '❌ There is no music playing.', flags: 64 });
+        return;
+      }
+
       const embed = new Embed()
         .setColor(0x000000)
         .setAuthor({
-          name: '🎵 Kenium 4.3.0 • Now Playing',
+          name: '🎵 Kenium 4.5.0 • Now Playing',
           iconUrl: client.me.avatarURL(),
           url: 'https://github.com/ToddyTheNoobDud/Kenium-Music'
         })

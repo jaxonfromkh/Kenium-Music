@@ -13,12 +13,12 @@ import { Command, Declare, type CommandContext, Embed, createIntegerOption, Opti
     name: "volume",
     description: "Change the volume of the music player in the guild",
 })
-@Middlewares(["checkPlayer", "checkVoice"])
+@Middlewares(['checkPlayer', 'checkVoice', 'checkTrack'])
 export default class Volume extends Command {
     async run(ctx: CommandContext) {
 
         try {
-        
+
         const { options } = ctx;
         const { volume } = options as { volume: number };
 
@@ -35,7 +35,7 @@ export default class Volume extends Command {
                 ],
             });
         }
-        
+
 
         player.setVolume(volume);
 
