@@ -21,11 +21,11 @@ class SQLiteCollection extends EventEmitter {
     this.db = db
     this.tableName = `col_${name}`
     this.db.prepare(`CREATE TABLE IF NOT EXISTS ${this.tableName} ( _id TEXT PRIMARY KEY, doc TEXT NOT NULL, createdAt TEXT, updatedAt TEXT )`).run()
-    try { this.db.prepare(`CREATE INDEX IF NOT EXISTS ${this.tableName}_updated_idx ON ${this.tableName}(updatedAt)`).run() } catch {}
+    try { this.db.prepare(`CREATE INDEX IF NOT EXISTS ${this.tableName}_updated_idx ON ${this.tableName}(updatedAt)`).run() } catch { }
   }
 
   private normalizeDoc(doc: any) {
-    if (!doc._id) doc._id = `${Date.now().toString(36)}_${Math.random().toString(36).slice(2,8)}`
+    if (!doc._id) doc._id = `${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`
     return doc
   }
 
@@ -52,26 +52,31 @@ class SQLiteCollection extends EventEmitter {
       const rows = this.db.prepare(`SELECT doc FROM ${this.tableName}`).all()
       return rows.map((r: any) => this.rowToDoc(r)).filter(Boolean)
     }
+
     const where: string[] = []
     const params: any = {}
     let i = 0
+
     for (const k of Object.keys(query)) {
       i++
-      where.push(`json_extract(doc, '$.${k}') = @v${i}`)
-      // Normalize values for better-sqlite3 binding: it only accepts numbers, strings, bigints, buffers, and null
       const val = query[k]
-      if (val === null || val === undefined) {
-        params[`v${i}`] = null
-      } else if (typeof val === 'boolean') {
-        // sqlite doesn't accept booleans as bind parameters; use integer 1/0
+
+      if (typeof val === 'boolean') {
+        // For booleans, use json_extract with type casting to ensure proper comparison
+        where.push(`CAST(json_extract(doc, '$.${k}') AS INTEGER) = @v${i}`)
         params[`v${i}`] = val ? 1 : 0
+      } else if (val === null || val === undefined) {
+        where.push(`json_extract(doc, '$.${k}') IS NULL`)
       } else if (typeof val === 'number' || typeof val === 'string' || typeof val === 'bigint') {
+        where.push(`json_extract(doc, '$.${k}') = @v${i}`)
         params[`v${i}`] = val
       } else {
-        // For arrays/objects, bind the JSON string
-        try { params[`v${i}`] = JSON.stringify(val) } catch { params[`v${i}`] = String(val) }
+        // For arrays/objects, compare as JSON strings
+        where.push(`json_extract(doc, '$.${k}') = json(@v${i})`)
+        params[`v${i}`] = JSON.stringify(val)
       }
     }
+
     const sql = `SELECT doc FROM ${this.tableName} WHERE ${where.join(' AND ')}`
     const rows = this.db.prepare(sql).all(params)
     return rows.map((r: any) => this.rowToDoc(r)).filter(Boolean)
@@ -139,12 +144,12 @@ class SimpleDB extends EventEmitter {
     this.dbPath = options.dbPath || join(process.cwd(), 'db', 'sey.sqlite')
     ensureDir(join(process.cwd(), 'db'))
     this.db = new Database(this.dbPath)
-    try { this.db.pragma('journal_mode = WAL') } catch {}
+    try { this.db.pragma('journal_mode = WAL') } catch { }
   }
 
   collection(name: string) { if (this.collections.has(name)) return this.collections.get(name)!; const col = new SQLiteCollection(this.db, name); this.collections.set(name, col); col.on('change', (t: any, d: any) => this.emit('change', t, d)); return col }
 
-  close() { for (const c of this.collections.values()) c.removeAllListeners(); try { this.db.close() } catch {} }
+  close() { for (const c of this.collections.values()) c.removeAllListeners(); try { this.db.close() } catch { } }
 }
 
 export { SimpleDB }

@@ -9,11 +9,11 @@ importers:
   .:
     dependencies:
       '@slipher/cooldown':
-        specifier: ^0.0.5
-        version: 0.0.5
+        specifier: ^0.0.6
+        version: 0.0.6
       aqualink:
-        specifier: 2.11.7
-        version: 2.11.7
+        specifier: 2.11.9
+        version: 2.11.9
       better-sqlite3:
         specifier: ^12.2.0
         version: 12.2.0
@@ -24,8 +24,8 @@ importers:
         specifier: ^3.1.0
         version: 3.1.0
       p-limit:
-        specifier: ^7.1.0
-        version: 7.1.0
+        specifier: ^7.1.1
+        version: 7.1.1
       seyfert:
         specifier: 3.2.6
         version: 3.2.6
@@ -43,8 +43,8 @@ importers:
         specifier: ^24.3.0
         version: 24.3.0
       tsx:
-        specifier: ^4.20.4
-        version: 4.20.4
+        specifier: ^4.20.5
+        version: 4.20.5
 
 packages:
 
@@ -204,8 +204,8 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@slipher/cooldown@0.0.5':
-    resolution: {integrity: sha512-rqLuDFXYjn4ta2JW/cmPn8d3K6fAULWGLwIEh7pibTdGoAABczYpen18PFKTVPssSPpdPG0Gax5eJ3g+k1InTg==}
+  '@slipher/cooldown@0.0.6':
+    resolution: {integrity: sha512-tfjYtyiX6lCZJD4ndjjpZwN8E25r9+69PD4P5ut6ZnbFfrTNg6H9+LQmuch+JPdgnbOuCJK3tPI8iR0xI7pYLg==}
 
   '@types/better-sqlite3@7.6.13':
     resolution: {integrity: sha512-NMv9ASNARoKksWtsq/SHakpYAYnhBrQgGD8zkLYk/jaK8jUGn08CfEdTRgYhMypUQAfzSP8W6gNLe0q19/t4VA==}
@@ -213,8 +213,8 @@ packages:
   '@types/node@24.3.0':
     resolution: {integrity: sha512-aPTXCrfwnDLj4VvXrm+UUCQjNEvJgNA8s5F1cvwQU+3KNltTOkBm1j30uNLyqqPNe7gE3KFzImYoZEfLhp4Yow==}
 
-  aqualink@2.11.7:
-    resolution: {integrity: sha512-3D0Q+oJwZPODyMYnAFybmKVTBJ+lczYB48Mtk9ueiMxQsqSjeBBrMMhFKzqob+tOFRk99p63PwfTuKB6V7YeXQ==}
+  aqualink@2.11.9:
+    resolution: {integrity: sha512-LNcIxMYuI2xgccGm81JMutbDoTKWbI4p3SIy2LavucD8Lvq6nm24118DhN3/QHkmgAMK4k6U0LsXB+L9N5aA5g==}
 
   base64-js@1.5.1:
     resolution: {integrity: sha512-AKpaYlHn8t4SVbOHCy+b5+KKgvR4vrsD8vbvrbiQJps7fKDTkjkDry6ji0rUJjC0kzbNePLwzxq8iypo41qeWA==}
@@ -312,8 +312,8 @@ packages:
   once@1.4.0:
     resolution: {integrity: sha512-lNaJgI+2Q5URQBkccEKHTQOPaXdUxnZZElQTZY0MFUAuaEqe1E+Nyvgdz/aIyNi6Z9MzO5dv1H8n58/GELp3+w==}
 
-  p-limit@7.1.0:
-    resolution: {integrity: sha512-7LbrpOjbzBWFHFgRtVrIAwBwW1bB7c7n914Q2+CXr1TvOfbTrVHAEH1Ya9PwDwAoKLeiRrczymYWPwaHNOQ0vA==}
+  p-limit@7.1.1:
+    resolution: {integrity: sha512-i8PyM2JnsNChVSYWLr2BAjNoLi0BAYC+wecOnZnVV+YSNJkzP7cWmvI34dk0WArWfH9KwBHNoZI3P3MppImlIA==}
     engines: {node: '>=20'}
 
   prebuild-install@7.1.3:
@@ -345,9 +345,6 @@ packages:
 
   set-cookie-parser@2.7.1:
     resolution: {integrity: sha512-IOc8uWeOZgnb3ptbCURJWNjWUPcO3ZnTTdzsurqERrP6nPyv+paC55vJM0LpOlT2ne+Ix+9+CRG1MNLlyZ4GjQ==}
-
-  seyfert@3.1.0:
-    resolution: {integrity: sha512-DMmpcXy3yheXIQEDjc9u4FswKqBxEOXDoTY2nutFanhMbd54D8t/AB4AvEB/uM/V58vd1NeJW6BeMnw4sXA3fw==}
 
   seyfert@3.2.6:
     resolution: {integrity: sha512-C0mghHl2mz+Qv3U+aOyCKAH3Xc2RGipfSwffXyOs4VuKygQyUbsVOpmzBNtDtdsTNtdsE/g35PAasDfi+7cv7A==}
@@ -386,8 +383,8 @@ packages:
   tseep@1.3.1:
     resolution: {integrity: sha512-ZPtfk1tQnZVyr7BPtbJ93qaAh2lZuIOpTMjhrYa4XctT8xe7t4SAW9LIxrySDuYMsfNNayE51E/WNGrNVgVicQ==}
 
-  tsx@4.20.4:
-    resolution: {integrity: sha512-yyxBKfORQ7LuRt/BQKBXrpcq59ZvSW0XxwfjAt3w2/8PmdxaFzijtMhTawprSHhpzeM5BgU2hXHG3lklIERZXg==}
+  tsx@4.20.5:
+    resolution: {integrity: sha512-+wKjMNU9w/EaQayHXb7WA7ZaHY6hN8WgfvHNQ3t1PnU91/7O8TcTnIhCDYTZwnt8JsO9IBqZ30Ln1r7pPF52Aw==}
     engines: {node: '>=18.0.0'}
     hasBin: true
 
@@ -504,9 +501,9 @@ snapshots:
   '@esbuild/win32-x64@0.25.9':
     optional: true
 
-  '@slipher/cooldown@0.0.5':
+  '@slipher/cooldown@0.0.6':
     dependencies:
-      seyfert: 3.1.0
+      seyfert: 3.2.6
 
   '@types/better-sqlite3@7.6.13':
     dependencies:
@@ -516,7 +513,7 @@ snapshots:
     dependencies:
       undici-types: 7.10.0
 
-  aqualink@2.11.7:
+  aqualink@2.11.9:
     dependencies:
       tseep: 1.3.1
       ws: 8.18.3
@@ -633,7 +630,7 @@ snapshots:
     dependencies:
       wrappy: 1.0.2
 
-  p-limit@7.1.0:
+  p-limit@7.1.1:
     dependencies:
       yocto-queue: 1.2.1
 
@@ -678,8 +675,6 @@ snapshots:
 
   set-cookie-parser@2.7.1: {}
 
-  seyfert@3.1.0: {}
-
   seyfert@3.2.6: {}
 
   simple-concat@1.0.1: {}
@@ -723,7 +718,7 @@ snapshots:
 
   tseep@1.3.1: {}
 
-  tsx@4.20.4:
+  tsx@4.20.5:
     dependencies:
       esbuild: 0.25.9
       get-tsconfig: 4.10.1

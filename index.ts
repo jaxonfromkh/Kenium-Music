@@ -68,7 +68,9 @@ const aqua = new Aqua(
     shouldDeleteMessage: true,
     infiniteReconnects: true,
     autoResume: true,
-    loadBancer: 'random', // cpu, memory, rest: leastLoad, only rest: leastRest, no check: random
+    loadBalancer: 'random', // cpu, memory, rest: leastLoad, only rest: leastRest, no check: random
+    urlFilteringEnabled: false,
+    restrictedDomains: [],
     leaveOnEnd: false
   }
 )

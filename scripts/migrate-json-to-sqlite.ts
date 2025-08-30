@@ -47,9 +47,6 @@ function main() {
   const gsShard = join(process.cwd(), 'db', 'guildSettings', 'shard_0.json')
   migrateCollection(db, 'guildSettings', gsShard)
 
-  // Migrate playlists (top-level JSON and shards)
-  const playlistsTop = join(process.cwd(), 'db', 'playlists.json')
-  migrateCollection(db, 'playlists', playlistsTop)
   const plShard = join(process.cwd(), 'db', 'playlists', 'shard_0.json')
   migrateCollection(db, 'playlists', plShard)
 
