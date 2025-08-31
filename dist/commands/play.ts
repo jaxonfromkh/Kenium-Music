@@ -4,7 +4,8 @@ import {
   Declare,
   Options,
   Embed,
-  Middlewares
+  Middlewares,
+  type CommandContext,
 } from 'seyfert'
 
 const CACHE_SIZE = 10
@@ -255,8 +256,8 @@ const options = {
 @Options(options)
 @Middlewares(['checkVoice'])
 export default class Play extends Command {
-  async run(ctx: any): Promise<void> {
-    const query = ctx.options?.query
+  async run(ctx: CommandContext): Promise<void> {
+    const { query } = ctx.options as { query: string }
     try {
       await ctx.deferReply(true)
       const voice = await ctx.member.voice()
@@ -273,6 +274,7 @@ export default class Play extends Command {
         defaultVolume: 65
       })
 
+
       const result = await ctx.client.aqua.resolve({ query, requester: ctx.interaction.user })
       if (!result?.tracks?.length) {
         await ctx.editResponse({ content: ERR.NO_TRACKS })
@@ -286,7 +288,9 @@ export default class Play extends Command {
         const track = tracks[0]
         const info = track?.info || {}
         player.queue.add(track)
+        // @ts-ignore
         recentTracks.add(ctx.interaction.user.id, info.title || query, info.uri || query)
+        // @ts-ignore
         embed.setDescription(`Added [**${esc(info.title || 'Track')}**](${info.uri || '#'}) to the queue.`)
       } else if (loadType === 'playlist' && playlistInfo?.name) {
         for (let i = 0; i < tracks.length; i++) player.queue.add(tracks[i])

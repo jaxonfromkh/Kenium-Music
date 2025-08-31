@@ -1,5 +1,5 @@
 import { createEvent, Container } from 'seyfert'
-
+import { MUSIC_PLATFORMS } from '../shared/emojis'
 const MAX_TITLE_LENGTH = 60
 const VOLUME_STEP = 10
 const MAX_VOLUME = 100
@@ -16,7 +16,7 @@ const EXCLUDED_PREFIXES = new Set([
   'add_track_', 'edit_description_', 'remove_track_',
   'playlist_next_', 'playlist_prev_', 'create_playlist_',
   'manage_playlist_', 'view_playlist_', 'shuffle_playlist_',
-  'play_playlist_'
+  'play_playlist_', 'help_'
 ])
 
 const PREFIX_LENGTHS = (() => {
@@ -24,41 +24,6 @@ const PREFIX_LENGTHS = (() => {
   for (const p of EXCLUDED_PREFIXES) lengths.add(p.length)
   return [...lengths]
 })()
-
-const MUSIC_PLATFORMS = Object.freeze({
-  youtube: Object.freeze({
-    name: 'YouTube',
-    source: 'ytsearch',
-    color: 0x000000,
-    emoji: '<:youtube:1326295615017058304>',
-    icon: '📺',
-    style: 1
-  }),
-  soundcloud: Object.freeze({
-    name: 'SoundCloud',
-    source: 'scsearch',
-    color: 0x000000,
-    emoji: '<:soundcloud:1326295646818406486>',
-    icon: '🎵',
-    style: 1
-  }),
-  spotify: Object.freeze({
-    name: 'Spotify',
-    source: 'spsearch',
-    color: 0x000000,
-    emoji: '<:spotify:1326702792269893752>',
-    icon: '🎧',
-    style: 1
-  }),
-  deezer: Object.freeze({
-    name: 'Deezer',
-    source: 'dzsearch',
-    color: 0x000000,
-    emoji: '<:Deezer_New_Icon:1398710505106964632>',
-    icon: '🎶',
-    style: 1
-  })
-})
 
 const getPlatform = uri => {
   if (!uri) return MUSIC_PLATFORMS.youtube

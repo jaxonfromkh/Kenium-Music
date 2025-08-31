@@ -64,3 +64,14 @@ export function getChannelIds(guildId) {
     }
     return null;
 }
+
+export function setChannelIds(guildId: string, voiceChannelId: string, textChannelId: string): boolean {
+    if (!guildId || !voiceChannelId || !textChannelId) return false;
+
+    const result = updateGuildSettings(guildId, {
+        voiceChannelId: voiceChannelId,
+        textChannelId: textChannelId
+    });
+
+    return result > 0;
+}

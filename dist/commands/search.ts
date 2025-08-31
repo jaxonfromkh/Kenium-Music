@@ -1,45 +1,10 @@
 import { Command, Declare, type CommandContext, Container, Middlewares, createStringOption, Options } from 'seyfert';
-
-// Optimized frozen objects with regex patterns
-const MUSIC_PLATFORMS = Object.freeze({
-    YOUTUBE: Object.freeze({
-        name: 'YouTube',
-        source: 'ytsearch',
-        color: 0xff0000,
-        emoji: '<:youtube:1326295615017058304>',
-        icon: '📺',
-        style: 4
-    }),
-    SOUNDCLOUD: Object.freeze({
-        name: 'SoundCloud',
-        source: 'scsearch',
-        color: 0xff5500,
-        emoji: '<:soundcloud:1326295646818406486>',
-        icon: '🎵',
-        style: 1
-    }),
-    SPOTIFY: Object.freeze({
-        name: 'Spotify',
-        source: 'spsearch',
-        color: 0x1db954,
-        emoji: '<:spotify:1326702792269893752>',
-        icon: '🎧',
-        style: 3
-    }),
-    DEEZER: Object.freeze({
-        name: 'Deezer',
-        source: 'dzsearch',
-        color: 0x8000ff,
-        emoji: '<:Deezer_New_Icon:1398710505106964632>',
-        icon: '🎶',
-        style: 1
-    })
-});
+import { MUSIC_PLATFORMS } from '../shared/emojis';
 
 const CONFIG = Object.freeze({
     INTERACTION_TIMEOUT: 45000,
     MAX_RESULTS: 5,
-    DEFAULT_PLATFORM: 'YOUTUBE' as keyof typeof MUSIC_PLATFORMS,
+    DEFAULT_PLATFORM: 'youtube' as keyof typeof MUSIC_PLATFORMS,
     BUTTON_STYLE_SELECTION: 2,
     MAX_QUERY_LENGTH: 100,
     MIN_QUERY_LENGTH: 2
@@ -127,7 +92,7 @@ export default class SearchCommand extends Command {
 
             // Get the selected platform or default to YouTube
             const platformKey = platform.toUpperCase() as keyof typeof MUSIC_PLATFORMS;
-            const selectedPlatform = MUSIC_PLATFORMS[platformKey] || MUSIC_PLATFORMS.YOUTUBE;
+            const selectedPlatform = MUSIC_PLATFORMS[platformKey] || MUSIC_PLATFORMS.youtube;
 
             const tracks = await this.searchTracks(ctx, cleanQuery, selectedPlatform.source);
 
@@ -177,16 +142,16 @@ export default class SearchCommand extends Command {
         return player;
     }
 
-    private async searchTracks(ctx: CommandContext, query: string, defaultSearchPlatform: string): Promise<any[]> {
+    private async searchTracks(ctx: CommandContext, query: string, source: string): Promise<any[]> {
         try {
             const result = await ctx.client.aqua.resolve({
                 query,
-                defaultSearchPlatform,
+                source,
                 requester: ctx.interaction.user
             });
             return result.tracks?.slice(0, CONFIG.MAX_RESULTS) || [];
         } catch (error) {
-            console.error(`Search tracks error for ${defaultSearchPlatform}:`, error);
+            console.error(`Search tracks error for ${source}:`, error);
             return [];
         }
     }
