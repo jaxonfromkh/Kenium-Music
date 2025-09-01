@@ -280,6 +280,7 @@ function createQueueEmbed(
 }
 
 // ---------- Interaction Handlers ----------
+// Fixed handleQueueNavigation function
 async function handleQueueNavigation(
     interaction: any,
     player: any,
@@ -321,30 +322,25 @@ async function handleQueueNavigation(
                 // No-op: rebuild UI
                 break;
             case 'queue_playpause':
-                if (player.paused) await player.resume();
-                else await player.pause();
+                if (player.paused) await player.pause(false);
+                else await player.pause(true);
                 break;
             case 'queue_shuffle': {
-                // Toggle shuffle mode; if enabling, shuffle immediately
-                player.shuffle = !player.shuffle;
-                if (player.shuffle && player.queue.length > 1) {
-                    for (let i = player.queue.length - 1; i > 0; i--) {
-                        const j = Math.floor(Math.random() * (i + 1));
-                        [player.queue[i], player.queue[j]] = [
-                            player.queue[j],
-                            player.queue[i],
-                        ];
-                    }
-                    newPage = 1; // reset to start after shuffle
-                }
+                // Call the shuffle method to shuffle the queue
+                player.shuffle();
+                newPage = 1; // reset to start after shuffle
                 break;
             }
-            case 'queue_loop':
-                player.loop = !player.loop;
+            case 'queue_loop': {
+                // Toggle loop mode using setLoop method
+                const currentLoop = player.loop || 0;
+                const newLoop = currentLoop === 0 ? 1 : 0; // Toggle between NONE (0) and TRACK (1)
+                player.setLoop(newLoop);
                 break;
+            }
             case 'queue_clear':
-                player.queue = [];
-                player.shuffle = false;
+                // Clear the queue
+                player.queue.clear();
                 newPage = 1;
                 break;
             default:
@@ -352,11 +348,12 @@ async function handleQueueNavigation(
         }
 
         // Recompute totals and pagination after potential mutations
-        const totalMs = player.queue.reduce(
+        const totalMs = player.queue.toArray().reduce(
             (total: number, track: any) => total + (track?.info?.length ?? 0),
             0
         );
-        const { maxPages } = calcPagination(player.queue.length, newPage);
+        const queueLength = player.queue.size || player.queue.length || 0;
+        const { maxPages } = calcPagination(queueLength, newPage);
         newPage = Math.min(newPage, maxPages);
 
         queueViewState.set(messageId!, { page: newPage, maxPages, totalMs });
@@ -364,8 +361,8 @@ async function handleQueueNavigation(
         const embed = createQueueEmbed(player, newPage, totalMs);
         const components = createButtons(newPage, maxPages, {
             paused: !!player.paused,
-            loop: !!player.loop,
-            shuffle: !!player.shuffle,
+            loop: player.loop > 0, // Check if loop is enabled (not NONE)
+            shuffle: false, // Player class doesn't track shuffle state
         });
 
         await interaction.editOrReply({
