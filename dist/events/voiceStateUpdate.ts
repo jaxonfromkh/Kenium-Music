@@ -250,7 +250,7 @@ class OptimizedVoiceManager {
   private debouncer = new EventDebouncer()
 
   private channelCache = new QuickLRU<string, any>({ maxSize: 2000 })
-  private registeredClients = new WeakSet<any>() 
+  private registeredClients = new WeakSet<any>()
 
   static getInstance(): OptimizedVoiceManager {
     if (!this.instance) {

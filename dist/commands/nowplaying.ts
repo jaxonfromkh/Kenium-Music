@@ -89,7 +89,7 @@ export default class nowplayngcmds extends Command {
       const embed = new Embed()
         .setColor(0x000000)
         .setAuthor({
-          name: '🎵 Kenium 4.5.0 • Now Playing',
+          name: '🎵 Kenium 4.5.1 • Now Playing',
           iconUrl: client.me.avatarURL(),
           url: 'https://github.com/ToddyTheNoobDud/Kenium-Music'
         })

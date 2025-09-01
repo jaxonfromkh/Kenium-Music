@@ -10,16 +10,13 @@ const CONFIG = {
         ISSUES_URL: 'https://github.com/ToddyTheNoobDud/Kenium-Music/issues/new',
     },
     BOT: {
-        VERSION: '4.5.0',
+        VERSION: '4.5.1',
         DEVELOPER: "mushroom0162",
-        CHANGELOG: `> Rewrited the database handler, now using better-sqlite3.
-> Rewrited the lyrics command, way better performance and accuary.
-> Added an tts command (using google en-US voice)
-> Reverted the UI to the old one, it was better
-> Added autocomplete to on the playlilsts export command.
-> Improved the playlists add speed and added support for playlists resolving.
-> Remake the status UI
-> Rewrited the nowplaying and queue command, new ui and better performance.`   },
+        CHANGELOG: `> Added an help command
+> Rewrited the voice performance (testing)
+> New player UI
+> A lot bug fixes in all commands.
+> Improved internal performance`   },
     COLORS: {
         PRIMARY: 0,
         ERROR: 0xFF5252

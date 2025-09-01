@@ -1,5 +1,6 @@
 import { createEvent, Container } from 'seyfert'
 import { MUSIC_PLATFORMS } from '../shared/emojis'
+
 const MAX_TITLE_LENGTH = 60
 const VOLUME_STEP = 10
 const MAX_VOLUME = 100
@@ -25,27 +26,31 @@ const PREFIX_LENGTHS = (() => {
   return [...lengths]
 })()
 
-const getPlatform = uri => {
-  if (!uri) return MUSIC_PLATFORMS.youtube
-  const s = uri.toLowerCase()
-  if (s.indexOf('youtu') !== -1) return MUSIC_PLATFORMS.youtube
-  if (s.indexOf('soundcloud') !== -1) return MUSIC_PLATFORMS.soundcloud
-  if (s.indexOf('spotify') !== -1) return MUSIC_PLATFORMS.spotify
-  if (s.indexOf('deezer') !== -1) return MUSIC_PLATFORMS.deezer
-  return MUSIC_PLATFORMS.youtube
-}
-
+// Unified utility functions
 const formatTime = ms => {
-  const totalSeconds = (ms / 1000) | 0
-  const hours = (totalSeconds / 3600) | 0
-  const minutes = ((totalSeconds % 3600) / 60) | 0
+  const totalSeconds = Math.floor((ms || 0) / 1000)
+  const hours = Math.floor(totalSeconds / 3600)
+  const minutes = Math.floor((totalSeconds % 3600) / 60)
   const seconds = totalSeconds % 60
-  return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
+  const pad = n => n.toString().padStart(2, '0')
+  return `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`
 }
 
 const truncateText = (text, maxLength = MAX_TITLE_LENGTH) => {
-  if (!text) return ''
-  return text.length <= maxLength ? text : text.substring(0, maxLength - 3) + '...'
+  if (!text || text.length <= maxLength) return text || ''
+  const processedText = text.replace(/[^\w\s-_.]/g, '').trim()
+  return processedText.length > maxLength
+    ? processedText.slice(0, Math.max(0, maxLength - 3)).trimEnd() + '...'
+    : processedText
+}
+
+const getPlatform = uri => {
+  const lowerUri = (uri || '').toLowerCase()
+  if (lowerUri.includes('youtu')) return MUSIC_PLATFORMS.youtube
+  if (lowerUri.includes('soundcloud')) return MUSIC_PLATFORMS.soundcloud
+  if (lowerUri.includes('spotify')) return MUSIC_PLATFORMS.spotify
+  if (lowerUri.includes('deezer')) return MUSIC_PLATFORMS.deezer
+  return MUSIC_PLATFORMS.youtube
 }
 
 const createProgressBar = (position, length) => {
@@ -79,43 +84,46 @@ export const createEmbed = (player, track, client) => {
   const { position = 0, volume = 0, loop, paused } = player || {}
   const { title = 'Unknown', uri = '', length = 0, requester } = track || {}
   const platform = getPlatform(uri)
-  const progressBar = createProgressBar(position, length)
   const volumeIcon = volume === 0 ? '🔇' : volume < 50 ? '🔈' : '🔊'
   const loopIcon = loop === 'track' ? '🔂' : loop === 'queue' ? '🔁' : '▶️'
   const playPauseIcon = paused ? '▶️' : '⏸️'
+  const truncatedTitle = truncateText(title).replace(/\b\w/g, l => l.toUpperCase())
   const requesterName = requester?.username || 'Unknown'
 
   return new Container({
-    components: [{
-      type: 9,
-      components: [{
-        type: 10,
-        content: `### ${platform.emoji} [${truncateText(title)}](${uri})${paused ? ' (Paused)' : ''}`
-      }, {
-        type: 10,
-        content: `\`${formatTime(position)}\` ${progressBar} \`${formatTime(length)}\`\n\n${volumeIcon} \`${volume}%\` ${loopIcon} Requested by: \`${requesterName}\``
-      }],
-      accessory: {
-        type: 11,
-        media: {
-          url: track?.thumbnail || client.me?.avatarURL?.({ extension: 'png' }) || ''
+    components: [
+      { type: 10, content: `**${platform.emoji} Now Playing**` },
+      { type: 14, divider: true, spacing: 1 },
+      {
+        type: 9,
+        components: [
+          {
+            type: 10,
+            content: `## **[\`${truncatedTitle}\`](${uri})**\n\`${formatTime(position)}\` / \`${formatTime(length)}\``
+          },
+          {
+            type: 10,
+            content: `${volumeIcon} \`${volume}%\` ${loopIcon} Requester: \`${requesterName}\``
+          }
+        ],
+        accessory: {
+          type: 11,
+          media: { url: track.thumbnail || client.me.avatarURL({ extension: 'webp' }) || '' }
         }
-      }
-    }, {
-      type: 14,
-      divider: true,
-      spacing: 2
-    }, {
-      type: 1,
-      components: [
-        { type: 2, label: '🔉', style: platform.style, custom_id: 'volume_down' },
-        { type: 2, label: '⏮️', style: platform.style, custom_id: 'previous' },
-        { type: 2, label: playPauseIcon, style: paused ? 4 : platform.style, custom_id: paused ? 'resume' : 'pause' },
-        { type: 2, label: '⏭️', style: platform.style, custom_id: 'skip' },
-        { type: 2, label: '🔊', style: platform.style, custom_id: 'volume_up' }
-      ]
-    }],
-    accent_color: platform.color
+      },
+      { type: 14, divider: true, spacing: 2 },
+      {
+        type: 1,
+        components: [
+          { type: 2, label: '🔉', style: 2, custom_id: 'volume_down' },
+          { type: 2, label: '⏮️', style: 2, custom_id: 'previous' },
+          { type: 2, label: playPauseIcon, style: paused ? 3 : 2, custom_id: paused ? 'resume' : 'pause' },
+          { type: 2, label: '⏭️', style: 2, custom_id: 'skip' },
+          { type: 2, label: '🔊', style: 2, custom_id: 'volume_up' }
+        ]
+      },
+      { type: 14, divider: true, spacing: 2 },
+    ]
   })
 }
 
@@ -209,3 +217,5 @@ export default createEvent({
     }
   }
 })
+
+export { formatTime, truncateText, getPlatform }

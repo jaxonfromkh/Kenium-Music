@@ -4,15 +4,14 @@ import { Client, HttpClient, ParseClient, Container, LimitedMemoryAdapter, Parse
 import { CooldownManager } from '@slipher/cooldown'
 import { middlewares } from './dist/middlewares/middlewares'
 import { Aqua } from 'aqualink'
-import { MUSIC_PLATFORMS } from './dist/shared/emojis'
+import { createEmbed, truncateText } from './dist/events/interactionCreate'
+
 const { NODE_HOST, NODE_PASSWORD, NODE_PORT, NODE_NAME } = process.env
 
 const PRESENCE_UPDATE_INTERVAL = 60000
-const MAX_TITLE_LENGTH = 45
 const VOICE_STATUS_LENGTH = 30
 const VOICE_STATUS_THROTTLE = 5000
 const ERROR_LOG_THROTTLE = 5000
-
 
 const client = new Client({})
 
@@ -34,82 +33,14 @@ const aqua = new Aqua(client, [{
 
 aqua.init(process.env.CLIENT_ID)
 Object.assign(client, { aqua })
+aqua.on('debug', msg => client.logger.debug(msg))
 
 let presenceInterval = null
 let lastVoiceStatusUpdate = 0
 let lastErrorLog = 0
 
 const _functions = {
-  formatTime: ms => {
-    const totalSeconds = Math.floor((ms || 0) / 1000)
-    const hours = Math.floor(totalSeconds / 3600)
-    const minutes = Math.floor((totalSeconds % 3600) / 60)
-    const seconds = totalSeconds % 60
-    const pad = n => n.toString().padStart(2, '0')
-    return `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`
-  },
-
-  truncateText: (text, maxLength = MAX_TITLE_LENGTH) => {
-    if (!text || text.length <= maxLength) return text || ''
-    const processedText = text.replace(/[^\w\s-_.]/g, '').trim()
-    return processedText.length > maxLength
-      ? processedText.slice(0, Math.max(0, maxLength - 3)).trimEnd() + '...'
-      : processedText
-  },
-  getPlatform: uri => {
-    const lowerUri = (uri || '').toLowerCase()
-    if (lowerUri.includes('youtu')) return MUSIC_PLATFORMS.youtube
-    if (lowerUri.includes('soundcloud')) return MUSIC_PLATFORMS.soundcloud
-    if (lowerUri.includes('spotify')) return MUSIC_PLATFORMS.spotify
-    if (lowerUri.includes('deezer')) return MUSIC_PLATFORMS.deezer
-    return MUSIC_PLATFORMS.youtube
-  },
-  createEmbed: (player, track) => {
-    const { position, volume, loop, paused } = player
-    const { title, uri, length, requester } = track
-    const volumeIcon = volume === 0 ? '🔇' : volume < 50 ? '🔈' : '🔊'
-    const loopIcon = loop === 'track' ? '🔂' : loop === 'queue' ? '🔁' : '▶️'
-    const playPauseIcon = paused ? '▶️' : '⏸️'
-    const platform = _functions.getPlatform(uri)
-    const truncatedTitle = _functions.truncateText(title).replace(/\b\w/g, l => l.toUpperCase())
-
-    return new Container({
-      components: [
-        { type: 14, divider: true, spacing: 1 },
-        { type: 10, content: `**${platform.emoji} Now Playing**` },
-        { type: 14, divider: true, spacing: 1 },
-        {
-          type: 9,
-          components: [
-            {
-              type: 10,
-              content: `## **[\`${truncatedTitle}\`](${uri})**\n\`${_functions.formatTime(position)}\` / \`${_functions.formatTime(length)}\``
-            },
-            {
-              type: 10,
-              content: `${volumeIcon} \`${volume}%\` ${loopIcon} Requester: \`${requester.username}\``
-            }
-          ],
-          accessory: {
-            type: 11,
-            media: { url: track.thumbnail || client.me.avatarURL({ extension: 'webp' }) || '' }
-          }
-        },
-        { type: 14, divider: true, spacing: 2 },
-        {
-          type: 1,
-          components: [
-            { type: 2, label: '🔉', style: 2, custom_id: 'volume_down' },
-            { type: 2, label: '⏮️', style: 2, custom_id: 'previous' },
-            { type: 2, label: playPauseIcon, style: paused ? 3 : 2, custom_id: paused ? 'resume' : 'pause' },
-            { type: 2, label: '⏭️', style: 2, custom_id: 'skip' },
-            { type: 2, label: '🔊', style: 2, custom_id: 'volume_up' }
-          ]
-        },
-        { type: 14, divider: true, spacing: 2 },
-      ]
-    })
-  },
+  createEmbed: (player, track) => createEmbed(player, track, client),
 
   cleanupPlayer: player => {
     const voiceChannel = player.voiceChannel || player._lastVoiceChannel
@@ -139,7 +70,7 @@ export const updatePresence = async clientInstance => {
     const userCount = guilds.reduce((total, guild) => total + (guild.memberCount || 0), 0)
 
     const activities = [
-      { name: '⚡ Kenium 4.5.0 ⚡', type: 1, url: 'https://www.youtube.com/watch?v=7aIjwQCEox8' },
+      { name: '⚡ Kenium 4.5.1 ⚡', type: 1, url: 'https://www.youtube.com/watch?v=7aIjwQCEox8' },
       { name: `${userCount} users`, type: 1, url: 'https://www.youtube.com/watch?v=7aIjwQCEox8' },
       { name: `${guilds.length} servers`, type: 1, url: 'https://www.youtube.com/watch?v=7aIjwQCEox8' },
       { name: 'Sponsor: https://links.triniumhost.com/', type: 1, url: 'https://www.youtube.com/watch?v=7aIjwQCEox8' }
@@ -153,7 +84,6 @@ export const updatePresence = async clientInstance => {
     })
   }, PRESENCE_UPDATE_INTERVAL)
 }
-
 
 client.setServices({
   middlewares: middlewares,
@@ -203,7 +133,7 @@ aqua.on('trackStart', async (player, track) => {
     const now = Date.now()
     if (now - lastVoiceStatusUpdate > VOICE_STATUS_THROTTLE) {
       lastVoiceStatusUpdate = now
-      const status = `⭐ ${_functions.truncateText(track.info?.title || track.title, VOICE_STATUS_LENGTH)} - Kenium 4.5.0`
+      const status = `⭐ ${truncateText(track.info?.title || track.title, VOICE_STATUS_LENGTH)} - Kenium 4.5.1`
       client.channels.setVoiceStatus(player.voiceChannel, status).catch(() => null)
     }
   } catch (error) {
@@ -216,10 +146,10 @@ aqua.on('trackError', async (player, track, payload) => {
   if (!channel) return
 
   const errorMsg = payload.exception?.message || 'Playback failed'
-  const title = _functions.truncateText(track.info?.title || track.title, 25)
+  const title = truncateText(track.info?.title || track.title, 25)
 
   await channel.client.messages.write(channel.id, {
-    content: `❌ **${title}**: ${_functions.truncateText(errorMsg, 50)}`
+    content: `❌ **${title}**: ${truncateText(errorMsg, 50)}`
   }).catch(() => null)
 })
 

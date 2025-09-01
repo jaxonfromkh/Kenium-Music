@@ -75,7 +75,7 @@ export default createEvent({
     // Register a single unhandledRejection listener
     if (!(global as any).__vsHandlerRegistered) {
       (global as any).__vsHandlerRegistered = true
-      console.log('Registering unhandledRejection listener for voice state errors')
+       client.logger.info('Registering unhandledRejection listener for voice state errors')
       process.on('unhandledRejection', async (reason: any) => {
         try {
           if (isUnknownVoiceStateError(reason)) {
