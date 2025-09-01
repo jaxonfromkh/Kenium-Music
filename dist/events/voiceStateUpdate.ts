@@ -1,5 +1,6 @@
 import process from 'node:process'
 import { createEvent, Embed } from 'seyfert'
+import QuickLRU from 'quick-lru'
 import { isTwentyFourSevenEnabled, getChannelIds } from '../utils/db_helper'
 
 const NO_SONG_TIMEOUT = 600_000
@@ -13,8 +14,9 @@ const PlayerState = {
 } as const
 
 class CircuitBreaker {
-  private failures = new Map<string, number>()
-  private lastAttempt = new Map<string, number>()
+
+  private failures = new QuickLRU<string, number>({ maxSize: 1000 })
+  private lastAttempt = new QuickLRU<string, number>({ maxSize: 1000 })
   private readonly threshold = 3
   private readonly resetTime = 30_000
 
@@ -157,14 +159,19 @@ class ConnectionPool {
   release(obj: any): void {
     if (this.pool.length < this.maxSize) {
 
-      for (const key in obj) delete obj[key]
+      for (const key in obj) {
+        delete obj[key]
+      }
+
+      Object.setPrototypeOf(obj, Object.prototype)
       this.pool.push(obj)
     }
   }
 }
 
 class PlayerStateMachine {
-  private states = new Map<string, number>()
+
+  private states = new QuickLRU<string, number>({ maxSize: 5000 })
   private readonly transitions = new Map<number, Set<number>>([
     [PlayerState.IDLE, new Set([PlayerState.PLAYING, PlayerState.DESTROYING])],
     [PlayerState.PLAYING, new Set([PlayerState.IDLE, PlayerState.DESTROYING])],
@@ -193,7 +200,16 @@ class PlayerStateMachine {
 }
 
 class EventDebouncer {
-  private pending = new Map<string, { timer: NodeJS.Timeout; events: any[] }>()
+
+  private pending = new QuickLRU<string, { timer: NodeJS.Timeout; events: any[] }>({
+    maxSize: 1000,
+
+    onEviction: (key, value) => {
+      if (value.timer) {
+        clearTimeout(value.timer)
+      }
+    }
+  })
   private readonly delay = 100
 
   debounce(key: string, event: any, handler: (events: any[]) => void): void {
@@ -213,6 +229,16 @@ class EventDebouncer {
       })
     }
   }
+
+  cleanup(): void {
+
+    for (const [key, value] of this.pending.entries()) {
+      if (value.timer) {
+        clearTimeout(value.timer)
+      }
+    }
+    this.pending.clear()
+  }
 }
 
 class OptimizedVoiceManager {
@@ -222,8 +248,9 @@ class OptimizedVoiceManager {
   private connectionPool = new ConnectionPool()
   private stateMachine = new PlayerStateMachine()
   private debouncer = new EventDebouncer()
-  private channelCache = new WeakMap<any, Map<string, any>>()
-  private listenersRegistered = false
+
+  private channelCache = new QuickLRU<string, any>({ maxSize: 2000 })
+  private registeredClients = new WeakSet<any>() 
 
   static getInstance(): OptimizedVoiceManager {
     if (!this.instance) {
@@ -233,24 +260,25 @@ class OptimizedVoiceManager {
   }
 
   registerListeners(client: any): void {
-    if (this.listenersRegistered) return
-    this.listenersRegistered = true
+
+    if (this.registeredClients.has(client)) return
+    this.registeredClients.add(client)
 
     const aqua = client.aqua
 
-    aqua.on('trackStart', (player: any) => {
+    const trackStartHandler = (player: any) => {
       this.stateMachine.transition(player.guildId, PlayerState.PLAYING)
       this.timeoutHeap.remove(player.guildId)
-    })
+    }
 
-    aqua.on('queueEnd', (player: any) => {
+    const queueEndHandler = (player: any) => {
       this.stateMachine.transition(player.guildId, PlayerState.IDLE)
       if (!isTwentyFourSevenEnabled(player.guildId)) {
         this.scheduleInactiveHandler(client, player)
       }
-    })
+    }
 
-    aqua.on('playerDestroy', (player: any) => {
+    const playerDestroyHandler = (player: any) => {
       if (!player?.guildId) return
 
       this.stateMachine.transition(player.guildId, PlayerState.DESTROYING)
@@ -261,21 +289,46 @@ class OptimizedVoiceManager {
       } else {
         this.stateMachine.clear(player.guildId)
       }
-    })
+    }
+
+    aqua.on('trackStart', trackStartHandler)
+    aqua.on('queueEnd', queueEndHandler)
+    aqua.on('playerDestroy', playerDestroyHandler)
+
+    client._voiceManagerHandlers = {
+      trackStart: trackStartHandler,
+      queueEnd: queueEndHandler,
+      playerDestroy: playerDestroyHandler
+    }
+  }
+
+  unregisterListeners(client: any): void {
+    if (!this.registeredClients.has(client)) return
+    this.registeredClients.delete(client)
+
+    const handlers = client._voiceManagerHandlers
+    if (handlers && client.aqua) {
+      client.aqua.off('trackStart', handlers.trackStart)
+      client.aqua.off('queueEnd', handlers.queueEnd)
+      client.aqua.off('playerDestroy', handlers.playerDestroy)
+    }
+    delete client._voiceManagerHandlers
   }
 
   private scheduleRejoin(client: any, guildId: string, voiceId?: string, textId?: string): void {
     if (!this.circuitBreaker.canAttempt(guildId)) return
 
+    const rejoinData = { guildId, voiceId, textId }
+
     this.timeoutHeap.add(guildId, async () => {
-      if (!this.stateMachine.transition(guildId, PlayerState.REJOINING)) return
+      if (!this.stateMachine.transition(rejoinData.guildId, PlayerState.REJOINING)) return
 
       try {
-        await this.rejoinChannel(client, guildId, voiceId, textId)
-        this.circuitBreaker.recordSuccess(guildId)
+        await this.rejoinChannel(client, rejoinData.guildId, rejoinData.voiceId, rejoinData.textId)
+        this.circuitBreaker.recordSuccess(rejoinData.guildId)
       } catch (error) {
-        this.circuitBreaker.recordFailure(guildId)
-        console.error(`Rejoin failed for ${guildId}:`, error)
+        this.circuitBreaker.recordFailure(rejoinData.guildId)
+        console.error(`Rejoin failed for ${rejoinData.guildId}:`, error)
       }
     }, REJOIN_DELAY)
   }
@@ -298,18 +351,18 @@ class OptimizedVoiceManager {
       tId = channelIds.textChannelId
     }
 
-    let guildCache = this.channelCache.get(client)
-    if (!guildCache) {
-      guildCache = new Map()
-      this.channelCache.set(client, guildCache)
+    let guild = this.channelCache.get(guildId)
+
+    if (!guild) {
+      guild = client.cache.guilds.get(guildId) ||
+        await client.guilds.fetch?.(guildId).catch(() => null)
+
+      if (guild) {
+        this.channelCache.set(guildId, guild)
+      }
     }
 
-    const guild = guildCache.get(guildId) ||
-      client.cache.guilds.get(guildId) ||
-      await client.guilds.fetch?.(guildId).catch(() => null)
-
     if (!guild) return
-    guildCache.set(guildId, guild)
 
     const voiceChannel = guild.channels?.get?.(vId) ||
       await guild.channels?.fetch?.(vId).catch(() => null)
@@ -410,6 +463,8 @@ class OptimizedVoiceManager {
 
   cleanup(): void {
     this.timeoutHeap.clearAll()
+    this.debouncer.cleanup()
+    this.channelCache.clear()
   }
 }
 
@@ -426,3 +481,5 @@ export default createEvent({
 })
 
 process.on('exit', () => manager.cleanup())
+process.on('SIGTERM', () => manager.cleanup())
+process.on('SIGINT', () => manager.cleanup())
