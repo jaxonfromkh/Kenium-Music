@@ -7,7 +7,7 @@
 		"fetch-cookie": "^3.1.0",
 		"quick-lru": "^7.1.0",
 		"seyfert": "3.2.6",
-		"tsx": "^5.9.2"
+		"typescript": "^5.9.2"
 	},
 	"scripts": {
 		"start": "tsx index.ts",
@@ -16,6 +16,6 @@
 	"devDependencies": {
 		"@types/better-sqlite3": "^7.6.13",
 		"@types/node": "^24.3.0",
-		"typescript": "^4.20.5"
+		"tsx": "^4.20.5"
 	}
 }
