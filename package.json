@@ -2,21 +2,20 @@
 	"dependencies": {
 		"@slipher/cooldown": "^0.0.6",
 		"aqualink": "2.11.10",
+		"better-sqlite3": "^12.2.0",
 		"dotenv": "^17.2.1",
 		"fetch-cookie": "^3.1.0",
-		"pg": "^8.11.3", 
 		"quick-lru": "^7.1.0",
 		"seyfert": "3.2.6",
 		"typescript": "^5.9.2"
 	},
 	"scripts": {
-		"start": "node index.js",
-		"build": "tsc",
+		"start": "tsx ./index.ts",
 		"migrate-db": "tsx ./scripts/migrate-json-to-sqlite.ts"
 	},
 	"devDependencies": {
+		"@types/better-sqlite3": "^7.6.13",
 		"@types/node": "^24.3.0",
-		"@types/pg": "^8.10.9",
 		"tsx": "^4.20.5"
 	}
 }

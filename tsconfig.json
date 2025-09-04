@@ -1,6 +1,5 @@
 {
     "compilerOptions": {
-        "outDir": "./dist",
         "emitDecoratorMetadata": true,
         "experimentalDecorators": true,
         "downlevelIteration": true,
