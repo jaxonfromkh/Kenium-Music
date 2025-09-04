@@ -10,7 +10,7 @@
 		"typescript": "^5.9.2"
 	},
 	"scripts": {
-		"start": "node dist/index.js",
+		"start": "node index.js",
 		"build": "tsc",
 		"migrate-db": "tsx ./scripts/migrate-json-to-sqlite.ts"
 	},
